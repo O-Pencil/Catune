@@ -1,0 +1,83 @@
+package com.postureai.inference.mnn
+
+import com.postureai.inference.PerceivedObject
+import com.postureai.inference.StructuredPerception
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+
+data class ParsedModelOutput(
+    val summary: String,
+    val structured: StructuredPerception,
+    val parseWarning: String? = null,
+)
+
+object ModelOutputParser {
+    private val json = Json { ignoreUnknownKeys = true }
+
+    /** Strip markdown fences and isolate the JSON object. */
+    fun extractJsonPayload(raw: String): String {
+        var text = raw.trim()
+        if (text.startsWith("```")) {
+            val firstLineEnd = text.indexOf('\n')
+            if (firstLineEnd > 0) {
+                text = text.substring(firstLineEnd + 1)
+            } else {
+                text = text.removePrefix("```")
+            }
+            val fenceEnd = text.lastIndexOf("```")
+            if (fenceEnd >= 0) {
+                text = text.substring(0, fenceEnd)
+            }
+        }
+        val start = text.indexOf('{')
+        val end = text.lastIndexOf('}')
+        return if (start >= 0 && end > start) {
+            text.substring(start, end + 1)
+        } else {
+            text
+        }
+    }
+
+    fun parse(raw: String): ParsedModelOutput {
+        if (raw.isBlank()) {
+            return ParsedModelOutput(
+                summary = "Empty model output",
+                structured = StructuredPerception(scene = "unknown", confidence = "low"),
+                parseWarning = "empty_output",
+            )
+        }
+
+        val payload = extractJsonPayload(raw)
+        return try {
+            val obj = json.parseToJsonElement(payload).jsonObject
+            val scene = obj["scene"]?.jsonPrimitive?.content ?: "unknown"
+            val summary = obj["summary"]?.jsonPrimitive?.content
+                ?: obj["description"]?.jsonPrimitive?.content
+                ?: raw.take(500)
+            val anomalies = obj["anomalies"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
+            val objects = obj["objects"]?.jsonArray?.mapNotNull { el ->
+                val o = el.jsonObject
+                val label = o["label"]?.jsonPrimitive?.content ?: return@mapNotNull null
+                val state = o["state"]?.jsonPrimitive?.content ?: ""
+                PerceivedObject(label, state)
+            } ?: emptyList()
+            val confidence = obj["confidence"]?.jsonPrimitive?.content ?: "medium"
+            ParsedModelOutput(
+                summary = summary,
+                structured = StructuredPerception(scene, objects, anomalies, confidence),
+                parseWarning = if (payload != raw.trim()) "extracted_from_markdown" else null,
+            )
+        } catch (e: Exception) {
+            ParsedModelOutput(
+                summary = raw.take(800),
+                structured = StructuredPerception(
+                    scene = raw.take(200),
+                    confidence = "low",
+                ),
+                parseWarning = "json_parse_failed: ${e.message}",
+            )
+        }
+    }
+}
