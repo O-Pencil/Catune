@@ -1,4 +1,13 @@
 /**
+ * @file App.tsx
+ * @description React Native 仪表盘根组件：订阅 KinematicsModule 实时姿态数据，渲染 Posture Score / Neck Pitch / Lumbar Roll / F7 Mock Console。
+ *
+ * [WHO] 默认导出 `function App(): React.JSX.Element`；内部 `useState`/`useEffect` 订阅 NativeEventEmitter `onKinematicsUpdate`、`KinematicsModule.getLatestState()` 与 `setSimulationScenario()` 调用、StyleSheet 样式
+ * [FROM] 依赖 `react`（useEffect/useState）、`react-native`（SafeAreaView/ScrollView/StatusBar/TouchableOpacity/View/Text/NativeModules/NativeEventEmitter）、`react-native/Libraries/NewAppScreen`（Colors/Header）
+ * [TO] 被 `index.js` 通过 `AppRegistry.registerComponent(appName, () => App)` 注册并由 RN runtime 渲染
+ * [HERE] 项目根 /App.tsx · RN 仪表盘入口（F1-F6 UI + F7 Mock Console）
+ */
+/**
  * Posture-AI React Native Dashboard
  * Full MVP implementation with F7 Mock Console.
  */
