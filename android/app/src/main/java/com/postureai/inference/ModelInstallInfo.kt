@@ -1,3 +1,12 @@
+/**
+ * @file ModelInstallInfo.kt
+ * @description 扫描 filesDir 中 MNN 权重目录，生成 ModelInstallState 给 UI 展示（就绪/缺权重/JNI 缺失等）。
+ *
+ * [WHO] 提供 `data class ModelInstallState`（含 `statusLabel`）、`object ModelInstallChecker.from(context): ModelInstallState`
+ * [FROM] 依赖 `MnnPerceptionEngine.isNativeLibLoaded()`、`InferenceExecutor.isModelLoaded()`、`MnnPerceptionEngine.isModelDirReady()`、`File.listFiles()`
+ * [TO] 被 Compose UI `ModelStatusCard` 渲染；被 `ServiceRuntime.buildStatus()` 间接消费
+ * [HERE] android/app/src/main/java/com/postureai/inference/ModelInstallInfo.kt · 模型安装状态探测器
+ */
 package com.postureai.inference
 
 import android.content.Context

@@ -1,3 +1,12 @@
+/**
+ * @file ModelOutputParser.kt
+ * @description 解析 MNN 原始输出：去 markdown 围栏、提取 JSON、解析 scene/objects/anomalies/confidence/summary。
+ *
+ * [WHO] 提供 `object ModelOutputParser`、`data class ParsedModelOutput`、`extractJsonPayload(raw: String): String`、`parse(raw: String): ParsedModelOutput`
+ * [FROM] 依赖 `kotlinx.serialization.json.Json { ignoreUnknownKeys = true }`、`StructuredPerception` / `PerceivedObject` 模型
+ * [TO] 被 `MnnPerceptionEngine.analyze()` 在拿到 raw 输出后解析
+ * [HERE] android/app/src/main/java/com/postureai/inference/mnn/ModelOutputParser.kt · MNN 输出 JSON 解析器
+ */
 package com.postureai.inference.mnn
 
 import com.postureai.inference.PerceivedObject

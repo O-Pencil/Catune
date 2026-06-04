@@ -1,3 +1,12 @@
+/**
+ * @file PerceptionModels.kt
+ * @description 推理层可序列化数据契约：请求、结果、结构化感知对象、原始 LOOK 响应。
+ *
+ * [WHO] 提供 `data class PerceptionRequest`（含 `Mode` 枚举 `LOOK/LISTEN/PERCEIVE`）、`data class PerceptionResult`、`data class StructuredPerception`、`data class PerceivedObject`、`data class RawLookResult`
+ * [FROM] 依赖 `kotlinx.serialization`（`@Serializable`、`Json.encodeToString`）
+ * [TO] 被 `PerceptionEngine.analyze()` / `lookRaw()` 返回；`toJson()` 输出给 MCP 工具调用方（PC LLM 智能体）
+ * [HERE] android/app/src/main/java/com/postureai/inference/PerceptionModels.kt · 推理数据契约
+ */
 package com.postureai.inference
 
 import kotlinx.serialization.Serializable

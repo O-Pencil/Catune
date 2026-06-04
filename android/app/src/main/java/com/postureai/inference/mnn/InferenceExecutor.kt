@@ -1,3 +1,12 @@
+/**
+ * @file InferenceExecutor.kt
+ * @description MNN 加载/推理的单线程串行化执行器，避免 native 侧状态竞争。
+ *
+ * [WHO] 提供 `object InferenceExecutor`（`run(block)` 调度、`isModelLoaded()`、`loadError()`、`ensureModelLoaded(context)` 幂等加载、`release()`）
+ * [FROM] 依赖 `Executors.newSingleThreadExecutor` + `asCoroutineDispatcher`、JNI `MnnPerceptionEngine.nativeInit/nativeRelease/getLastError`、`AtomicBoolean`
+ * [TO] 被 `MnnPerceptionEngine.analyze()` 调度推理；被 `DefaultPerceptionEngine.ensureModelLoaded()` 启动预加载；被 `ServiceRuntime.buildStatus()` 读取 loadError
+ * [HERE] android/app/src/main/java/com/postureai/inference/mnn/InferenceExecutor.kt · MNN 推理单线程调度
+ */
 package com.postureai.inference.mnn
 
 import android.content.Context

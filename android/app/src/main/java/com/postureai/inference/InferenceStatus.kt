@@ -1,3 +1,12 @@
+/**
+ * @file InferenceStatus.kt
+ * @description 推理状态机：枚举 8 个阶段（IDLE/REQUEST_RECEIVED/CAPTURING/PREFILL/DECODING/COMPLETE/HEURISTIC/ERROR）+ InferenceStatusHub 全局 StateFlow。
+ *
+ * [WHO] 提供 `enum InferencePhase`、`data class InferenceStatus`、`object InferenceStatusHub`（`reset()` / `onRequest()` / `onCapturing()` / `onPrefill()` / `onDecoding()` / `onComplete()` / `onError()` / `onIdle()`）
+ * [FROM] 依赖 `kotlinx.coroutines.flow.MutableStateFlow`
+ * [TO] 被 `DefaultPerceptionEngine.analyze()` 全流程调用推送状态；被 `McpRequestHandler` 标记 `INFERENCE_TOOLS` 进入时调用 `onRequest`；被 `McpRequestHandler` 错误路径 `onError`
+ * [HERE] android/app/src/main/java/com/postureai/inference/InferenceStatus.kt · 推理阶段状态机
+ */
 package com.postureai.inference
 
 import kotlinx.coroutines.flow.MutableStateFlow

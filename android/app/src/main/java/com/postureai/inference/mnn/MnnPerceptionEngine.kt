@@ -1,3 +1,12 @@
+/**
+ * @file MnnPerceptionEngine.kt
+ * @description Kotlin ↔ MNN JNI 桥接，把 JPEG/PCM/Prompt 喂给 libeyes_mnn_bridge 并解析返回的 VL 输出。
+ *
+ * [WHO] 提供 `class MnnPerceptionEngine`、`analyze(imageJpeg, audioPcm, sampleRate, systemPrompt, onDecoding): MnnAnalyzeResult?`、`analyzeWatchdog(jpeg, systemPrompt, alertRules): WatchdogAnalysis?`、`data class InferenceMetrics` / `MnnAnalyzeResult`；伴生对象 `tryCreate()` / `isNativeLibLoaded()` / `loadNativeLibs()` / `isModelDirReady()` / `nativeInit/Release/Available/getLastError`
+ * [FROM] 依赖 `InferenceExecutor.run`（单线程调度）、JNI `runInference` / `getLastInferenceMetric` / `nativeInit/Release`、libMNN + libeyes_mnn_bridge
+ * [TO] 被 `DefaultPerceptionEngine` 持有；JNI 错误会触发降级到 `HeuristicAnalyzer`
+ * [HERE] android/app/src/main/java/com/postureai/inference/mnn/MnnPerceptionEngine.kt · MNN 推理 Kotlin/JNI 桥
+ */
 package com.postureai.inference.mnn
 
 import android.content.Context

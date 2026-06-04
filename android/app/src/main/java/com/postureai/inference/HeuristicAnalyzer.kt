@@ -1,3 +1,12 @@
+/**
+ * @file HeuristicAnalyzer.kt
+ * @description 无 VL 权重时的降级分析器，像素级 RGB/亮度统计，支持 print_failed / led 简易规则告警。
+ *
+ * [WHO] 提供 `object HeuristicAnalyzer`、`data class HeuristicResult`、`analyze(jpeg, prompt, alertRules, hasAudio): HeuristicResult`、`analyzeAudio(pcm, prompt): HeuristicResult`
+ * [FROM] 依赖 `android.graphics.BitmapFactory`；纯计算无其他模块依赖
+ * [TO] 被 `DefaultPerceptionEngine.buildHeuristicResult()` 和 `analyzeWatchdogFrame()` 降级路径调用
+ * [HERE] android/app/src/main/java/com/postureai/inference/HeuristicAnalyzer.kt · 启发式降级分析
+ */
 package com.postureai.inference
 
 import android.graphics.BitmapFactory

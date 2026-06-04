@@ -1,3 +1,12 @@
+/**
+ * @file DefaultPerceptionEngine.kt
+ * @description PerceptionEngine 默认实现：捕获摄像头/音频 → 调 MNN 推理 → 失败回退 HeuristicAnalyzer，并推送 InferenceStatusHub 状态。
+ *
+ * [WHO] 提供 `class DefaultPerceptionEngine(perceptionEngine)`、`analyze(PerceptionRequest)` / `lookRaw(String)` / `analyzeWatchdogFrame(JPEG, prompt, rules)`、`buildSystemPrompt(userPrompt)`、`loadAssetPrompt(path)`
+ * [FROM] 依赖 `CameraCaptureManager`、`AudioCaptureManager`、`MnnPerceptionEngine`（尝试加载）、`HeuristicAnalyzer`（降级）、`InferenceStatusHub`、assets 资源 `prompts/safety_prefix.txt` + `prompts/vl_system.txt`
+ * [TO] 被 `ServiceRuntime.perceptionEngine` 实例化；被 `McpRequestHandler` 在 `phone_look/listen/perceive/look_raw/watch_*` 路径调用
+ * [HERE] android/app/src/main/java/com/postureai/inference/DefaultPerceptionEngine.kt · 推理编排器（含启发式降级）
+ */
 package com.postureai.inference
 
 import android.content.Context
