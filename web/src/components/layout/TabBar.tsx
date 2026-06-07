@@ -1,3 +1,10 @@
+/**
+ * [WHO]: 导出 TabBar（函数组件）
+ * [FROM]: motion/react (motion), @/lib/utils (cn)
+ * [TO]: 被 App.tsx 消费
+ * [HERE]: web/src/components/layout/TabBar.tsx · 底部标签栏（layoutId 动画指示器）
+ */
+
 import { motion } from "motion/react"
 import { cn } from "@/lib/utils"
 

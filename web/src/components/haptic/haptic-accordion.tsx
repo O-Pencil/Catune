@@ -1,3 +1,10 @@
+/**
+ * [WHO]: Provides HapticAccordion, HapticAccordionItem, HapticAccordionTrigger, HapticAccordionContent
+ * [FROM]: react, motion/react, cva, @/lib/utils, ./icons (ChevronDownIcon), ./motion (springSoft)
+ * [TO]: index.ts → SkeuomorphismShowcase
+ * [HERE]: 可折叠手风琴
+ */
+
 import * as React from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { cva, type VariantProps } from "class-variance-authority"

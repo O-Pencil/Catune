@@ -1,3 +1,10 @@
+/**
+ * [WHO]: Provides HapticKnob, hapticKnobVariants
+ * [FROM]: react, motion/react, cva, @/lib/utils, ./motion (springSoft)
+ * [TO]: index.ts → SkeuomorphismShowcase
+ * [HERE]: 旋转旋钮
+ */
+
 import * as React from "react"
 import { motion } from "motion/react"
 import { cva, type VariantProps } from "class-variance-authority"

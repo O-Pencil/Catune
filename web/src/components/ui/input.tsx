@@ -1,3 +1,10 @@
+/**
+ * [WHO]: 导出 Input（函数组件）
+ * [FROM]: react, @/lib/utils (cn)
+ * [TO]: 被 SkeuomorphismShowcase.tsx 消费
+ * [HERE]: web/src/components/ui/input.tsx · shadcn 文本输入框
+ */
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"

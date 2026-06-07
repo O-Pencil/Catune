@@ -27,6 +27,13 @@
  * - brand #fb4b00 · brand-dark #cc3402 · surface #fafafa · canvas #f5f5f5
  */
 
+/**
+ * [WHO]: 导出 HAPTIC_PALETTE, HAPTIC_GRADIENTS, HAPTIC_ELEVATION, HAPTIC_RADIUS, HAPTIC_PADDING, HAPTIC_INDENT, HAPTIC_CHIP_COLORS, HAPTIC_SELECTOR_SELECTED, HAPTIC_SELECTOR_UNSELECTED, 类型 HapticSize/HapticShape/HapticInteractionState/HapticButtonVariant/HapticChipColor/HapticChipTone 及废弃类型
+ * [FROM]: 无依赖
+ * [TO]: 被 index.ts 重导出，被 motion.ts, haptic-button, haptic-checkbox, haptic-chip, haptic-icon-button, haptic-progress, haptic-radio 消费
+ * [HERE]: web/src/components/haptic/tokens.ts · 设计 token 常量（调色板/渐变/阴影/圆角/尺寸类型）
+ */
+
 /** 统一配色（与 index.css @theme 同步） */
 export const HAPTIC_PALETTE = {
   brand: "#fb4b00",

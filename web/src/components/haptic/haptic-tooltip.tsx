@@ -1,3 +1,10 @@
+/**
+ * [WHO]: Provides HapticTooltip, hapticTooltipVariants
+ * [FROM]: react, motion/react, cva, @/lib/utils, ./motion (springSnappy)
+ * [TO]: index.ts → SkeuomorphismShowcase
+ * [HERE]: web/src/components/haptic/haptic-tooltip.tsx · 工具提示
+ */
+
 import * as React from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { cva, type VariantProps } from "class-variance-authority"

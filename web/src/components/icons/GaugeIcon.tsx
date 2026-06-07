@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * [WHO]: 导出 GaugeIcon（forwardRef 组件）, type GaugeIconHandle
+ * [FROM]: motion/react (Transition, motion, useAnimation), react (HTMLAttributes, forwardRef, useCallback, useImperativeHandle, useRef), @/lib/utils (cn)
+ * [TO]: 被 App.tsx 消费
+ * [HERE]: web/src/components/icons/GaugeIcon.tsx · 仪表 SVG 图标（Desk tab）
+ */
+
 import type { Transition } from "motion/react";
 import { motion, useAnimation } from "motion/react";
 import type { HTMLAttributes } from "react";

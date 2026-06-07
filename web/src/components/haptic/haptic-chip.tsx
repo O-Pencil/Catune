@@ -1,3 +1,10 @@
+/**
+ * [WHO]: Provides HapticChip, hapticChipVariants, type HapticChipColor, type HapticChipTone, type HapticShape, type HapticSize
+ * [FROM]: react, cva, @/lib/utils, ./icons (PlusIcon), ./tokens (HAPTIC_CHIP_COLORS)
+ * [TO]: index.ts → SkeuomorphismShowcase
+ * [HERE]: 彩色标签
+ */
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 

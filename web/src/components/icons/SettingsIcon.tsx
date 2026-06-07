@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * [WHO]: 导出 SettingsIcon（forwardRef 组件）, type SettingsIconHandle
+ * [FROM]: motion/react (motion, useAnimation), react (HTMLAttributes, forwardRef, useCallback, useImperativeHandle, useRef), @/lib/utils (cn)
+ * [TO]: 被 App.tsx 消费
+ * [HERE]: web/src/components/icons/SettingsIcon.tsx · 齿轮 SVG 图标（Settings tab）
+ */
+
 import { motion, useAnimation } from "motion/react";
 import type { HTMLAttributes } from "react";
 import { forwardRef, useCallback, useImperativeHandle, useRef } from "react";

@@ -1,3 +1,10 @@
+/**
+ * [WHO]: Provides HapticRadio, hapticRadioVariants, type HapticInteractionState, type HapticSize
+ * [FROM]: cva, motion/react, @/lib/utils, ./motion, ./tokens
+ * [TO]: index.ts → SkeuomorphismShowcase
+ * [HERE]: web/src/components/haptic/haptic-radio.tsx · 动画单选按钮
+ */
+
 import { cva, type VariantProps } from "class-variance-authority"
 import { motion, type HTMLMotionProps } from "motion/react"
 

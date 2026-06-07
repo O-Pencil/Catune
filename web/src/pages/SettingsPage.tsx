@@ -1,3 +1,10 @@
+/**
+ * [WHO]: 导出 SettingsPage（函数组件）
+ * [FROM]: react (useState), @/components/haptic/haptic-switch (HapticSwitch)
+ * [TO]: 被 App.tsx 消费
+ * [HERE]: web/src/pages/SettingsPage.tsx · 设置页（设备 / AI / MCP / 通知 / 关于）
+ */
+
 import { useState } from "react"
 import { HapticSwitch } from "@/components/haptic/haptic-switch"
 

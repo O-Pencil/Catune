@@ -1,3 +1,10 @@
+/**
+ * [WHO]: Provides HapticSegmentedControl, type HapticSegmentedOption
+ * [FROM]: react, motion/react, @/lib/utils, ./motion (springSnappy, springSoft)
+ * [TO]: index.ts → SkeuomorphismShowcase
+ * [HERE]: web/src/components/haptic/haptic-segmented-control.tsx · iOS 分段控件
+ */
+
 import * as React from "react"
 import { motion, AnimatePresence } from "motion/react"
 

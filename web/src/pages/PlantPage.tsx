@@ -1,3 +1,10 @@
+/**
+ * [WHO]: 导出 PlantPage（函数组件）
+ * [FROM]: react (useState), @/lib/utils (cn)
+ * [TO]: 被 App.tsx 消费
+ * [HERE]: web/src/pages/PlantPage.tsx · 植物养成（5 阶段 SVG + 积分表格）
+ */
+
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 

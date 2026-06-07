@@ -1,3 +1,10 @@
+/**
+ * [WHO]: Provides HapticProgress, type HapticProgressVariant
+ * [FROM]: react, motion/react, @/lib/utils, ./motion (springSnappy), ./tokens (HAPTIC_GRADIENTS, HAPTIC_PALETTE)
+ * [TO]: index.ts → SkeuomorphismShowcase
+ * [HERE]: web/src/components/haptic/haptic-progress.tsx · 进度条（5色+条纹+不确定态）
+ */
+
 import * as React from "react"
 import { motion } from "motion/react"
 

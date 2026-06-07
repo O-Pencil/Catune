@@ -1,3 +1,10 @@
+/**
+ * [WHO]: 导出 SkeuomorphismShowcase（函数组件）
+ * [FROM]: react (useState), @/components/ui/input (Input), @/components/ui/card (Card/CardContent/CardDescription/CardHeader/CardTitle), @/components/haptic (全部 haptic 组件 + 类型)
+ * [TO]: 独立展示页，无内部消费者
+ * [HERE]: web/src/demo/SkeuomorphismShowcase.tsx · 设计系统全量展示页
+ */
+
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import {

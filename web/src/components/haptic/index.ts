@@ -1,3 +1,10 @@
+/**
+ * [WHO]: 桶导出，重导出全部 haptic 组件 + icons + tokens
+ * [FROM]: 全部 haptic 组件文件, ./icons, ./tokens
+ * [TO]: 被 SkeuomorphismShowcase.tsx 消费
+ * [HERE]: web/src/components/haptic/index.ts · 桶导出
+ */
+
 export { HapticButton, hapticButtonVariants } from "./haptic-button"
 export { HapticIconButton } from "./haptic-icon-button"
 export { HapticSwitch } from "./haptic-switch"

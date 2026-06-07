@@ -1,3 +1,10 @@
+/**
+ * [WHO]: Provides HapticCheckbox, hapticCheckboxVariants, type HapticInteractionState, type HapticSize
+ * [FROM]: cva, motion/react, @/lib/utils, ./icons (CheckIcon), ./motion, ./tokens
+ * [TO]: index.ts → SkeuomorphismShowcase
+ * [HERE]: 动画复选框
+ */
+
 import { cva, type VariantProps } from "class-variance-authority"
 import { motion, type HTMLMotionProps } from "motion/react"
 

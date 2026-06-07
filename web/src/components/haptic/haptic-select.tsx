@@ -1,3 +1,10 @@
+/**
+ * [WHO]: Provides HapticSelect, hapticSelectTriggerVariants, type HapticSelectOption
+ * [FROM]: react, cva, motion/react, @/lib/utils, ./icons (ChevronDownIcon, CheckIcon), ./motion
+ * [TO]: index.ts → SkeuomorphismShowcase
+ * [HERE]: web/src/components/haptic/haptic-select.tsx · 下拉选择
+ */
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { motion, AnimatePresence } from "motion/react"

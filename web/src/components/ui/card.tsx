@@ -1,3 +1,10 @@
+/**
+ * [WHO]: 导出 Card, CardHeader, CardFooter, CardTitle, CardAction, CardDescription, CardContent
+ * [FROM]: react, @/lib/utils (cn)
+ * [TO]: 被 SkeuomorphismShowcase.tsx 消费
+ * [HERE]: web/src/components/ui/card.tsx · shadcn 卡片族
+ */
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"

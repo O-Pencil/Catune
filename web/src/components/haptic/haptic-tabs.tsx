@@ -1,3 +1,10 @@
+/**
+ * [WHO]: Provides HapticTabs, type HapticTab
+ * [FROM]: react, motion/react, @/lib/utils, ./motion (springSnappy)
+ * [TO]: index.ts → SkeuomorphismShowcase
+ * [HERE]: web/src/components/haptic/haptic-tabs.tsx · 标签栏
+ */
+
 import * as React from "react"
 import { motion } from "motion/react"
 

@@ -1,3 +1,10 @@
+/**
+ * [WHO]: Provides HapticAvatar, hapticAvatarVariants
+ * [FROM]: react, cva, @/lib/utils
+ * [TO]: index.ts → SkeuomorphismShowcase
+ * [HERE]: 头像组件
+ */
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 

@@ -1,3 +1,10 @@
+/**
+ * [WHO]: Provides HapticSlider
+ * [FROM]: react, @/lib/utils
+ * [TO]: index.ts → SkeuomorphismShowcase
+ * [HERE]: web/src/components/haptic/haptic-slider.tsx · 范围滑块（纯 CSS 过渡）
+ */
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"

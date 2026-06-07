@@ -1,5 +1,12 @@
 import { cn } from "@/lib/utils"
 
+/**
+ * [WHO]: 导出 FilterIcon, UtilityPlusIcon, PlusIcon, MinusIcon, ChevronDownIcon, ChevronRightIcon, CheckIcon, SearchIcon
+ * [FROM]: @/lib/utils (cn)
+ * [TO]: 被 index.ts 重导出，被 haptic-accordion, haptic-button, haptic-checkbox, haptic-chip, haptic-icon-button, haptic-select, haptic-stepper 消费
+ * [HERE]: web/src/components/haptic/icons.tsx · SVG 图标组件（8 个）
+ */
+
 export function FilterIcon({
   className,
   ...props

@@ -2,6 +2,13 @@ import type { Transition } from "motion/react"
 
 import { HAPTIC_ELEVATION, HAPTIC_GRADIENTS } from "./tokens"
 
+/**
+ * [WHO]: 导出 springSnappy, springSoft, tweenSurface, HAPTIC_GRADIENT, HAPTIC_ELEVATION（重导出）
+ * [FROM]: motion/react (Transition), ./tokens (HAPTIC_ELEVATION, HAPTIC_GRADIENTS)
+ * [TO]: 被 14 个 haptic 组件消费
+ * [HERE]: web/src/components/haptic/motion.ts · 动画预设（spring/tween 过渡）
+ */
+
 export const springSnappy: Transition = {
   type: "spring",
   stiffness: 520,

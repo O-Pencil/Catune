@@ -1,5 +1,12 @@
 "use client";
 
+/**
+ * [WHO]: 导出 FanIcon（forwardRef 组件）, type FanIconHandle
+ * [FROM]: motion/react (motion, useAnimation, Variants), react (HTMLAttributes, forwardRef, useCallback, useImperativeHandle, useRef), @/lib/utils (cn)
+ * [TO]: 被 App.tsx 消费
+ * [HERE]: web/src/components/icons/FanIcon.tsx · 风扇 SVG 图标（Plant tab）
+ */
+
 import { motion, useAnimation, type Variants } from "motion/react";
 import type { HTMLAttributes } from "react";
 import { forwardRef, useCallback, useImperativeHandle, useRef } from "react";

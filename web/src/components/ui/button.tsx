@@ -1,3 +1,10 @@
+/**
+ * [WHO]: 导出 Button（函数组件）, buttonVariants（CVA 定义）
+ * [FROM]: react, class-variance-authority (cva, VariantProps), radix-ui (Slot), @/lib/utils (cn)
+ * [TO]: 可被外部消费（web/src 内暂无直接消费者）
+ * [HERE]: web/src/components/ui/button.tsx · shadcn 按钮（6 变体 + 4 尺寸）
+ */
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Slot } from "radix-ui"

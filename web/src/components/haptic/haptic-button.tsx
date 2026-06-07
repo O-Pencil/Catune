@@ -1,3 +1,10 @@
+/**
+ * [WHO]: Provides hapticButtonVariants, HapticButton, type HapticButtonVariant
+ * [FROM]: react, cva, motion/react, @/lib/utils, ./icons, ./motion (springSoft), ./tokens (HapticButtonVariant)
+ * [TO]: index.ts → SkeuomorphismShowcase; haptic-icon-button.tsx
+ * [HERE]: Utility 风格按钮
+ */
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { motion, type HTMLMotionProps } from "motion/react"

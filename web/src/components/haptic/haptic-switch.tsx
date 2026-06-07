@@ -1,3 +1,10 @@
+/**
+ * [WHO]: Provides HapticSwitch
+ * [FROM]: motion/react, @/lib/utils, ./motion (springSoft)
+ * [TO]: index.ts → SkeuomorphismShowcase; SettingsPage.tsx（直接导入）
+ * [HERE]: web/src/components/haptic/haptic-switch.tsx · 开关
+ */
+
 import { motion, type HTMLMotionProps } from "motion/react"
 
 import { cn } from "@/lib/utils"

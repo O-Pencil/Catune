@@ -1,5 +1,13 @@
 // Status colors: brand-coherent, not Duolingo-palette
 // Healthy = warm sage (echoes the Haptic warm-neutral background), warning = brand orange, alert = muted clay
+
+/**
+ * [WHO]: 导出 DeskPage（函数组件）
+ * [FROM]: 无依赖（自包含 mock 数据 + 内联 SVG）
+ * [TO]: 被 App.tsx 消费
+ * [HERE]: web/src/pages/DeskPage.tsx · 主仪表盘（脊柱 SVG 可视化 + 设备状态 + 角度卡片）
+ */
+
 const STATUS_COLORS = {
   healthy: "#7BA05B",
   warning: "#fb4b00",

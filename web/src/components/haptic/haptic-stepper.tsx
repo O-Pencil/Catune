@@ -1,3 +1,10 @@
+/**
+ * [WHO]: Provides HapticStepper, springSnappy（重导出）
+ * [FROM]: motion/react, @/lib/utils, ./icons (MinusIcon, PlusIcon), ./motion
+ * [TO]: index.ts → SkeuomorphismShowcase
+ * [HERE]: web/src/components/haptic/haptic-stepper.tsx · 数字步进器
+ */
+
 import { motion, type HTMLMotionProps } from "motion/react"
 
 import { cn } from "@/lib/utils"

@@ -1,3 +1,10 @@
+/**
+ * [WHO]: 默认导出 App（根组件）
+ * [FROM]: react (useEffect/useRef/useState), @/components/layout/TabBar, @/pages/DeskPage, @/pages/PlantPage, @/pages/SettingsPage, @/components/icons/GaugeIcon, @/components/icons/FanIcon, @/components/icons/SettingsIcon
+ * [TO]: 被 main.tsx 默认导入
+ * [HERE]: web/src/app/App.tsx · 根组件，Tab 路由 + URL query 参数 + 动画图标管理
+ */
+
 import { useEffect, useRef, useState } from "react"
 import { TabBar } from "@/components/layout/TabBar"
 import { DeskPage } from "@/pages/DeskPage"

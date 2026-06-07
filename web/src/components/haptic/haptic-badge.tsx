@@ -1,3 +1,10 @@
+/**
+ * [WHO]: Provides HapticBadge, hapticBadgeVariants
+ * [FROM]: react, cva, @/lib/utils
+ * [TO]: index.ts → SkeuomorphismShowcase
+ * [HERE]: 徽章组件
+ */
+
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 
