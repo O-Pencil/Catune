@@ -1,7 +1,5 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
-import { HapticProgress } from "@/components/haptic/haptic-progress"
-import { HapticBadge } from "@/components/haptic/haptic-badge"
 
 const STAGES = [
   { id: 0, name: "Seed" },
@@ -28,73 +26,17 @@ const PLANT_PALETTE = {
   fruitYellow: "#E8A93C",
 }
 
-function BadgeIcon({ kind }: { kind: string }) {
-  // Hand-drawn glyphs that match the skeuomorphic depth instead of flat emoji
-  switch (kind) {
-    case "link":
-      return (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fb4b00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-        </svg>
-      )
-    case "flame":
-      return (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fb4b00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
-        </svg>
-      )
-    case "star":
-      return (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fb4b00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-        </svg>
-      )
-    case "trophy":
-      return (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fb4b00" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
-          <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-          <path d="M4 22h16" />
-          <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
-          <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
-          <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
-        </svg>
-      )
-    case "bloom":
-      return (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9B9590" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5" />
-          <path d="M12 7.5V9" />
-          <path d="M7.5 12H9" />
-          <path d="M16.5 12H15" />
-          <path d="M12 16.5V15" />
-          <path d="m8 8 1.88 1.88" />
-          <path d="M14.12 9.88 16 8" />
-          <path d="m8 16 1.88-1.88" />
-          <path d="M14.12 14.12 16 16" />
-        </svg>
-      )
-    case "crown":
-      return (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#9B9590" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z" />
-          <path d="M5 21h14" />
-        </svg>
-      )
-    default:
-      return null
-  }
-}
-
-const BADGES = [
-  { id: 1, name: "First Pair", kind: "link", unlocked: true },
-  { id: 2, name: "3-Day Streak", kind: "flame", unlocked: true },
-  { id: 3, name: "Perfect Pose", kind: "star", unlocked: true },
-  { id: 4, name: "7-Day Streak", kind: "trophy", unlocked: true },
-  { id: 5, name: "Plant Bloom", kind: "bloom", unlocked: false },
-  { id: 6, name: "30-Day Streak", kind: "crown", unlocked: false },
+const SCORE_LOG = [
+  { id: 1, time: "06-08 14:30", action: "Good posture 30 min", delta: +5, score: 92 },
+  { id: 2, time: "06-08 12:00", action: "Missed stretch break", delta: -3, score: 87 },
+  { id: 3, time: "06-08 09:15", action: "Morning check-in", delta: +2, score: 90 },
+  { id: 4, time: "06-07 18:30", action: "Sustained good posture", delta: +8, score: 88 },
+  { id: 5, time: "06-07 15:00", action: "Slouching detected", delta: -5, score: 80 },
+  { id: 6, time: "06-07 10:00", action: "Morning check-in", delta: +2, score: 85 },
+  { id: 7, time: "06-06 20:15", action: "Evening stretch done", delta: +3, score: 83 },
+  { id: 8, time: "06-06 14:00", action: "Forward head posture", delta: -4, score: 80 },
+  { id: 9, time: "06-06 09:30", action: "Morning check-in", delta: +2, score: 84 },
+  { id: 10, time: "06-05 16:45", action: "Good posture 45 min", delta: +7, score: 82 },
 ]
 
 function PlantSvg({ stage }: { stage: number }) {
@@ -170,9 +112,7 @@ function PlantSvg({ stage }: { stage: number }) {
 
 export function PlantPage() {
   const [currentStage, setCurrentStage] = useState(2)
-  const streak = 7
-  const todayMinutes = 185
-  const targetMinutes = 300
+  const currentScore = SCORE_LOG[0]?.score ?? 0
 
   return (
     <div className="pb-24 px-4 space-y-3">
@@ -257,73 +197,37 @@ export function PlantPage() {
         </div>
       </div>
 
-      {/* Streak Counter */}
+      {/* Score Log */}
       <div className="skeuo-card p-5">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-[10px] font-mono text-[#9B9590] font-bold tracking-wider">STREAK</div>
-            <div className="flex items-baseline gap-2 mt-2">
-              <span className="font-mono text-[#fb4b00] text-5xl font-extrabold">{streak}</span>
-              <span className="text-sm text-[#666666]">days</span>
-            </div>
-          </div>
-          <div className="flex gap-1">
-            {[1, 2, 3, 4, 5, 6, 7].map((day) => (
-              <div
-                key={day}
-                className={cn(
-                  "size-8 rounded-lg flex items-center justify-center text-[10px] font-bold",
-                  day <= streak
-                    ? "bg-[#fb4b00] text-white"
-                    : "bg-[#f5f5f5] text-[#9B9590]"
-                )}
-              >
-                {day}
-              </div>
-            ))}
+        <div className="flex items-center justify-between mb-4">
+          <div className="text-[10px] font-mono text-[#9B9590] font-bold tracking-wider">SCORE LOG</div>
+          <div className="flex items-baseline gap-1">
+            <span className="font-mono text-2xl font-extrabold text-[#fb4b00]">{currentScore}</span>
+            <span className="text-[11px] text-[#9B9590]">pts</span>
           </div>
         </div>
-      </div>
 
-      {/* Today Progress */}
-      <div className="skeuo-card p-5">
-        <div className="text-[10px] font-mono text-[#9B9590] font-bold tracking-wider mb-3">TODAY</div>
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-[#333333]">Good Posture Time</span>
-          <span className="font-mono text-sm font-bold text-[#141414]">
-            {todayMinutes}/{targetMinutes} min
-          </span>
-        </div>
-        <HapticProgress
-          value={todayMinutes}
-          max={targetMinutes}
-          variant="orange"
-          showLabel
-          label={`${Math.round((todayMinutes / targetMinutes) * 100)}%`}
-        />
-      </div>
-
-      {/* Badges */}
-      <div className="skeuo-card p-5">
-        <div className="text-[10px] font-mono text-[#9B9590] font-bold tracking-wider mb-3">BADGES</div>
-        <div className="grid grid-cols-3 gap-3">
-          {BADGES.map((badge) => (
+        <div className="space-y-0">
+          {SCORE_LOG.map((entry, i) => (
             <div
-              key={badge.id}
+              key={entry.id}
               className={cn(
-                "flex flex-col items-center gap-2 p-3 rounded-xl transition-colors",
-                badge.unlocked
-                  ? "bg-[#fb4b00]/5 border border-[#fb4b00]/20"
-                  : "bg-[#f5f5f5] border border-[#e5e5e5] opacity-50"
+                "flex items-center justify-between py-3",
+                i < SCORE_LOG.length - 1 && "border-b border-[#e5e5e5]"
               )}
             >
-              <BadgeIcon kind={badge.kind} />
-              <span className="text-[10px] font-semibold text-center text-[#333333]">
-                {badge.name}
+              <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                <span className="text-[11px] font-mono text-[#9B9590]">{entry.time}</span>
+                <span className="text-[13px] text-[#333333] truncate">{entry.action}</span>
+              </div>
+              <span
+                className={cn(
+                  "font-mono text-sm font-bold shrink-0 ml-3",
+                  entry.delta > 0 ? "text-[#3a9e1f]" : "text-[#c20a0a]"
+                )}
+              >
+                {entry.delta > 0 ? "+" : ""}{entry.delta}
               </span>
-              {badge.unlocked && (
-                <HapticBadge color="orange" variant="pill" size="smaller" label="Unlocked" />
-              )}
             </div>
           ))}
         </div>
