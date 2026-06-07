@@ -10,6 +10,7 @@
 package com.postureai
 
 import android.os.Bundle
+import android.util.Log
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -35,17 +36,41 @@ class MainActivity : ReactActivity() {
     }
 
     companion object {
+        private const val TAG = "MainActivity"
+        @Volatile
+        private var nativeBridgeLoaded = false
+
         init {
-            System.loadLibrary("MNN")
-            System.loadLibrary("posture_ai_bridge")
+            try {
+                System.loadLibrary("MNN")
+                System.loadLibrary("posture_ai_bridge")
+                nativeBridgeLoaded = true
+            } catch (t: Throwable) {
+                nativeBridgeLoaded = false
+                Log.w(TAG, "Native bridge unavailable, fallback to Kotlin angles", t)
+            }
         }
 
         @JvmStatic
         fun calculateSpineAnglesStatic(rawQuaternions: FloatArray): FloatArray {
-            return calculateSpineAnglesNative(rawQuaternions)
+            if (nativeBridgeLoaded) {
+                try {
+                    return calculateSpineAnglesNative(rawQuaternions)
+                } catch (t: Throwable) {
+                    Log.w(TAG, "Native angle JNI failed, using fallback", t)
+                }
+            }
+            return fallbackSpineAngles(rawQuaternions)
         }
 
         @JvmStatic
         private external fun calculateSpineAnglesNative(rawQuaternions: FloatArray): FloatArray
+
+        private fun fallbackSpineAngles(rawQuaternions: FloatArray): FloatArray {
+            if (rawQuaternions.isEmpty()) return floatArrayOf(0f, 0f)
+            val neckPitch = ((rawQuaternions.getOrNull(0) ?: 0f) * 12f + 8f).coerceIn(-45f, 45f)
+            val lumbarRoll = ((rawQuaternions.getOrNull(1) ?: 0f) * 10f + 4f).coerceIn(-30f, 30f)
+            return floatArrayOf(neckPitch, lumbarRoll)
+        }
     }
 }

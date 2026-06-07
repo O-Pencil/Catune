@@ -90,6 +90,7 @@ class DefaultPerceptionEngine(
                         decodeTps = metrics.decodeTps,
                         totalMs = lastInferenceMs,
                         heuristic = false,
+                        backend = metrics.backend,
                         rawOutput = mnnResult.rawOutput,
                     )
                     return@runBlocking mnnResult.result.copy(

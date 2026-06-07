@@ -24,6 +24,23 @@ using MNN::Transformer::LlmStatus;
 
 namespace {
 
+struct MNNCPUInfo {
+    bool fp16arith = false;
+    bool dot = false;
+    bool i8mm = false;
+    bool sve2 = false;
+    bool sme2 = false;
+};
+
+extern "C" const MNNCPUInfo* MNNGetCPUInfo();
+
+std::string getBackendName() {
+    const MNNCPUInfo* info = MNNGetCPUInfo();
+    if (info && info->sme2) return "SME2";
+    if (info && (info->fp16arith || info->dot)) return "NEON";
+    return "CPU";
+}
+
 void restoreRunningIfNeeded(Llm* llm) {
     if (llm == nullptr) return;
     auto* context = llm->getContext();
@@ -139,8 +156,9 @@ bool EyesLlmSession::load(const std::string& config_json_path, const std::string
 
     llm_ = llm;
     ready_ = true;
+    metrics_["backend"] = getBackendName();
     last_error_.clear();
-    EYES_LOGD("EyesLlmSession loaded: %s", config_json_path.c_str());
+    EYES_LOGD("EyesLlmSession loaded: %s, backend: %s", config_json_path.c_str(), metrics_["backend"].c_str());
     return true;
 }
 
@@ -159,6 +177,7 @@ std::string EyesLlmSession::infer(
     const std::string& audio_wav_path) {
     std::lock_guard<std::mutex> lock(mutex_);
     metrics_.clear();
+    metrics_["backend"] = getBackendName();
 
     if (!ready_ || llm_ == nullptr) {
         last_error_ = "Model not loaded";

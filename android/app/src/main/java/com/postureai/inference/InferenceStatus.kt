@@ -37,6 +37,7 @@ data class InferenceStatus(
     val outputChars: Int = 0,
     val outputPreview: String = "",
     val totalMs: Long? = null,
+    val backend: String = "unknown",
     val updatedAtMs: Long = System.currentTimeMillis(),
 )
 
@@ -70,7 +71,7 @@ object InferenceStatusHub {
     fun onPrefill() {
         _state.value = _state.value.copy(
             phase = InferencePhase.PREFILL,
-            detail = "Running vision-language prefillâ€?,
+            detail = "Running vision-language prefillï¿½?,
             updatedAtMs = System.currentTimeMillis(),
         )
     }
@@ -78,7 +79,7 @@ object InferenceStatusHub {
     fun onDecoding() {
         _state.value = _state.value.copy(
             phase = InferencePhase.DECODING,
-            detail = "Generating tokensâ€?,
+            detail = "Generating tokensï¿½?,
             updatedAtMs = System.currentTimeMillis(),
         )
     }
@@ -91,6 +92,7 @@ object InferenceStatusHub {
         decodeTps: Float?,
         totalMs: Long,
         heuristic: Boolean,
+        backend: String = "unknown",
         rawOutput: String? = null,
     ) {
         val preview = rawOutput?.take(600) ?: ""
@@ -107,6 +109,7 @@ object InferenceStatusHub {
             outputPreview = preview,
             decodeTps = decodeTps,
             totalMs = totalMs,
+            backend = backend,
         )
     }
 

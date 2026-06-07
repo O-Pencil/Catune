@@ -20,6 +20,7 @@ data class InferenceMetrics(
     val decodeMs: Long,
     val tokensGenerated: Int,
     val decodeTps: Float,
+    val backend: String = "unknown",
 )
 
 data class MnnAnalyzeResult(
@@ -69,12 +70,14 @@ class MnnPerceptionEngine private constructor(
         val decode = readMetricLong("decode_ms") ?: (totalMs - prefill).coerceAtLeast(0L)
         val tps = readMetricFloat("decode_tps")
             ?: if (decode > 0L) tokens * 1000f / decode.toFloat() else 0f
+        val backend = readNativeMetric("backend") ?: "unknown"
         val metrics = InferenceMetrics(
             ttftMs = ttft,
             prefillMs = prefill,
             decodeMs = decode,
             tokensGenerated = tokens,
             decodeTps = tps,
+            backend = backend,
         )
         return MnnAnalyzeResult(
             result = PerceptionResult(
@@ -185,7 +188,7 @@ class MnnPerceptionEngine private constructor(
             }
             if (!bridgeLibLoaded) {
                 try {
-                    System.loadLibrary("eyes_mnn_bridge")
+                    System.loadLibrary("posture_ai_bridge")
                     bridgeLibLoaded = true
                 } catch (_: UnsatisfiedLinkError) {
                     bridgeLibLoaded = false
