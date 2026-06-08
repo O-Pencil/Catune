@@ -132,13 +132,9 @@ function App(): React.JSX.Element {
 
           {renderMockConsole()}
 
-          <TouchableOpacity 
-            style={styles.mainButton}
-            onPress={() => {
-                // Future: Start/Stop Service
-            }}>
-            <Text style={styles.buttonText}>START MCP SERVICE</Text>
-          </TouchableOpacity>
+          <Text style={styles.dataSourceHint}>
+            数据来源：本地模拟流（10Hz）· 端侧模型对接见 docs/端侧模型对接计划.md
+          </Text>
 
         </View>
       </ScrollView>
@@ -246,16 +242,11 @@ const styles = StyleSheet.create({
     color: '#ccc',
     fontSize: 10,
   },
-  mainButton: {
-    backgroundColor: '#007AFF',
-    padding: 18,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+  dataSourceHint: {
+    color: '#666',
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: 4,
   }
 });
 

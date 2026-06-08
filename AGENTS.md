@@ -1,7 +1,7 @@
 # Catune · AGENTS.md
 
 > 项目代号：**Catune**（赛事名 *Omni-Posture Master*，包名 `com.catune`）
-> 类型：React Native 0.76 + Android 原生（Kotlin / C++ JNI）混合应用
+> 类型：React Native 0.76 + Android 原生（Kotlin）手机 App
 > 文档协议：DIP（Dual-phase Isomorphic Documentation）· P1 根地图
 > 文档语言：**中文**
 
@@ -9,66 +9,51 @@
 
 ## 1. Identity（项目本质）
 
-Catune 是一款**端侧优先、隐私优先**的智能体应用，把"高频 IMU 脊柱动捕 + 端侧多模态大模型（Qwen3-VL via MNN）"打包成 MCP 工具，暴露给 PC 上的 LLM 智能体（Claude Code、Qwen、Codex 等）远程调用。
+Catune 是面向久坐用户的「不驼背坐姿助手」**React Native Android App**（PRD 唯一交付形态，非小程序/H5/网页壳）。
 
-- 核心目标：实时检测久坐人群的脊柱姿态（颈椎前倾 NECK PITCH、腰椎侧倾 LUMBAR ROLL），并在异常时通过振动反馈 + 端侧 VL 推理给出自然语言干预。
-- 关键约束：**端侧推理**为主，云端只在必要时走 Qwen-VL API；MCP HTTP 服务内嵌在 App 进程内，与 RN UI 共用生命周期。
-- 用户场景：TONGYI LAB × Arm 手机端挑战赛初赛（2026-06-22）演示 + 2 人小团队 2 周冲刺。
+- 核心目标：检测久坐人群的驼背/头前倾（颈前倾 NECK PITCH、腰椎侧倾 LUMBAR ROLL），异常时震动 + App 提醒，并串起训练与复盘闭环。
+- 用户场景：TONGYI LAB × Arm 手机端挑战赛初赛（2026-06-22）演示 + 2 人小团队冲刺。
+- **当前阶段（2026-06-08）**：已收敛为「纯 RN + 轻量 Kotlin」可构建、可在 x86_64 模拟器运行的最小骨架，由本地模拟数据流驱动 RN 仪表盘。
+- **已移除（不在初赛 MVP 范围，PRD §0.5.7 Non-Goals）**：MCP/Ktor 服务、CameraX/音频采集、Watchdog、C++/JNI MNN 桥与 `libMNN.so`、Compose 调试面板、PairingManager。
+- **端侧 Qwen + MNN 推理**：规划重新接入，见 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md)（开发机装不下模型、原生构建缺 MNN 源，初赛先移除主链路）。
 
 ---
 
 ## 2. 架构拓扑（ASCII）
 
+当前（初赛最小骨架）数据流：模拟流 → 角度解算 → 状态机 → RN 仪表盘。
+
 ```
-                ┌──────────────────────────────────────────┐
-                │       PC 端 LLM 智能体 (Claude Code)      │
-                │  stdio MCP / SSE ←──────────┐             │
-                └─────────────────────────────┼─────────────┘
-                                              │ HTTPS 8765
-                                              │ (LAN Bearer Token)
-┌─────────────────────────────────────────────┴─────────────────────────────────────┐
-│                              Android 进程 (com.catune)                          │
-│                                                                                    │
-│  ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────────────┐ │
-│  │  React Native UI   │   │   MCP HTTP Server  │   │  Watchdog 周期感知 + 告警   │ │
-│  │  App.tsx 仪表盘    │◀─▶│  Ktor + CIO        │   │  WatchdogManager /         │ │
-│  │  index.js 入口     │   │  Bearer Auth       │   │  PendingAlertStore         │ │
-│  │  __tests__ 快照    │   │  SSE /mcp stream   │   └────────────────────────────┘ │
-│  │  NativeEventEmitter│   └─────────┬──────────┘                                   │
-│  └──────────┬─────────┘             │                                              │
-│             │ RN Bridge             │ JsonRpcRequest                                │
-│             ▼                       ▼                                              │
-│  ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────────────┐ │
-│  │  KinematicsModule  │   │  McpRequestHandler │   │  DefaultPerceptionEngine   │ │
-│  │  (RN 桥接)         │   │  路由工具调用       │──▶│  LOOK / LISTEN / PERCEIVE  │ │
-│  └──────────┬─────────┘   └──────────┬─────────┘   └─────────────┬──────────────┘ │
-│             │                        │                            │                │
-│             ▼                        ▼                            ▼                │
-│  ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────────────┐ │
-│  │  KinematicsHub     │   │  McpToolRegistry   │   │  MnnPerceptionEngine  ◀─┐  │ │
-│  │  (StateFlow)       │   │  10 个 MCP 工具    │   │  JNI → libMNN + bridge   │  │ │
-│  │  neck/lumbar/posture│  └────────────────────┘   │  Qwen3-VL 2B 端侧推理     │  │ │
-│  └──────────┬─────────┘                            │  ModelOutputParser 解析JSON│ │
-│             │                                      └────────────────────────────┘ │
-│             ▼                                                                   │
-│  ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────────────┐ │
-│  │  SpineBluetooth    │   │  CameraCapture     │   │  AudioCapture (16kHz)      │ │
-│  │  Manager (BLE)     │   │  Manager (CameraX) │   │  10s 环形 PCM buffer       │ │
-│  │  PoseMaster-C6     │   │  bindToLifecycle   │   │  sliceRecentPcm()          │ │
-│  └────────────────────┘   └────────────────────┘   └────────────────────────────┘ │
-│                                                                                    │
-│  ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────────────┐ │
-│  │  McpForeground     │   │  PairingManager    │   │  UI 面板 (Compose)          │ │
-│  │  Service (前台)    │   │  token / port 8765 │   │  InferenceStatusPanel      │ │
-│  │  ServiceRuntime    │   │  SharedPreferences │   │  SpineVisualizer (WebView) │ │
-│  └────────────────────┘   └────────────────────┘   └────────────────────────────┘ │
-│                                                                                    │
-│  ┌─────────────────────────────────────────────────────────────────────────────┐ │
-│  │  C++ / JNI 桥接 (android/app/src/main/cpp)                                   │ │
-│  │   eyes_mnn_bridge.cpp ─→ EyesLlmSession ─→ MNN Llm                          │ │
-│  │   LlmStreamBuffer + Utf8StreamProcessor 处理流式 UTF-8 输出                 │ │
-│  └─────────────────────────────────────────────────────────────────────────────┘ │
-└────────────────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                     Android 进程 (com.catune)                      │
+│                                                                    │
+│  ┌────────────────────┐        ┌────────────────────────────────┐ │
+│  │  React Native UI   │        │  CatuneApp (Application)        │ │
+│  │  App.tsx 仪表盘    │        │  onCreate 装配 + 启动模拟流      │ │
+│  │  index.js 入口     │        └───────────────┬────────────────┘ │
+│  │  NativeEventEmitter│                        │                  │
+│  └──────────┬─────────┘                        ▼                  │
+│             │ RN Bridge        ┌────────────────────────────────┐ │
+│             │  onKinematics    │  SpineBluetoothManager          │ │
+│             │  Update          │  10Hz 模拟流 / 预留真实 BLE      │ │
+│             ▼                  └───────────────┬────────────────┘ │
+│  ┌────────────────────┐                        │ 原始四元数        │
+│  │  KinematicsModule  │                        ▼                  │
+│  │  (RN 桥接)         │        ┌────────────────────────────────┐ │
+│  │  getLatestState    │        │  MainActivity                   │ │
+│  │  setSimulation...  │        │  calculateSpineAnglesStatic     │ │
+│  └──────────┬─────────┘        │  （纯 Kotlin 占位角度解算）      │ │
+│             │ 订阅 StateFlow    └───────────────┬────────────────┘ │
+│             ▼                                   │ neck / lumbar    │
+│  ┌─────────────────────────────────────────────▼────────────────┐ │
+│  │  KinematicsHub (object, StateFlow)                            │ │
+│  │  规则状态机：NORMAL/SLUMPED/TECH_NECK/LEFT_LEAN/OFFLINE + 0-100 分 │ │
+│  └──────────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────┘
+
+   🚧 规划接入（docs/端侧模型对接计划.md）：
+      KinematicsHub ──结构化 Prompt──► InferenceExecutor ──JNI──► libMNN ──► Qwen 2B INT4
+                                          │ 仅结构化字段 → 本地查表 → 禁词检查 → RN
 ```
 
 ---
@@ -96,23 +81,36 @@ Catune/
 │       ├── build.gradle          # com.catune 应用配置
 │       ├── proguard-rules.pro
 │       └── src/main/
-│           ├── AndroidManifest.xml    # 权限 + ForegroundService
-│           ├── java/com/catune/    # Kotlin 源码（13 个子包）
-│           ├── cpp/                  # C++/JNI 桥接
-│           ├── jniLibs/arm64-v8a/     # libMNN.so
+│           ├── AndroidManifest.xml    # 权限（BLE/INTERNET）+ MainActivity
+│           ├── java/com/catune/      # Kotlin 源码（见下）
 │           └── res/                   # 图标 + strings + styles
+├── web/                          # 设计师快速迭代用 Vite+React 原型（不作为最终 APP 输出）
+├── prototype/                    # 静态 HTML 视觉/交互原型（不作为最终 APP 输出）
 ├── ios/                          # 标准 RN iOS 脚手架（未启用原生模块）
-│   ├── Podfile
-│   ├── Catune/                # AppDelegate / Info.plist / PrivacyInfo
-│   └── CatuneTests/           # RN 内置测试
 ├── PRD/
 │   └── AI姿态矫正康复产品PRD.md  # 唯一 PRD：产品需求 / 功能 / 验收
 ├── docs/
-│   ├── 技术实现文档.md            # 唯一技术实现：架构 / 数据 / 安全 / 构建 / 模型
+│   ├── 技术实现文档.md            # 唯一技术实现：架构 / 数据 / 安全 / 构建
+│   ├── 端侧模型对接计划.md        # 端侧 Qwen+MNN 重新接入的分步计划与验收
 │   ├── 硬件采购与小白使用指南.md  # 唯一硬件指南：采购 / 接线 / 通电 / 佩戴
-│   └── 设计-IDEA.md               # 设计 IDEA · Haptic 拟物化 × 前卫大胆英文版（Figma Make 提示词）
+│   └── 设计-IDEA.md               # 设计 IDEA · Haptic 拟物化（Figma Make 提示词）
 ├── README.md                     # 项目总览与唯一入口
 └── AGENTS.md                     # P1 根地图（CLAUDE.md 是其软链，供 Claude Code 自动加载）
+```
+
+### Kotlin 源码（`android/app/src/main/java/com/catune/`，目录名已与 `package com.catune` 对齐）
+
+```
+com/catune/
+├── CatuneApp.kt                  # Application：装配 + 启动模拟流
+├── MainActivity.kt               # RN 宿主 + calculateSpineAnglesStatic 占位角度解算
+├── rn/
+│   ├── KinematicsModule.kt       # RN 桥接：订阅 KinematicsHub → onKinematicsUpdate
+│   └── CatunePackage.kt          # ReactPackage 注册 KinematicsModule
+├── inference/mnn/
+│   └── KinematicsHub.kt          # 规则姿态状态机（StateFlow）
+└── bluetooth/
+    └── SpineBluetoothManager.kt  # 10Hz 模拟流 + 预留真实 BLE GATT
 ```
 
 ---
@@ -121,15 +119,14 @@ Catune/
 
 | 抽象 | 位置 | 职责 |
 | --- | --- | --- |
-| `KinematicsHub` | `android/.../inference/mnn/KinematicsHub.kt` | 实时姿态状态机（颈前倾/腰椎侧倾/姿势枚举/0-100 分），RN 与 BLE 共用的状态枢纽 |
-| `PerceptionEngine` | `android/.../inference/PerceptionEngine.kt` | 多模态 VL 推理接口（`analyze` / `lookRaw` / `analyzeWatchdogFrame`），MCP 工具调用入口 |
-| `McpHttpServer` | `android/.../mcp/McpHttpServer.kt` | Ktor CIO 内嵌 HTTP 服务，监听 `0.0.0.0:8765`，Bearer Token 鉴权，POST /mcp + GET SSE 流 |
-| `McpToolRegistry` | `android/.../mcp/McpToolRegistry.kt` | 10 个 MCP 工具定义（`phone_look` / `phone_listen` / `phone_perceive` / `phone_watch_*` / `phone_look_raw` / `get_body_kinematics` / `trigger_vibration_feedback` / `phone_status`） |
-| `DefaultPerceptionEngine` | `android/.../inference/DefaultPerceptionEngine.kt` | 实际编排：先尝试 MNN 推理，失败回退到 `HeuristicAnalyzer`（无 VL 权重的降级模式） |
-| `SpineBluetoothManager` | `android/.../bluetooth/SpineBluetoothManager.kt` | 与 PoseMaster-C6 / Omni-Posture-Spine 传感器 BLE 通讯；当前默认走模拟数据流 |
-| `WatchdogManager` | `android/.../watchdog/WatchdogManager.kt` | 周期感知任务调度，5 分钟去重阈值，异常推 SSE 通知 + 落盘 `pending_alerts.json` |
+| `CatuneApp` | `android/.../CatuneApp.kt` | Application：初始化 RN/SoLoader，启动 `SpineBluetoothManager` 模拟流驱动仪表盘 |
+| `MainActivity` | `android/.../MainActivity.kt` | RN 宿主；`calculateSpineAnglesStatic` 纯 Kotlin 占位角度解算（待接真实算法/端侧模型） |
+| `KinematicsModule` | `android/.../rn/KinematicsModule.kt` | RN 桥接：订阅 `KinematicsHub.state` → `onKinematicsUpdate`；暴露 `getLatestState` / `setSimulationScenario`（F7 Mock Console） |
+| `KinematicsHub` | `android/.../inference/mnn/KinematicsHub.kt` | 实时姿态规则状态机（颈前倾/腰椎侧倾/姿势枚举/0-100 分），`StateFlow` 单一状态枢纽 |
+| `SpineBluetoothManager` | `android/.../bluetooth/SpineBluetoothManager.kt` | 10Hz 模拟数据流写入 `KinematicsHub`；预留真实 BLE GATT（PoseMaster-C6） |
+| `CatunePackage` | `android/.../rn/CatunePackage.kt` | ReactPackage，把 `KinematicsModule` 注册到 RN runtime |
 
-> 抽象 8-10 重要性次之：`PairingManager`（token 持久化）、`McpForegroundService`（保活前台服务）、`ServiceRuntime`（运行时编排）。
+> 端侧推理相关抽象（`InferenceExecutor` / `MnnPerceptionEngine` / JNI 桥）已移除，重新接入见 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md)。
 
 ---
 
@@ -138,76 +135,53 @@ Catune/
 ### 5.1 公共前置
 
 - Node ≥ 18、Yarn 或 npm
-- Android Studio Ladybug+、Android SDK 35、NDK 26
-- iOS 端（仅脚手架，无原生模块）：Xcode 15+、CocoaPods ≥ 1.13、CocoaPods 排除 `1.15.0` / `1.15.1`
+- Android Studio Ladybug+、Android SDK 35（**已无自有原生代码，NDK/CMake 非必需**）
+- 模拟器：标准 x86_64 AVD 即可（ABI = `arm64-v8a` + `x86_64`）
 
-### 5.2 启动 RN 仪表盘
+### 5.2 启动 RN 仪表盘（模拟器可跑）
 
 ```bash
 npm install
 # 终端 1：Metro
 npm start
-# 终端 2：Android
+# 终端 2：Android（x86_64 模拟器或真机）
 npm run android
-# 或 iOS（脚手架）
-npm run ios
 ```
 
-### 5.3 启动 MCP 服务
+启动后仪表盘由本地 10Hz 模拟流驱动，显示姿态分数 / Neck Pitch / Lumbar Roll / 当前状态；F7 Mock Console 可一键切 `NORMAL/SLUMPED/TECH_NECK/LEFT_LEAN/OFFLINE`。
 
-1. 在 App 仪表盘点击 **START MCP SERVICE**（App.tsx 预留按钮），或启动 `McpForegroundService`。
-2. 通知中心出现"Catune MCP"前台通知。
-3. 控制台日志/通知打印 `http://<lan-ip>:8765/mcp` 与 `Bearer cat_<uuid>`。
-4. PC 端 LLM 智能体（Claude Code / Codex）通过 LAN 调用。
+### 5.3 端侧模型
 
-### 5.4 MNN 模型可选加载
+不在当前代码内，接入步骤见 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md)。
 
-若要启用真端侧 VL 推理（而非降级到 HeuristicAnalyzer），把转换好的 Qwen3-VL-2B MNN 权重 push 到：
+### 5.4 验证与检查
 
 ```bash
-adb push <本地模型目录> /data/data/com.catune/files/mnn_models/qwen3-vl-2b/
-# 目录必须包含：config.json, llm.mnn, llm.mnn.weight, visual.mnn, visual.mnn.weight
-```
-
-无权重时自动降级为 `degraded_mode: true` + 启发式分析，**MCP 服务仍然可用**。
-
-### 5.5 验证与检查
-
-```bash
-# 单元/快照测试
-npm test
-# 静态检查
-npm run lint
-# Android 端到端构建
-cd android && ./gradlew assembleDebug
+npm test                                # RN 渲染冒烟测试
+npm run lint                            # 静态检查
+cd android && ./gradlew assembleDebug   # 纯 RN + Kotlin 构建（无 CMake）
 ```
 
 ---
 
 ## 6. 核心约定
 
-- **命名**：Kotlin 包 `com.catune`，C++ 命名空间 `eyes`（来自 "Catune" 历史代号，保留兼容）。
-- **日志**：`EYES_LOG_TAG = "CatuneMNN"`（C++），`Tag = "KinematicsModule"` 等（Kotlin，使用类名）。
-- **线程**：
-  - RN 桥接走 `Dispatchers.Main`
-  - MNN 推理走专用单线程 `eyes-mnn-infer` 调度器
-  - 音频采集走独立 `Thread`
-  - MCP HTTP 走 Ktor CIO 协程
-- **状态流**：UI 状态用 `StateFlow`（KinematicsHub、InferenceStatusHub），订阅 RN EventEmitter。
-- **数据契约**：`PerceptionResult.toJson()` / `KinematicsHub.getAsJson()` 是 MCP 工具的唯一返回格式。
+- **命名**：Kotlin 包 `com.catune`，目录 `java/com/catune/` 已与包名对齐。
+- **日志**：`Tag = "KinematicsModule"` 等（Kotlin，使用类名）。
+- **线程**：RN 桥接走 `Dispatchers.Main`；模拟流走 `Dispatchers.Default`。
+- **状态流**：UI 状态用 `StateFlow`（`KinematicsHub`），RN 端通过 `NativeEventEmitter` 订阅。
+- **数据源**：初赛由 `SpineBluetoothManager` 模拟流驱动；真实 BLE 与端侧模型按计划接入。
 
 ---
 
 ## 7. DIP 导航（双相同构文档）
 
-本项目按 **P1（根地图）/ P2（模块地图）/ P3（文件契约头）** 三层组织文档，每层都通过 `AGENTS.md` 承载：
+本项目按 **P1（根地图）/ P3（文件契约头）** 组织文档（精简后已无 P2 模块地图）：
 
 | 层级 | 文件 | 作用 |
 | --- | --- | --- |
 | P1 | `AGENTS.md`（本文件） / `CLAUDE.md` | 项目拓扑、技术栈、构建命令、关键抽象 |
-| P2 | `android/app/src/main/java/com/catune/AGENTS.md` | 13 个 Kotlin 子包 + 入口类的成员清单 |
-| P2 | `android/app/src/main/cpp/AGENTS.md` | 7 个 C++/CMake 桥接源文件清单 |
-| P2 | `ios/AGENTS.md` | iOS RN 脚手架（P3 已加，复赛再启用原生模块） |
+| P2 | `ios/AGENTS.md` | iOS RN 脚手架（未启用原生模块） |
 | P2 | `__tests__/AGENTS.md` | RN 渲染测试 |
 | P3 | 每个源文件顶部的中文注释头 | `[WHO]` 导出 · `[FROM]` 依赖 · `[TO]` 消费方 · `[HERE]` 位置与角色 |
 

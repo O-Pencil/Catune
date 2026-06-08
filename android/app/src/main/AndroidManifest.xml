@@ -6,11 +6,6 @@
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
       android:name=".CatuneApp"
@@ -32,14 +27,5 @@
           <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
       </activity>
-
-      <service
-        android:name=".service.McpForegroundService"
-        android:enabled="true"
-        android:exported="false"
-        android:foregroundServiceType="specialUse">
-        <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-            android:value="MCP Server for AI Posture Analysis"/>
-      </service>
       </application>
 </manifest>
