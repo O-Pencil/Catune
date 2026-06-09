@@ -1,5 +1,6 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
+apply plugin: "kotlinx-serialization"
 apply plugin: "com.facebook.react"
 
 /**
@@ -85,10 +86,22 @@ android {
         versionCode 1
         versionName "1.0"
 
-        // 初赛阶段无自有原生代码：仅保留 arm64-v8a（真机）与 x86_64（模拟器）两个 ABI。
-        // 端侧 Qwen+MNN 重新接入时再补 CMake externalNativeBuild，详见 docs/端侧模型对接计划.md。
+        // RN 库覆盖两个 ABI：arm64-v8a（真机/端侧推理）+ x86_64（模拟器）。
         ndk {
             abiFilters "arm64-v8a", "x86_64"
+        }
+
+        // 端侧 Qwen+MNN 原生构建默认关闭，保证纯 RN 在任意机器/模拟器可构建。
+        // 开启：./gradlew assembleDebug -PenableMnn=true（需 cpp/third_party/MNN 源码 + arm64 libMNN.so）。
+        // native 只编 arm64（libMNN.so 仅 arm64）；x86_64 模拟器无 bridge → loadLibrary 失败 → 回退规则。
+        if (project.hasProperty("enableMnn")) {
+            externalNativeBuild {
+                cmake {
+                    cppFlags "-std=c++17"
+                    arguments "-DANDROID_STL=c++_shared"
+                    abiFilters "arm64-v8a"
+                }
+            }
         }
     }
     signingConfigs {
@@ -112,6 +125,21 @@ android {
         }
     }
 
+    // 端侧 Qwen+MNN 原生构建：仅在 -PenableMnn 时挂载 CMake（详见 docs/端侧模型对接计划.md）。
+    if (project.hasProperty("enableMnn")) {
+        externalNativeBuild {
+            cmake {
+                path "src/main/cpp/CMakeLists.txt"
+                version "3.22.1"
+            }
+        }
+    }
+
+    sourceSets {
+        main {
+            jniLibs.srcDirs = ['src/main/jniLibs']
+        }
+    }
 }
 
 dependencies {
@@ -126,6 +154,9 @@ dependencies {
 
     // Kotlin 协程：KinematicsHub(StateFlow) / KinematicsModule / SpineBluetoothManager 模拟流依赖
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+
+    // Kotlin 序列化：PerceptionModels / ModelOutputParser（端侧推理输出契约）依赖
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
 
     // Android KTX 基础
     implementation("androidx.core:core-ktx:1.13.1")

@@ -36,9 +36,11 @@ Catune 是一个完整的 React Native Android 手机 App，不是小程序、H5
 | 姿态状态 | `KinematicsHub` 维护 `NORMAL / SLUMPED / TECH_NECK / LEFT_LEAN / OFFLINE` 和 0-100 分 |
 | 数据源 | `SpineBluetoothManager` 自动启动 10Hz 模拟流写入姿态状态；F7 可切换模拟场景 |
 | 角度解算 | `MainActivity.calculateSpineAnglesStatic` 纯 Kotlin 占位实现（待接真实算法） |
-| 端侧推理 | 🚧 已移除，规划重新接入，见 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md) |
+| 端侧推理 | 🟡 C++/JNI 桥 + Kotlin 推理桥 + `libMNN.so` **已恢复进仓库但默认不编、未接线**；`-PenableMnn` 才挂 CMake。仍缺 MNN 源码 / SME2 库 / 模型，见 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md) |
 
-> 已移除：MCP/Ktor 服务、CameraX/音频采集、Watchdog、C++/JNI MNN 桥与 `libMNN.so`、Compose 调试面板。这些不在初赛 MVP 范围（PRD §0.5.7 Non-Goals）；端侧推理相关产物可从 git `d17af44` 恢复。
+> 默认 `assembleDebug` 是纯 RN + Kotlin（不挂 CMake，模拟器可装）。端侧推理用 `-PenableMnn=true` 开启（需先放 MNN 源码到 `cpp/third_party/MNN/`）。
+>
+> 已移除（PRD §0.5.7 Non-Goals）：MCP/Ktor 服务、CameraX/音频采集、Watchdog、Compose 调试面板、`DefaultPerceptionEngine`/`HeuristicAnalyzer`；可从 git `d17af44` 恢复。
 
 ## 快速开始
 
@@ -62,7 +64,7 @@ cd android
 
 ## 端侧模型
 
-端侧 Qwen + MNN 推理的接入步骤、目录约定、验收标准统一收敛到 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md)，当前代码不含模型与原生推理。
+端侧 Qwen + MNN 的推理桥代码（C++/JNI + Kotlin）已在仓库，但默认不参与构建、未接入 RN 主链路；仓库不含模型权重与 SME2 版 libMNN。接入步骤、目录约定、`-PenableMnn` 开关、验收标准统一收敛到 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md)。
 
 ## 文档导航
 

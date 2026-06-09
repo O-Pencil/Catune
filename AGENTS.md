@@ -13,9 +13,9 @@ Catune 是面向久坐用户的「不驼背坐姿助手」**React Native Android
 
 - 核心目标：检测久坐人群的驼背/头前倾（颈前倾 NECK PITCH、腰椎侧倾 LUMBAR ROLL），异常时震动 + App 提醒，并串起训练与复盘闭环。
 - 用户场景：TONGYI LAB × Arm 手机端挑战赛初赛（2026-06-22）演示 + 2 人小团队冲刺。
-- **当前阶段（2026-06-08）**：已收敛为「纯 RN + 轻量 Kotlin」可构建、可在 x86_64 模拟器运行的最小骨架，由本地模拟数据流驱动 RN 仪表盘。
-- **已移除（不在初赛 MVP 范围，PRD §0.5.7 Non-Goals）**：MCP/Ktor 服务、CameraX/音频采集、Watchdog、C++/JNI MNN 桥与 `libMNN.so`、Compose 调试面板、PairingManager。
-- **端侧 Qwen + MNN 推理**：规划重新接入，见 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md)（开发机装不下模型、原生构建缺 MNN 源，初赛先移除主链路）。
+- **当前阶段（2026-06-09）**：RN 主链路是「纯 RN + 轻量 Kotlin」，可在 x86_64 模拟器运行，由本地模拟数据流驱动 RN 仪表盘。
+- **端侧 Qwen + MNN 推理**：C++/JNI 桥 + Kotlin 推理桥 + `libMNN.so` **已恢复进仓库但默认不参与构建**（`-PenableMnn` 开关后才挂 CMake，仅编 arm64）；尚未接入 RN 主链路，仍缺 MNN 源码 / SME2 库 / 模型权重。详见 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md)。
+- **已移除（不在初赛 MVP 范围，PRD §0.5.7 Non-Goals）**：MCP/Ktor 服务、CameraX/音频采集、Watchdog、Compose 调试面板、PairingManager、`DefaultPerceptionEngine`/`HeuristicAnalyzer`（相机/音频编排）。
 
 ---
 
@@ -83,6 +83,8 @@ Catune/
 │       └── src/main/
 │           ├── AndroidManifest.xml    # 权限（BLE/INTERNET）+ MainActivity
 │           ├── java/com/catune/      # Kotlin 源码（见下）
+│           ├── cpp/                   # C++/JNI MNN 桥（默认不编，-PenableMnn 才挂 CMake）
+│           ├── jniLibs/arm64-v8a/     # libMNN.so（arm64，可能需换 SME2 版）
 │           └── res/                   # 图标 + strings + styles
 ├── web/                          # 设计师快速迭代用 Vite+React 原型（不作为最终 APP 输出）
 ├── prototype/                    # 静态 HTML 视觉/交互原型（不作为最终 APP 输出）
@@ -107,8 +109,13 @@ com/catune/
 ├── rn/
 │   ├── KinematicsModule.kt       # RN 桥接：订阅 KinematicsHub → onKinematicsUpdate
 │   └── CatunePackage.kt          # ReactPackage 注册 KinematicsModule
-├── inference/mnn/
-│   └── KinematicsHub.kt          # 规则姿态状态机（StateFlow）
+├── inference/
+│   ├── PerceptionModels.kt       # 推理数据契约（@Serializable，VL 形态，姿态用途待换字段）
+│   └── mnn/
+│       ├── KinematicsHub.kt      # 规则姿态状态机（StateFlow，RN 主链路）
+│       ├── MnnPerceptionEngine.kt # 端侧 MNN Kotlin/JNI 桥（已恢复·未接线）
+│       ├── InferenceExecutor.kt  # 单线程串行加载/推理
+│       └── ModelOutputParser.kt  # MNN 输出 JSON 解析
 └── bluetooth/
     └── SpineBluetoothManager.kt  # 10Hz 模拟流 + 预留真实 BLE GATT
 ```
@@ -125,8 +132,10 @@ com/catune/
 | `KinematicsHub` | `android/.../inference/mnn/KinematicsHub.kt` | 实时姿态规则状态机（颈前倾/腰椎侧倾/姿势枚举/0-100 分），`StateFlow` 单一状态枢纽 |
 | `SpineBluetoothManager` | `android/.../bluetooth/SpineBluetoothManager.kt` | 10Hz 模拟数据流写入 `KinematicsHub`；预留真实 BLE GATT（PoseMaster-C6） |
 | `CatunePackage` | `android/.../rn/CatunePackage.kt` | ReactPackage，把 `KinematicsModule` 注册到 RN runtime |
+| `MnnPerceptionEngine` | `android/.../inference/mnn/MnnPerceptionEngine.kt` | 端侧 MNN Kotlin/JNI 桥（`analyze` + 推理指标）。**已恢复·未接线**，`-PenableMnn` 才编 native |
+| `InferenceExecutor` | `android/.../inference/mnn/InferenceExecutor.kt` | 单线程 `eyes-mnn-infer` 串行化模型加载/推理，幂等 `ensureModelLoaded` |
 
-> 端侧推理相关抽象（`InferenceExecutor` / `MnnPerceptionEngine` / JNI 桥）已移除，重新接入见 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md)。
+> C++ 层（`cpp/eyes_mnn_bridge.cpp` → `eyes_llm_session.cpp` → libMNN）已恢复，含 SME2/NEON 检测与 ttft/tps 指标；接入与缺口见 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md)。
 
 ---
 
@@ -135,7 +144,7 @@ com/catune/
 ### 5.1 公共前置
 
 - Node ≥ 18、Yarn 或 npm
-- Android Studio Ladybug+、Android SDK 35（**已无自有原生代码，NDK/CMake 非必需**）
+- Android Studio Ladybug+、Android SDK 35（默认构建**不需要** NDK/CMake；仅 `-PenableMnn` 端侧推理需要 NDK 27 + MNN 源码）
 - 模拟器：标准 x86_64 AVD 即可（ABI = `arm64-v8a` + `x86_64`）
 
 ### 5.2 启动 RN 仪表盘（模拟器可跑）
@@ -150,16 +159,22 @@ npm run android
 
 启动后仪表盘由本地 10Hz 模拟流驱动，显示姿态分数 / Neck Pitch / Lumbar Roll / 当前状态；F7 Mock Console 可一键切 `NORMAL/SLUMPED/TECH_NECK/LEFT_LEAN/OFFLINE`。
 
-### 5.3 端侧模型
+### 5.3 端侧模型（默认关闭）
 
-不在当前代码内，接入步骤见 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md)。
+推理桥代码已在仓库，但默认不参与构建。开启需 MNN 源码 + 模型，详见 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md)：
+
+```bash
+# 1) 把 MNN 源码放到 android/app/src/main/cpp/third_party/MNN/
+# 2) 仅 arm64 真机/AVD：
+cd android && ./gradlew assembleDebug -PenableMnn=true
+```
 
 ### 5.4 验证与检查
 
 ```bash
 npm test                                # RN 渲染冒烟测试
 npm run lint                            # 静态检查
-cd android && ./gradlew assembleDebug   # 纯 RN + Kotlin 构建（无 CMake）
+cd android && ./gradlew assembleDebug   # 默认：纯 RN + Kotlin（不挂 CMake，模拟器可装）
 ```
 
 ---
