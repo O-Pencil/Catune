@@ -31,7 +31,8 @@ Catune 是一个完整的 React Native Android 手机 App，不是小程序、H5
 
 | 层 | 当前实现 |
 | --- | --- |
-| RN UI | [App.tsx](App.tsx) 渲染姿态分数、Neck Pitch、Lumbar Roll、当前状态和 F7 Mock Console（测试数据） |
+| RN UI | [App.tsx](App.tsx) 渲染姿态分数、Neck Pitch、Lumbar Roll、当前状态、**建议文案**和 F7 Mock Console（测试数据） |
+| 姿态文案 | `PostureClassifier` 经 `KinematicsModule` 透传 `advice`；当前走规则兜底（离线可用），模型就绪后切端侧 |
 | RN Bridge | `KinematicsModule` 通过 `NativeEventEmitter` 向 RN 推送 `onKinematicsUpdate` |
 | 姿态状态 | `KinematicsHub` 维护 `NORMAL / SLUMPED / TECH_NECK / LEFT_LEAN / OFFLINE` 和 0-100 分 |
 | 数据源 | `SpineBluetoothManager` 自动启动 10Hz 模拟流写入姿态状态；F7 可切换模拟场景 |

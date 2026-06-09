@@ -42,6 +42,8 @@ function App(): React.JSX.Element {
     posture: 'NORMAL',
     postureLabel: 'Initializing...',
     score: 100,
+    advice: '',
+    inferenceSource: '',
   });
 
   const backgroundStyle = {
@@ -129,6 +131,15 @@ function App(): React.JSX.Element {
               {kinematics.postureLabel}
             </Text>
           </View>
+
+          {kinematics.advice ? (
+            <View style={styles.adviceBox}>
+              <Text style={styles.adviceLabel}>
+                建议{kinematics.inferenceSource === 'RULE_FALLBACK' ? '（规则）' : ''}
+              </Text>
+              <Text style={styles.adviceValue}>{kinematics.advice}</Text>
+            </View>
+          ) : null}
 
           {renderMockConsole()}
 
@@ -241,6 +252,25 @@ const styles = StyleSheet.create({
   smallButtonText: {
     color: '#ccc',
     fontSize: 10,
+  },
+  adviceBox: {
+    backgroundColor: '#10210f',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#1f3d1c',
+  },
+  adviceLabel: {
+    color: '#7bdc6e',
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 6,
+  },
+  adviceValue: {
+    color: '#d6f5d0',
+    fontSize: 14,
+    lineHeight: 20,
   },
   dataSourceHint: {
     color: '#666',
