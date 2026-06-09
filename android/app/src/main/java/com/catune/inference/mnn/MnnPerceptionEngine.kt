@@ -32,6 +32,13 @@ data class MnnAnalyzeResult(
     val rawOutput: String,
 )
 
+/** 纯文本推理结果（姿态文案等用途）。 */
+data class MnnTextResult(
+    val rawOutput: String,
+    val inferenceMs: Long,
+    val metrics: InferenceMetrics,
+)
+
 /**
  * Bridge to Alibaba MNN / Qwen3-VL on-device inference.
  *
@@ -94,6 +101,43 @@ class MnnPerceptionEngine private constructor(
             ),
             metrics = metrics,
             rawOutput = raw,
+        )
+    }
+
+    /**
+     * 纯文本推理路径（无图像/音频），供姿态文案生成等场景使用。
+     * 返回模型原始输出 + 推理指标；模型未加载或推理失败时返回 null（调用方应回退规则）。
+     */
+    suspend fun inferText(prompt: String): MnnTextResult? {
+        if (!isLoaded) return null
+        val start = System.currentTimeMillis()
+        val raw = InferenceExecutor.run {
+            runInference(
+                modelPath = File(modelDir, "config.json").absolutePath,
+                imageJpeg = null,
+                audioPcm = null,
+                sampleRate = 0,
+                prompt = prompt,
+            )
+        } ?: return null
+        val totalMs = System.currentTimeMillis() - start
+        val tokens = readMetricLong("tokens_generated")?.toInt() ?: estimateTokenCount(raw)
+        val ttft = readMetricLong("ttft_ms") ?: (totalMs * 0.35).toLong().coerceAtLeast(1L)
+        val prefill = readMetricLong("prefill_ms") ?: ttft.coerceAtMost(totalMs)
+        val decode = readMetricLong("decode_ms") ?: (totalMs - prefill).coerceAtLeast(0L)
+        val tps = readMetricFloat("decode_tps")
+            ?: if (decode > 0L) tokens * 1000f / decode.toFloat() else 0f
+        return MnnTextResult(
+            rawOutput = raw,
+            inferenceMs = totalMs,
+            metrics = InferenceMetrics(
+                ttftMs = ttft,
+                prefillMs = prefill,
+                decodeMs = decode,
+                tokensGenerated = tokens,
+                decodeTps = tps,
+                backend = readNativeMetric("backend") ?: "unknown",
+            ),
         )
     }
 

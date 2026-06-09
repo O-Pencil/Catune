@@ -110,12 +110,16 @@ com/catune/
 │   ├── KinematicsModule.kt       # RN 桥接：订阅 KinematicsHub → onKinematicsUpdate
 │   └── CatunePackage.kt          # ReactPackage 注册 KinematicsModule
 ├── inference/
-│   ├── PerceptionModels.kt       # 推理数据契约（@Serializable，VL 形态，姿态用途待换字段）
-│   └── mnn/
-│       ├── KinematicsHub.kt      # 规则姿态状态机（StateFlow，RN 主链路）
-│       ├── MnnPerceptionEngine.kt # 端侧 MNN Kotlin/JNI 桥（已恢复·未接线）
-│       ├── InferenceExecutor.kt  # 单线程串行加载/推理
-│       └── ModelOutputParser.kt  # MNN 输出 JSON 解析
+│   ├── PerceptionModels.kt       # 通用推理数据契约（@Serializable，VL 形态）
+│   ├── mnn/
+│   │   ├── KinematicsHub.kt      # 规则姿态状态机（StateFlow，RN 主链路）
+│   │   ├── MnnPerceptionEngine.kt # 端侧 MNN Kotlin/JNI 桥（analyze + inferText）·已恢复·未接线
+│   │   ├── InferenceExecutor.kt  # 单线程串行加载/推理
+│   │   └── ModelOutputParser.kt  # MNN 输出 JSON 解析
+│   └── posture/                  # 姿态化推理（对齐技术文档 §3.3 / 安全链 §7.2）
+│       ├── PostureInference.kt   # 信号/Prompt/分类契约 + 输出解析
+│       ├── PostureAdvice.kt      # 本地查表文案 + 禁词检查
+│       └── PostureClassifier.kt  # 编排：模型优先 → 规则兜底
 └── bluetooth/
     └── SpineBluetoothManager.kt  # 10Hz 模拟流 + 预留真实 BLE GATT
 ```
