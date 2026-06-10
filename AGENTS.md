@@ -1,7 +1,7 @@
 # Catune · AGENTS.md
 
 > 项目代号：**Catune**（赛事名 *Omni-Posture Master*，包名 `com.catune`）
-> 类型：React Native 0.76 + Android 原生（Kotlin）手机 App
+> 类型：**React Native 0.76 跨平台 App（iOS + Android，一套 TS）**；端侧 AI 下沉到各平台原生
 > 文档协议：DIP（Dual-phase Isomorphic Documentation）· P1 根地图
 > 文档语言：**中文**
 
@@ -9,52 +9,41 @@
 
 ## 1. Identity（项目本质）
 
-Catune 是面向久坐用户的「不驼背坐姿助手」**React Native Android App**（PRD 唯一交付形态，非小程序/H5/网页壳）。
+Catune 是面向久坐用户的「不驼背坐姿助手」**React Native 跨平台手机 App**（iOS + Android，构建出真原生 App，非小程序/H5/网页壳）。
 
 - 核心目标：检测久坐人群的驼背/头前倾（颈前倾 NECK PITCH、腰椎侧倾 LUMBAR ROLL），异常时震动 + App 提醒，并串起训练与复盘闭环。
-- 用户场景：TONGYI LAB × Arm 手机端挑战赛初赛（2026-06-22）演示 + 2 人小团队冲刺。
-- **当前阶段（2026-06-09）**：RN 主链路是「纯 RN + 轻量 Kotlin」，可在 x86_64 模拟器运行，由本地模拟数据流驱动 RN 仪表盘。
-- **端侧 Qwen + MNN 推理**：C++/JNI 桥 + Kotlin 推理桥 + `libMNN.so` **已恢复进仓库但默认不参与构建**（`-PenableMnn` 开关后才挂 CMake，仅编 arm64）；尚未接入 RN 主链路，仍缺 MNN 源码 / SME2 库 / 模型权重。详见 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md)。
-- **已移除（不在初赛 MVP 范围，PRD §0.5.7 Non-Goals）**：MCP/Ktor 服务、CameraX/音频采集、Watchdog、Compose 调试面板、PairingManager、`DefaultPerceptionEngine`/`HeuristicAnalyzer`（相机/音频编排）。
+- 用户场景：TONGYI LAB × Arm 手机端挑战赛（2026-06-22）演示 + 2 人小团队冲刺。
+- **架构原则**：业务逻辑（状态机/打分/建议/模拟数据）用 **TS 写一次**（`src/posture/`，iOS/Android 通用）；只有「端侧 Qwen+MNN 推理」「真蓝牙」下沉原生。
+- **当前阶段（2026-06-10）**：纯 TS 仪表盘可在 iOS/Android 跑（模拟器或 iPhone via Expo），本地 10Hz 模拟流驱动，给规则建议文案；已过 `jest` + `tsc`。
+- **端侧 Qwen + MNN 推理**：C++ 核心 + Android JNI 桥 + `libMNN.so` 在仓库但**默认不编**（`-PenableMnn` 才挂 CMake，仅 arm64）；未接线，仍缺 MNN 源码 / SME2 库 / 模型。iOS 侧桥待写（复用同一份 C++）。详见 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md)。
+- **SME2 加速**：Arm CPU 特性、只能原生实现，演示建议在**安卓 Arm 真机**上做。
+- **已移除（PRD §0.5.7 Non-Goals）**：MCP/Ktor、CameraX/音频、Watchdog、Compose 面板、PairingManager、`DefaultPerceptionEngine`/`HeuristicAnalyzer`；业务逻辑迁 TS 后又删除了 Kotlin 的 `KinematicsHub`/`KinematicsModule`/`SpineBluetoothManager`/`posture/*`（逻辑单一来源在 TS）。
 
 ---
 
 ## 2. 架构拓扑（ASCII）
 
-当前（初赛最小骨架）数据流：模拟流 → 角度解算 → 状态机 → RN 仪表盘。
+业务逻辑全在 TS（iOS/Android 通用）；原生只做引导 + 未来的端侧 AI。
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                     Android 进程 (com.catune)                      │
-│                                                                    │
-│  ┌────────────────────┐        ┌────────────────────────────────┐ │
-│  │  React Native UI   │        │  CatuneApp (Application)        │ │
-│  │  App.tsx 仪表盘    │        │  onCreate 装配 + 启动模拟流      │ │
-│  │  index.js 入口     │        └───────────────┬────────────────┘ │
-│  │  NativeEventEmitter│                        │                  │
-│  └──────────┬─────────┘                        ▼                  │
-│             │ RN Bridge        ┌────────────────────────────────┐ │
-│             │  onKinematics    │  SpineBluetoothManager          │ │
-│             │  Update          │  10Hz 模拟流 / 预留真实 BLE      │ │
-│             ▼                  └───────────────┬────────────────┘ │
-│  ┌────────────────────┐                        │ 原始四元数        │
-│  │  KinematicsModule  │                        ▼                  │
-│  │  (RN 桥接)         │        ┌────────────────────────────────┐ │
-│  │  getLatestState    │        │  MainActivity                   │ │
-│  │  setSimulation...  │        │  calculateSpineAnglesStatic     │ │
-│  └──────────┬─────────┘        │  （纯 Kotlin 占位角度解算）      │ │
-│             │ 订阅 StateFlow    └───────────────┬────────────────┘ │
-│             ▼                                   │ neck / lumbar    │
-│  ┌─────────────────────────────────────────────▼────────────────┐ │
-│  │  KinematicsHub (object, StateFlow)                            │ │
-│  │  规则状态机：NORMAL/SLUMPED/TECH_NECK/LEFT_LEAN/OFFLINE + 0-100 分 │ │
-│  └──────────────────────────────────────────────────────────────┘ │
-└────────────────────────────────────────────────────────────────────┘
-
-   🚧 规划接入（docs/端侧模型对接计划.md）：
-      KinematicsHub ──结构化 Prompt──► InferenceExecutor ──JNI──► libMNN ──► Qwen 2B INT4
-                                          │ 仅结构化字段 → 本地查表 → 禁词检查 → RN
+┌───────────────────────────────────────────────────────────────┐
+│  TypeScript 层（iOS + Android 通用，src/posture/ + App.tsx）   │
+│                                                               │
+│   mock.ts ──10Hz/F7──►  engine.ts (createPostureEngine)       │
+│   (模拟数据/角度)        ├─ 规则状态机 + 0-100 分              │
+│                         ├─ ruleFallback：建议查表 + 禁词       │
+│                         └─ subscribe ──► App.tsx 仪表盘渲染    │
+│                                            (分数/角度/状态/建议)│
+└───────────────────────────────┬───────────────────────────────┘
+                                 │ 仅「端侧 AI / 真蓝牙」才下沉原生
+            ┌────────────────────┴─────────────────────┐
+            ▼ (Android, 默认不编)            ▼ (iOS, 待写薄桥)
+   MnnPerceptionEngine.inferText      ObjC++ 桥 → 同一份 C++
+   → JNI → eyes_llm_session.cpp ──────► libMNN ─► Qwen 2B INT4 (SME2)
+   原生引导：CatuneApp / MainActivity / CatunePackage（仅启动 RN）
 ```
+
+> 接线方式（见 docs/端侧模型对接计划.md）：TS `engine.commit()` 在文案处改为 `await NativeMnn.inferText(prompt)`，失败回退 `ruleFallback`。
 
 ---
 
@@ -72,8 +61,12 @@ Catune/
 ├── jest.config.js                # react-native preset
 ├── .eslintrc.js / .prettierrc.js # 代码风格
 ├── Gemfile                       # cocoapods 锁定版本
-├── __tests__/                    # RN 渲染快照测试
-├── android/                      # 原生 Android 主体
+├── __tests__/                    # RN 渲染冒烟测试（App.test.tsx）
+├── src/posture/                  # ★ 跨平台业务逻辑（TS，iOS/Android 通用）
+│   ├── types.ts                  #   数据契约
+│   ├── engine.ts                 #   规则状态机 + 打分 + 建议查表 + 禁词 + ruleFallback
+│   └── mock.ts                   #   10Hz 模拟数据源 + F7 场景锁定（替代原 Kotlin 模拟流）
+├── android/                      # Android 原生（引导 RN + 端侧 AI 支线）
 │   ├── build.gradle              # 根 build 脚本
 │   ├── settings.gradle           # 包含 :app 子工程
 │   ├── gradle.properties         # Hermes + New Arch
@@ -88,7 +81,7 @@ Catune/
 │           └── res/                   # 图标 + strings + styles
 ├── web/                          # 设计师快速迭代用 Vite+React 原型（不作为最终 APP 输出）
 ├── prototype/                    # 静态 HTML 视觉/交互原型（不作为最终 APP 输出）
-├── ios/                          # 标准 RN iOS 脚手架（未启用原生模块）
+├── ios/                          # RN iOS 脚手架（纯 TS 版可跑；端侧 AI 的 ObjC++ 桥待写）
 ├── PRD/
 │   └── AI姿态矫正康复产品PRD.md  # 唯一 PRD：产品需求 / 功能 / 验收
 ├── docs/
@@ -100,29 +93,23 @@ Catune/
 └── AGENTS.md                     # P1 根地图（CLAUDE.md 是其软链，供 Claude Code 自动加载）
 ```
 
-### Kotlin 源码（`android/app/src/main/java/com/catune/`，目录名已与 `package com.catune` 对齐）
+### Kotlin 源码（`android/app/src/main/java/com/catune/`）— 已瘦身为「引导 RN + 端侧 AI 支线」
 
 ```
 com/catune/
-├── CatuneApp.kt                  # Application：装配 + 启动模拟流
-├── MainActivity.kt               # RN 宿主 + calculateSpineAnglesStatic 占位角度解算
+├── CatuneApp.kt                  # Application：仅初始化 RN/SoLoader（无业务逻辑）
+├── MainActivity.kt               # RN 宿主（getMainComponentName="Catune"）
 ├── rn/
-│   ├── KinematicsModule.kt       # RN 桥接：订阅 KinematicsHub → onKinematicsUpdate
-│   └── CatunePackage.kt          # ReactPackage 注册 KinematicsModule
-├── inference/
-│   ├── PerceptionModels.kt       # 通用推理数据契约（@Serializable，VL 形态）
-│   ├── mnn/
-│   │   ├── KinematicsHub.kt      # 规则姿态状态机（StateFlow，RN 主链路）
-│   │   ├── MnnPerceptionEngine.kt # 端侧 MNN Kotlin/JNI 桥（analyze + inferText）·已恢复·未接线
-│   │   ├── InferenceExecutor.kt  # 单线程串行加载/推理
-│   │   └── ModelOutputParser.kt  # MNN 输出 JSON 解析
-│   └── posture/                  # 姿态化推理（对齐技术文档 §3.3 / 安全链 §7.2）
-│       ├── PostureInference.kt   # 信号/Prompt/分类契约 + 输出解析
-│       ├── PostureAdvice.kt      # 本地查表文案 + 禁词检查
-│       └── PostureClassifier.kt  # 编排：模型优先 → 规则兜底
-└── bluetooth/
-    └── SpineBluetoothManager.kt  # 10Hz 模拟流 + 预留真实 BLE GATT
+│   └── CatunePackage.kt          # ReactPackage 占位（当前无自定义原生模块）
+└── inference/                    # 端侧 AI 支线（默认不编、未接线）
+    ├── PerceptionModels.kt       #   推理数据契约（@Serializable，VL 形态）
+    └── mnn/
+        ├── MnnPerceptionEngine.kt #   端侧 MNN Kotlin/JNI 桥（analyze + inferText）
+        ├── InferenceExecutor.kt  #   单线程串行加载/推理
+        └── ModelOutputParser.kt  #   MNN 输出 JSON 解析
 ```
+
+> 业务逻辑（状态机/判定/建议/模拟流）已迁到 TS（`src/posture/`）；原 `KinematicsHub`/`KinematicsModule`/`SpineBluetoothManager` + Kotlin `posture/*` 已删，逻辑单一来源在 TS。
 
 ---
 
@@ -130,16 +117,14 @@ com/catune/
 
 | 抽象 | 位置 | 职责 |
 | --- | --- | --- |
-| `CatuneApp` | `android/.../CatuneApp.kt` | Application：初始化 RN/SoLoader，启动 `SpineBluetoothManager` 模拟流驱动仪表盘 |
-| `MainActivity` | `android/.../MainActivity.kt` | RN 宿主；`calculateSpineAnglesStatic` 纯 Kotlin 占位角度解算（待接真实算法/端侧模型） |
-| `KinematicsModule` | `android/.../rn/KinematicsModule.kt` | RN 桥接：订阅 `KinematicsHub.state` → `onKinematicsUpdate`；暴露 `getLatestState` / `setSimulationScenario`（F7 Mock Console） |
-| `KinematicsHub` | `android/.../inference/mnn/KinematicsHub.kt` | 实时姿态规则状态机（颈前倾/腰椎侧倾/姿势枚举/0-100 分），`StateFlow` 单一状态枢纽 |
-| `SpineBluetoothManager` | `android/.../bluetooth/SpineBluetoothManager.kt` | 10Hz 模拟数据流写入 `KinematicsHub`；预留真实 BLE GATT（PoseMaster-C6） |
-| `CatunePackage` | `android/.../rn/CatunePackage.kt` | ReactPackage，把 `KinematicsModule` 注册到 RN runtime |
-| `MnnPerceptionEngine` | `android/.../inference/mnn/MnnPerceptionEngine.kt` | 端侧 MNN Kotlin/JNI 桥（`analyze` + 推理指标）。**已恢复·未接线**，`-PenableMnn` 才编 native |
-| `InferenceExecutor` | `android/.../inference/mnn/InferenceExecutor.kt` | 单线程 `eyes-mnn-infer` 串行化模型加载/推理，幂等 `ensureModelLoaded` |
+| `createPostureEngine` | `src/posture/engine.ts` | **（核心）** TS 规则状态机 + 0-100 分 + 建议查表 + 禁词 + `ruleFallback`；observer 订阅。iOS/Android 通用 |
+| `createMockSource` | `src/posture/mock.ts` | 10Hz 模拟数据源；F7 锁定场景（修了原 Kotlin「设置被随机流覆盖」的 bug） |
+| `App` | `App.tsx` | RN 仪表盘：订阅 engine，渲染分数/角度/状态/建议 + F7 Mock Console |
+| `CatuneApp` / `MainActivity` / `CatunePackage` | `android/.../` | 仅引导 RN（已无业务逻辑、无自定义原生模块） |
+| `MnnPerceptionEngine` | `android/.../inference/mnn/MnnPerceptionEngine.kt` | 端侧 MNN Kotlin/JNI 桥（`analyze`/`inferText` + 指标）。**已恢复·未接线**，`-PenableMnn` 才编 native |
+| `InferenceExecutor` | `android/.../inference/mnn/InferenceExecutor.kt` | 单线程 `eyes-mnn-infer` 串行化模型加载/推理 |
 
-> C++ 层（`cpp/eyes_mnn_bridge.cpp` → `eyes_llm_session.cpp` → libMNN）已恢复，含 SME2/NEON 检测与 ttft/tps 指标；接入与缺口见 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md)。
+> C++ 层（`cpp/eyes_mnn_bridge.cpp` → `eyes_llm_session.cpp` → libMNN）含 SME2/NEON 检测与 ttft/tps 指标，iOS 可复用同一份 C++；接入见 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md)。
 
 ---
 
@@ -148,20 +133,19 @@ com/catune/
 ### 5.1 公共前置
 
 - Node ≥ 18、Yarn 或 npm
-- Android Studio Ladybug+、Android SDK 35（默认构建**不需要** NDK/CMake；仅 `-PenableMnn` 端侧推理需要 NDK 27 + MNN 源码）
-- 模拟器：标准 x86_64 AVD 即可（ABI = `arm64-v8a` + `x86_64`）
+- 安卓：Android Studio + SDK 35（默认构建**不需要** NDK/CMake；仅 `-PenableMnn` 端侧推理需要 NDK 27 + MNN 源码）
+- iOS：Xcode 15+（需 Mac）；或用 Expo Go 在 iPhone 上预览纯 TS 版（免 Mac）
 
-### 5.2 启动 RN 仪表盘（模拟器可跑）
+### 5.2 启动 RN 仪表盘（iOS / Android）
 
 ```bash
 npm install
-# 终端 1：Metro
-npm start
-# 终端 2：Android（x86_64 模拟器或真机）
-npm run android
+npm start              # 终端 1：Metro
+npm run android        # 终端 2：x86_64 模拟器或真机
+npm run ios            # 或 iOS 模拟器（需 Mac + Xcode）
 ```
 
-启动后仪表盘由本地 10Hz 模拟流驱动，显示姿态分数 / Neck Pitch / Lumbar Roll / 当前状态；F7 Mock Console 可一键切 `NORMAL/SLUMPED/TECH_NECK/LEFT_LEAN/OFFLINE`。
+启动后仪表盘由 `src/posture/` 的 TS 引擎 + 10Hz 模拟流驱动，显示分数 / Neck Pitch / Lumbar Roll / 状态 / 建议；F7 Mock Console 一键切 `NORMAL/SLUMPED/TECH_NECK/LEFT_LEAN/OFFLINE`。
 
 ### 5.3 端侧模型（默认关闭）
 
@@ -176,20 +160,23 @@ cd android && ./gradlew assembleDebug -PenableMnn=true
 ### 5.4 验证与检查
 
 ```bash
-npm test                                # RN 渲染冒烟测试
-npm run lint                            # 静态检查
-cd android && ./gradlew assembleDebug   # 默认：纯 RN + Kotlin（不挂 CMake，模拟器可装）
+npm test                                # jest 渲染冒烟测试（已通过）
+npm run lint                            # eslint（src/ 与 App.tsx 0 error）
+npx tsc --noEmit ...                    # TS 类型检查（App.tsx + src/posture/* 已通过）
+cd android && ./gradlew assembleDebug   # 默认：纯 RN + 引导 Kotlin（不挂 CMake，模拟器可装）
 ```
+
+> TS 层（逻辑/UI）可在本机用 jest/tsc 验证；Android/iOS 整包构建需对应 SDK（gradlew / Xcode）。
 
 ---
 
 ## 6. 核心约定
 
+- **职责边界**：业务逻辑/UI 写在 **TS**（`src/posture/` + `App.tsx`，iOS/Android 单一来源）；原生只做引导 + 端侧 AI/蓝牙。
 - **命名**：Kotlin 包 `com.catune`，目录 `java/com/catune/` 已与包名对齐。
-- **日志**：`Tag = "KinematicsModule"` 等（Kotlin，使用类名）。
-- **线程**：RN 桥接走 `Dispatchers.Main`；模拟流走 `Dispatchers.Default`。
-- **状态流**：UI 状态用 `StateFlow`（`KinematicsHub`），RN 端通过 `NativeEventEmitter` 订阅。
-- **数据源**：初赛由 `SpineBluetoothManager` 模拟流驱动；真实 BLE 与端侧模型按计划接入。
+- **状态流**：TS 用 `createPostureEngine` 的 observer（`subscribe`）；React 端 `useState` + `useEffect` 订阅。
+- **数据源**：当前 `src/posture/mock.ts` 模拟流驱动；真实蓝牙建议用 `react-native-ble-plx`（TS，两端通用）替换。
+- **回退纪律（PRD §5.10）**：分类/打分用规则（可靠底线）；端侧模型只补「文案生成」，失败回退 `ruleFallback`；文案必过禁词。
 
 ---
 

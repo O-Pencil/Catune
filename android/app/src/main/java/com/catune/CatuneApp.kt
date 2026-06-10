@@ -1,11 +1,11 @@
 /**
  * @file CatuneApp.kt
- * @description Application 入口，初始化 React Native、SoLoader、新架构入口，并启动 SpineBluetoothManager 模拟流驱动 RN 仪表盘。
+ * @description Application 入口，初始化 React Native / SoLoader / 新架构。仅负责启动 RN——业务逻辑（状态机/打分/建议/模拟数据）已迁到 TS（src/posture），iOS/Android 共用。
  *
- * [WHO] 提供 CatuneApp（Application 子类）、内部 `reactNativeHost`（`DefaultReactNativeHost`）、`bluetoothManager` 字段
- * [FROM] 依赖 `com.facebook.react.*`（SoLoader / ReactHost / PackageList）、`com.catune.bluetooth.SpineBluetoothManager`、`com.catune.rn.CatunePackage`
+ * [WHO] 提供 CatuneApp（Application 子类）、内部 `reactNativeHost`（`DefaultReactNativeHost`）
+ * [FROM] 依赖 `com.facebook.react.*`（SoLoader / ReactHost / PackageList）、`com.catune.rn.CatunePackage`
  * [TO] 被 Android 启动器（`android:name=".CatuneApp"`）实例化；`CatunePackage` 被 `reactNativeHost.getPackages()` 注册
- * [HERE] android/app/src/main/java/com/catune/CatuneApp.kt · 全局应用类 + 核心装配
+ * [HERE] android/app/src/main/java/com/catune/CatuneApp.kt · 全局应用类（仅引导 RN）
  */
 package com.catune
 
@@ -21,12 +21,8 @@ import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
 import com.catune.rn.CatunePackage
-import com.catune.bluetooth.SpineBluetoothManager
-import kotlinx.coroutines.MainScope
 
 class CatuneApp : Application(), ReactApplication {
-
-  private lateinit var bluetoothManager: SpineBluetoothManager
 
   override val reactNativeHost: ReactNativeHost =
       object : DefaultReactNativeHost(this) {
@@ -52,12 +48,5 @@ class CatuneApp : Application(), ReactApplication {
     if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
       load()
     }
-
-    // 初赛阶段：自动启动模拟数据流，驱动 RN 仪表盘展示测试数据（无硬件依赖）。
-    // 真实 BLE 链路与端侧模型对接见 docs/端侧模型对接计划.md。
-    bluetoothManager = SpineBluetoothManager(this, MainScope()) { raw ->
-        com.catune.MainActivity.calculateSpineAnglesStatic(raw)
-    }
-    bluetoothManager.startSimulation()
   }
 }

@@ -2,9 +2,10 @@
  * @file MnnPerceptionEngine.kt
  * @description Kotlin ↔ MNN JNI 桥接，把 Prompt（可选 JPEG/PCM）喂给 libposture_ai_bridge 并解析返回文本。
  *
- * 注：源自 eyes-on-my-phone 的多模态 VL 引擎，恢复后用于端侧 Qwen 推理。当前为「已恢复、待接线」组件：
- * RN 主链路（KinematicsModule/KinematicsHub）不依赖它；接入姿态文案生成见 docs/端侧模型对接计划.md。
- * 姿态用途只需文本路径：`analyze(null, null, 0, prompt)`；输出 schema 仍是 VL 形态，需替换 ModelOutputParser 为姿态字段解析。
+ * 注：源自 eyes-on-my-phone 的多模态 VL 引擎，恢复后用于端侧 Qwen 推理。当前为「已恢复、待接线」组件，
+ * 业务逻辑（状态机/判定/建议）已迁到 TS（src/posture），本类未来仅作为 RN 的「inferText 原生服务」。
+ * 接入：注册一个暴露 `inferText(prompt)` 的 RN 模块，由 TS 引擎调用；详见 docs/端侧模型对接计划.md。
+ * 姿态用途只需文本路径：`inferText(prompt)` / `analyze(null, null, 0, prompt)`。
  *
  * [WHO] 提供 `class MnnPerceptionEngine`、`analyze(imageJpeg, audioPcm, sampleRate, systemPrompt, onDecoding): MnnAnalyzeResult?`、`data class InferenceMetrics` / `MnnAnalyzeResult`；伴生对象 `tryCreate()` / `isNativeLibLoaded()` / `loadNativeLibs()` / `isModelDirReady()` / `nativeInit/Release/Available/getLastError`
  * [FROM] 依赖 `InferenceExecutor.run`（单线程调度）、JNI `runInference` / `getLastInferenceMetric` / `nativeInit/Release`、libMNN + libposture_ai_bridge

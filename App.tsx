@@ -1,18 +1,17 @@
 /**
  * @file App.tsx
- * @description React Native 仪表盘根组件：订阅 KinematicsModule 实时姿态数据，渲染 Posture Score / Neck Pitch / Lumbar Roll / F7 Mock Console。
+ * @description 跨平台 RN 仪表盘根组件（iOS/Android 通用，纯 TS）：由本地姿态引擎驱动，渲染分数 / 角度 / 状态 / 建议 + F7 Mock Console。
  *
- * [WHO] 默认导出 `function App(): React.JSX.Element`；内部 `useState`/`useEffect` 订阅 NativeEventEmitter `onKinematicsUpdate`、`KinematicsModule.getLatestState()` 与 `setSimulationScenario()` 调用、StyleSheet 样式
- * [FROM] 依赖 `react`（useEffect/useState）、`react-native`（SafeAreaView/ScrollView/StatusBar/TouchableOpacity/View/Text/NativeModules/NativeEventEmitter）、`react-native/Libraries/NewAppScreen`（Colors/Header）
+ * [WHO] 默认导出 `function App(): React.JSX.Element`；用 `createPostureEngine` + `createMockSource` 驱动，`useState<DashboardState>` 持有状态
+ * [FROM] 依赖 `react`、`react-native`、本地 `./src/posture`（engine / mock / types）
  * [TO] 被 `index.js` 通过 `AppRegistry.registerComponent(appName, () => App)` 注册并由 RN runtime 渲染
- * [HERE] 项目根 /App.tsx · RN 仪表盘入口（F1-F6 UI + F7 Mock Console）
- */
-/**
- * Catune React Native Dashboard
- * Full MVP implementation with F7 Mock Console.
+ * [HERE] 项目根 /App.tsx · 跨平台 RN 仪表盘入口
+ *
+ * 注：判定逻辑与模拟数据已从 Kotlin 迁到 TS，App 不再依赖原生模块，可同时跑 iOS / Android。
+ * 端侧 Qwen+MNN 真推理为原生支线（见 docs/端侧模型对接计划.md），就绪后由 engine.commit() 改调原生 inferText。
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -21,8 +20,6 @@ import {
   Text,
   useColorScheme,
   View,
-  NativeModules,
-  NativeEventEmitter,
   TouchableOpacity,
 } from 'react-native';
 
@@ -31,20 +28,24 @@ import {
   Header,
 } from 'react-native/Libraries/NewAppScreen';
 
-const { KinematicsModule } = NativeModules;
-const kinematicsEmitter = new NativeEventEmitter(KinematicsModule);
+import { createPostureEngine } from './src/posture/engine';
+import { createMockSource, MockScenario, MockSource, SCENARIOS } from './src/posture/mock';
+import { DashboardState } from './src/posture/types';
 
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
-  const [kinematics, setKinematics] = useState({
+  const [kinematics, setKinematics] = useState<DashboardState>({
     neckPitch: 0,
     lumbarRoll: 0,
     posture: 'NORMAL',
     postureLabel: 'Initializing...',
     score: 100,
+    abnormalDurationMinutes: 0,
     advice: '',
-    inferenceSource: '',
+    inferenceSource: 'RULE_FALLBACK',
   });
+
+  const mockRef = useRef<MockSource | null>(null);
 
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
@@ -52,19 +53,15 @@ function App(): React.JSX.Element {
   };
 
   useEffect(() => {
-    // 1. Get initial state
-    KinematicsModule.getLatestState().then(setKinematics);
-
-    // 2. Subscribe to updates from Kotlin
-    const subscription = kinematicsEmitter.addListener(
-      'onKinematicsUpdate',
-      (data) => {
-        setKinematics(data);
-      }
-    );
-
+    // 纯 TS：本地引擎 + 模拟数据源驱动，无原生依赖（iOS/Android 通用）
+    const engine = createPostureEngine();
+    const mock = createMockSource(engine);
+    mockRef.current = mock;
+    const unsubscribe = engine.subscribe(setKinematics);
+    mock.start();
     return () => {
-      subscription.remove();
+      mock.stop();
+      unsubscribe();
     };
   }, []);
 
@@ -80,11 +77,11 @@ function App(): React.JSX.Element {
     <View style={styles.consoleContainer}>
       <Text style={styles.consoleTitle}>F7 MOCK CONSOLE</Text>
       <View style={styles.buttonRow}>
-        {['NORMAL', 'SLUMPED', 'TECH_NECK', 'LEFT_LEAN', 'OFFLINE'].map(scenario => (
-          <TouchableOpacity 
+        {SCENARIOS.map((scenario: MockScenario) => (
+          <TouchableOpacity
             key={scenario}
             style={[styles.smallButton, kinematics.posture === scenario && styles.activeButton]}
-            onPress={() => KinematicsModule.setSimulationScenario(scenario)}>
+            onPress={() => mockRef.current?.setScenario(scenario)}>
             <Text style={styles.smallButtonText}>{scenario.replace('_', ' ')}</Text>
           </TouchableOpacity>
         ))}
@@ -102,7 +99,7 @@ function App(): React.JSX.Element {
         contentInsetAdjustmentBehavior="automatic"
         style={backgroundStyle}>
         <Header />
-        
+
         <View style={styles.mainContainer}>
           <View style={styles.scoreHeader}>
             <Text style={styles.scoreLabel}>POSTURE SCORE</Text>
@@ -116,7 +113,7 @@ function App(): React.JSX.Element {
                 {kinematics.neckPitch.toFixed(1)}°
               </Text>
             </View>
-            
+
             <View style={styles.dataBox}>
               <Text style={styles.dataLabel}>Lumbar Roll</Text>
               <Text style={[styles.dataValue, { color: '#00ddff' }]}>
@@ -168,12 +165,12 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     justifyContent: 'center',
     borderWidth: 4,
-    borderColor: '#333'
+    borderColor: '#333',
   },
   scoreLabel: {
     color: '#aaa',
     fontSize: 12,
-    fontWeight: 'bold'
+    fontWeight: 'bold',
   },
   scoreValue: {
     fontSize: 60,
@@ -205,7 +202,7 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 12,
     marginBottom: 20,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   statusLabel: {
     color: '#aaa',
@@ -222,20 +219,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#444'
+    borderColor: '#444',
   },
   consoleTitle: {
     color: '#ffdd00',
     fontSize: 10,
     fontWeight: 'bold',
     marginBottom: 10,
-    textAlign: 'center'
+    textAlign: 'center',
   },
   buttonRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 8
+    gap: 8,
   },
   smallButton: {
     backgroundColor: '#222',
@@ -243,11 +240,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#333'
+    borderColor: '#333',
   },
   activeButton: {
     borderColor: '#ffdd00',
-    backgroundColor: '#332200'
+    backgroundColor: '#332200',
   },
   smallButtonText: {
     color: '#ccc',
@@ -277,7 +274,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'center',
     marginTop: 4,
-  }
+  },
 });
 
 export default App;
