@@ -61,7 +61,22 @@ npm run android     # 安卓模拟器或真机
 npm run ios         # iOS 模拟器（需 Mac + Xcode）
 ```
 
-不想装原生工具链、想直接在 iPhone 上看纯 TS 版？可接入 **Expo Go**（扫码即看，免 Mac；但不含端侧 AI 原生模块）。
+### 在 iPhone 上扫码预览（Expo Go · 免 Mac）
+
+项目已接入 Expo，可用 **Expo Go** 在 iPhone/安卓真机上扫码即看纯 TS 版（不含端侧 AI 原生模块）：
+
+```bash
+npm install            # 安装依赖（含 expo SDK 52）
+npx expo install --fix # 对齐 expo/react-native 版本（首次建议执行）
+npx expo start         # 启动后终端会显示二维码
+```
+
+1. 手机装 **Expo Go**（iOS App Store / 安卓应用商店）。
+2. 手机与电脑同一 Wi-Fi。
+3. iPhone：用**相机**扫终端二维码 → 在 Expo Go 打开；安卓：用 Expo Go 内置扫码。
+4. 改 TS 代码即热更新。
+
+> Expo Go 只跑 JS/TS（UI + 规则逻辑）。端侧 Qwen+MNN 是原生模块，Expo Go 里没有——要带 AI 真跑得用原生构建（安卓 gradlew / iOS Xcode 或 EAS）。
 
 Android 原生构建（产出 .apk）：
 

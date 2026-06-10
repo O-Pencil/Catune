@@ -1,4 +1,20 @@
 {
   "name": "Catune",
-  "displayName": "Catune"
+  "displayName": "Catune",
+  "expo": {
+    "name": "Catune",
+    "slug": "catune",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "platforms": ["ios", "android"],
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.catune"
+    },
+    "android": {
+      "package": "com.catune"
+    }
+  }
 }
