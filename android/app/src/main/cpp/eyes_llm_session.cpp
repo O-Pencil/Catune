@@ -8,6 +8,7 @@
 #include "eyes_llm_session.h"
 
 #include <chrono>
+#include <dlfcn.h>
 #include <fstream>
 #include <sstream>
 #include <utility>
@@ -32,10 +33,17 @@ struct MNNCPUInfo {
     bool sme2 = false;
 };
 
-extern "C" const MNNCPUInfo* MNNGetCPUInfo();
+using MNNGetCPUInfoFn = const MNNCPUInfo* (*)();
+
+const MNNCPUInfo* queryMNNCPUInfo() {
+    static MNNGetCPUInfoFn fn = reinterpret_cast<MNNGetCPUInfoFn>(
+        dlsym(RTLD_DEFAULT, "MNNGetCPUInfo"));
+    if (fn == nullptr) return nullptr;
+    return fn();
+}
 
 std::string getBackendName() {
-    const MNNCPUInfo* info = MNNGetCPUInfo();
+    const MNNCPUInfo* info = queryMNNCPUInfo();
     if (info && info->sme2) return "SME2";
     if (info && (info->fp16arith || info->dot)) return "NEON";
     return "CPU";

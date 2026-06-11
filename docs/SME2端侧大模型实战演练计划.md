@@ -258,6 +258,8 @@ llm.mnn.weight
 
 ## 5. Step 3：推送到手机并命令行验证
 
+当前状态（2026-06-11）：硬件链路尚未完全跑通。当前仅连接到 `sdk_gphone16k_x86_64` 模拟器，不能加载 arm64 MNN 产物，也不能验证 SME2。以下步骤需等待 arm64 安卓真机。
+
 ### 5.1 推送引擎文件
 
 ```bash
@@ -338,6 +340,13 @@ decode TPS：
 adb shell getconf PAGE_SIZE
 ```
 
+本仓库已提供 PowerShell 脚本辅助真机阶段验收：
+
+```powershell
+.\scripts\check-mnn-device.ps1
+.\scripts\push-mnn-commandline.ps1 -ModelDir D:\Models\MNN\<模型目录>
+```
+
 ---
 
 ## 6. Step 4：确认 SME2 支持
@@ -382,6 +391,13 @@ The device supports: i8sdot:1, fp16:1, i8mm: 1, sve2: 1, sme2: 1
 android/app/src/main/jniLibs/arm64-v8a/libMNN.so
 ```
 
+当前状态（2026-06-11）：已替换为 Windows NDK/CMake 编译产物：
+
+```text
+D:\Projects\MNN\project\android\build_64_win\libMNN.so
+-> android/app/src/main/jniLibs/arm64-v8a/libMNN.so
+```
+
 来源：
 
 ```text
@@ -417,6 +433,12 @@ tools/audio/include/
 -DMNN_SOURCE_ROOT=/absolute/path/to/MNN
 ```
 
+当前状态（2026-06-11）：已在 `android/app/build.gradle` 增加 `mnnSourceRoot` Gradle 属性透传：
+
+```powershell
+.\gradlew.bat assembleDebug -PenableMnn=true -PmnnSourceRoot=D:/Projects/MNN --console=plain
+```
+
 ### 7.3 构建 Catune 原生桥
 
 ```powershell
@@ -430,6 +452,8 @@ cd D:\Projects\Pencil\Pencil-Hackathon\AI-Pose-Master\android
 lib/arm64-v8a/libMNN.so
 lib/arm64-v8a/libposture_ai_bridge.so
 ```
+
+当前状态（2026-06-11）：上述命令已执行通过。期间发现 `MNNGetCPUInfo` 在当前 `libMNN.so` 中未导出，已将 C++ 桥改为 `dlsym(RTLD_DEFAULT, "MNNGetCPUInfo")` 可选探测，符号缺失时回退 `backend=CPU/unknown`，不阻塞 native bridge 链接。
 
 ### 7.4 推送模型到 Catune 私有目录
 
@@ -466,6 +490,30 @@ adb shell run-as com.catune cp /sdcard/llm.mnn.weight files/mnn_models/qwen3-vl-
 MnnPerceptionEngine.tryCreate(context)
     ?.inferText("请用一句中文提醒我坐直。")
 ```
+
+当前状态（2026-06-11）：已新增 RN 调试模块：
+
+```text
+android/app/src/main/java/com/catune/rn/MnnDebugModule.kt
+```
+
+导出：
+
+```text
+CatuneMnn.getStatus()
+CatuneMnn.inferText(prompt)
+```
+
+`CatunePackage` 已注册该模块，`App.tsx` 已增加 `MNN DEBUG` 面板，可查看 native/model 状态并触发一次文本推理。模型缺失时会显示错误，不影响 TS 姿态仪表盘。
+
+当前模拟器预期结果：
+
+```text
+native=false 或 model/config=false
+inferText 返回 CATUNE_MNN_MODEL_NOT_READY / Native libraries failed to load
+```
+
+这属于预期降级态，不代表 TS 仪表盘失败。
 
 UI 暴露字段：
 
@@ -560,16 +608,18 @@ src/posture/engine.ts
 - [ ] `llm_demo` 可输出中文回复。
 - [ ] `adb logcat` 已记录 `sme2: 0/1`。
 - [ ] `llm_bench` 已记录 TTFT / TPS / 总耗时。
+- [x] 已新增 `scripts/check-mnn-device.ps1` 用于真机 ABI/page size 检查。
+- [x] 已新增 `scripts/push-mnn-commandline.ps1` 用于真机推送和 `llm_demo` 验证。
 
 ### B. Catune 原生桥
 
-- [ ] 已替换 `android/app/src/main/jniLibs/arm64-v8a/libMNN.so`。
-- [ ] `android/app/src/main/cpp/third_party/MNN/` 或 `MNN_SOURCE_ROOT` 已配置。
-- [ ] `.\gradlew.bat assembleDebug -PenableMnn=true --console=plain` 成功。
-- [ ] APK 内含 `libMNN.so` 和 `libposture_ai_bridge.so`。
+- [x] 已替换 `android/app/src/main/jniLibs/arm64-v8a/libMNN.so`。
+- [x] 已通过 `-PmnnSourceRoot=D:/Projects/MNN` 配置外部 MNN 源码。
+- [x] `.\gradlew.bat assembleDebug -PenableMnn=true -PmnnSourceRoot=D:/Projects/MNN --console=plain` 成功。
+- [x] APK 内含 `libMNN.so` 和 `libposture_ai_bridge.so`。
 - [ ] 模型已推送到 `/data/data/com.catune/files/mnn_models/qwen3-vl-2b/`。
-- [ ] 原生调试入口可调用 `inferText()`。
-- [ ] UI 可展示模型状态和推理指标。
+- [x] 原生调试入口已注册，可调用 `inferText()`；模型缺失时返回明确错误。
+- [x] UI 已增加 `MNN DEBUG` 面板展示模型状态和推理结果。
 
 ### C. 产品主链路
 
@@ -581,7 +631,27 @@ src/posture/engine.ts
 
 ---
 
-## 11. 当前建议
+## 11.1 无真机阶段可验收内容
+
+在当前 x86_64 模拟器上可以验证：
+
+1. RN 仪表盘可启动，F7 Mock Console 可切换姿态。
+2. `MNN DEBUG` 面板可显示 native/model 状态。
+3. 点击 `INFER TEXT` 时，模型缺失或 ABI 不匹配会显示明确错误，App 不崩溃。
+4. 默认 Android Debug 构建通过。
+5. `-PenableMnn=true -PmnnSourceRoot=D:/Projects/MNN` 构建通过，证明 Catune 原生桥能链接 arm64 MNN 产物。
+
+无真机阶段不能验收：
+
+1. `llm_demo` 真正输出模型文本。
+2. `inferText()` 真实返回模型文案。
+3. SME2 硬件检测日志。
+4. TTFT / TPS / tokens 指标。
+5. 关网真机端侧推理演示。
+
+---
+
+## 12. 当前建议
 
 第一阶段只做两件事：
 

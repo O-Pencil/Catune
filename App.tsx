@@ -18,6 +18,7 @@ import {
   StatusBar,
   StyleSheet,
   Text,
+  NativeModules,
   useColorScheme,
   View,
   TouchableOpacity,
@@ -32,6 +33,33 @@ import { createPostureEngine } from './src/posture/engine';
 import { createMockSource, MockScenario, MockSource, SCENARIOS } from './src/posture/mock';
 import { DashboardState } from './src/posture/types';
 
+type MnnStatus = {
+  nativeLibLoaded?: boolean;
+  modelDirExists?: boolean;
+  configExists?: boolean;
+  modelLoaded?: boolean;
+  modelDir?: string;
+  loadError?: string | null;
+};
+
+type MnnInferResult = {
+  rawOutput?: string;
+  inferenceMs?: number;
+  metrics?: {
+    backend?: string;
+    ttftMs?: number;
+    decodeTps?: number;
+    tokensGenerated?: number;
+  };
+};
+
+const CatuneMnn = NativeModules.CatuneMnn as
+  | {
+      getStatus: () => Promise<MnnStatus>;
+      inferText: (prompt: string) => Promise<MnnInferResult>;
+    }
+  | undefined;
+
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
   const [kinematics, setKinematics] = useState<DashboardState>({
@@ -44,6 +72,9 @@ function App(): React.JSX.Element {
     advice: '',
     inferenceSource: 'RULE_FALLBACK',
   });
+  const [mnnStatus, setMnnStatus] = useState<MnnStatus | null>(null);
+  const [mnnOutput, setMnnOutput] = useState<string>('');
+  const [mnnBusy, setMnnBusy] = useState(false);
 
   const mockRef = useRef<MockSource | null>(null);
 
@@ -73,6 +104,46 @@ function App(): React.JSX.Element {
     }
   };
 
+  const refreshMnnStatus = async () => {
+    if (!CatuneMnn) {
+      setMnnStatus({ loadError: 'CatuneMnn native module is not registered.' });
+      return;
+    }
+    setMnnBusy(true);
+    try {
+      const status = await CatuneMnn.getStatus();
+      setMnnStatus(status);
+      setMnnOutput('');
+    } catch (error) {
+      setMnnStatus({ loadError: error instanceof Error ? error.message : String(error) });
+    } finally {
+      setMnnBusy(false);
+    }
+  };
+
+  const runMnnSmokeTest = async () => {
+    if (!CatuneMnn) {
+      setMnnStatus({ loadError: 'CatuneMnn native module is not registered.' });
+      return;
+    }
+    setMnnBusy(true);
+    try {
+      const result = await CatuneMnn.inferText('请用一句中文提醒我坐直。');
+      const metric = result.metrics
+        ? `backend=${result.metrics.backend ?? 'unknown'} ttft=${result.metrics.ttftMs ?? 0}ms tps=${result.metrics.decodeTps ?? 0}`
+        : 'metrics unavailable';
+      setMnnOutput(`${metric}\n${result.rawOutput ?? ''}`.trim());
+      const status = await CatuneMnn.getStatus();
+      setMnnStatus(status);
+    } catch (error) {
+      setMnnOutput(error instanceof Error ? error.message : String(error));
+      const status = await CatuneMnn.getStatus().catch(() => null);
+      if (status) setMnnStatus(status);
+    } finally {
+      setMnnBusy(false);
+    }
+  };
+
   const renderMockConsole = () => (
     <View style={styles.consoleContainer}>
       <Text style={styles.consoleTitle}>F7 MOCK CONSOLE</Text>
@@ -86,6 +157,33 @@ function App(): React.JSX.Element {
           </TouchableOpacity>
         ))}
       </View>
+    </View>
+  );
+
+  const renderMnnPanel = () => (
+    <View style={styles.mnnPanel}>
+      <Text style={styles.mnnTitle}>MNN DEBUG</Text>
+      <View style={styles.buttonRow}>
+        <TouchableOpacity
+          style={[styles.smallButton, mnnBusy && styles.disabledButton]}
+          disabled={mnnBusy}
+          onPress={refreshMnnStatus}>
+          <Text style={styles.smallButtonText}>STATUS</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.smallButton, mnnBusy && styles.disabledButton]}
+          disabled={mnnBusy}
+          onPress={runMnnSmokeTest}>
+          <Text style={styles.smallButtonText}>INFER TEXT</Text>
+        </TouchableOpacity>
+      </View>
+      {mnnStatus ? (
+        <Text style={styles.mnnText}>
+          native={String(mnnStatus.nativeLibLoaded)} modelDir={String(mnnStatus.modelDirExists)} config={String(mnnStatus.configExists)} loaded={String(mnnStatus.modelLoaded)}
+          {mnnStatus.loadError ? `\n${mnnStatus.loadError}` : ''}
+        </Text>
+      ) : null}
+      {mnnOutput ? <Text style={styles.mnnOutput}>{mnnOutput}</Text> : null}
     </View>
   );
 
@@ -139,6 +237,7 @@ function App(): React.JSX.Element {
           ) : null}
 
           {renderMockConsole()}
+          {renderMnnPanel()}
 
           <Text style={styles.dataSourceHint}>
             数据来源：本地模拟流（10Hz）· 端侧模型对接见 docs/端侧模型对接计划.md
@@ -246,6 +345,9 @@ const styles = StyleSheet.create({
     borderColor: '#ffdd00',
     backgroundColor: '#332200',
   },
+  disabledButton: {
+    opacity: 0.5,
+  },
   smallButtonText: {
     color: '#ccc',
     fontSize: 10,
@@ -274,6 +376,33 @@ const styles = StyleSheet.create({
     fontSize: 11,
     textAlign: 'center',
     marginTop: 4,
+  },
+  mnnPanel: {
+    backgroundColor: '#111827',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#263244',
+  },
+  mnnTitle: {
+    color: '#93c5fd',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  mnnText: {
+    color: '#cbd5e1',
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 10,
+  },
+  mnnOutput: {
+    color: '#e0f2fe',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 10,
   },
 });
 

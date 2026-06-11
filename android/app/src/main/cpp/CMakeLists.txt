@@ -39,9 +39,11 @@ add_library(MNN SHARED IMPORTED)
 set_target_properties(MNN PROPERTIES IMPORTED_LOCATION "${MNN_LIB_DIR}/libMNN.so")
 
 find_library(log-lib log)
+find_library(dl-lib dl)
 
 target_link_libraries(posture_ai_bridge
         ${log-lib}
+        ${dl-lib}
         android
         MNN
 )
