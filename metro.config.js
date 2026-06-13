@@ -1,6 +1,4 @@
-const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
+// Expo SDK 54 标准 metro 配置（iOS / Android / Web 通用）。
+const {getDefaultConfig} = require('expo/metro-config');
 
-/** @type {import('metro-config').MetroConfig} */
-const config = {};
-
-module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+module.exports = getDefaultConfig(__dirname);

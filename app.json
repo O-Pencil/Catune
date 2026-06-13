@@ -1,20 +1,23 @@
 {
-  "name": "Catune",
-  "displayName": "Catune",
   "expo": {
     "name": "Catune",
     "slug": "catune",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "platforms": ["ios", "android"],
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.catune"
+      "bundleIdentifier": "com.catune",
+      "infoPlist": {
+        "NSMotionUsageDescription": "用于读取手机姿态（倾斜角度）来演示坐姿评估。"
+      }
     },
     "android": {
       "package": "com.catune"
+    },
+    "web": {
+      "bundler": "metro"
     }
   }
 }

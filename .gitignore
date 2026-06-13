@@ -43,6 +43,7 @@ yarn-error.log
 # expo
 .expo/
 .expo-shared/
+expo-env.d.ts
 dist/
 web-build/
 
