@@ -3,7 +3,7 @@
  * @description Catune 传感器预览（Expo SDK 54）：复用主工程 src/posture 的 TS 引擎，用手机 IMU 实时驱动仪表盘；无传感器时回退 mock。
  *
  * [WHO] 默认导出 `App`；用共享 `createPostureEngine` + `createSensorSource`（回退 `createMockSource`）
- * [FROM] 依赖 `react`、`react-native`、`expo-status-bar`、`../src/posture/{engine,mock,types}`、`./sensorSource`
+ * [FROM] 依赖 `react`、`react-native`、`expo-status-bar`、`./posture/{engine,mock,types}`、`./sensorSource`
  * [TO] 被 expo-preview/index.js 注册；iPhone 用 Expo Go 扫码运行
  * [HERE] expo-preview/App.tsx · 传感器预览入口
  */
