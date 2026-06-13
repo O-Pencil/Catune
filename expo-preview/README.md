@@ -31,5 +31,6 @@ npx expo start            # 终端出现二维码
 ## 边界
 
 - 这是 UI + 规则逻辑的真机预览，**不含端侧 Qwen+MNN**（那是原生模块，决赛在安卓真机上跑）。
-- 共享逻辑改在主工程 `../src/posture/`，这里自动生效（metro `watchFolders`），不要在本目录复制一份。
-- 未在本机验证构建（无 Mac/无法跑 npx）；以你机器 `npx expo start` 为准，报错贴回即可。
+- **逻辑文件已复制进本目录 `./posture/`**（types/engine/mock），与主工程 `../src/posture/` 内容一致，自包含、不跨目录（避免 Expo + 仓库外文件的解析问题）。
+  → 若以后改了主工程 `src/posture/` 的规则/阈值/文案，记得把这 3 个文件**同步过来**（`cp ../src/posture/*.ts ./posture/`）。
+- 真机连不上多为网络问题：路由器隔离 → 用 iPhone 热点；`npx expo start --tunnel` 可绕开局域网。

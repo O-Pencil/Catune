@@ -4,12 +4,12 @@
  *   仅在 expo-preview（SDK 54）里用；映射：beta(前后俯仰)→颈部前倾，gamma(左右翻滚)→腰部侧倾。
  *
  * [WHO] 导出 `SensorSource`、`createSensorSource(engine, intervalMs)`
- * [FROM] 依赖 `expo-sensors`(DeviceMotion)、`../src/posture/engine`(PostureEngine 类型)
+ * [FROM] 依赖 `expo-sensors`(DeviceMotion)、`./posture/engine`(PostureEngine 类型)
  * [TO] 被 expo-preview/App.tsx 启动；不可用时由 App 回退到 mock
  * [HERE] expo-preview/sensorSource.ts · 手机 IMU 数据源
  */
 import {DeviceMotion} from 'expo-sensors';
-import type {PostureEngine} from '../src/posture/engine';
+import type {PostureEngine} from './posture/engine';
 
 const RAD2DEG = 180 / Math.PI;
 

@@ -11,9 +11,9 @@ import React, {useEffect, useRef, useState} from 'react';
 import {ScrollView, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {StatusBar} from 'expo-status-bar';
 
-import {createPostureEngine} from '../src/posture/engine';
-import {createMockSource} from '../src/posture/mock';
-import {DashboardState} from '../src/posture/types';
+import {createPostureEngine} from './posture/engine';
+import {createMockSource} from './posture/mock';
+import {DashboardState} from './posture/types';
 import {createSensorSource} from './sensorSource';
 
 const INITIAL: DashboardState = {
