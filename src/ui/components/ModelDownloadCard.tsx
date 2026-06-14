@@ -16,9 +16,9 @@ import * as FileSystem from 'expo-file-system/legacy';
 import {theme} from '../theme';
 import {Card} from '../primitives/Card';
 
-// MNN 官方转好的 Qwen3-1.7B（INT4，~1.24GB）。HuggingFace resolve 直链。
-// 国内慢/连不上 → 把域名换成镜像 'https://hf-mirror.com/...' 即可（路径不变）。
-const MODEL_BASE_URL = 'https://huggingface.co/taobao-mnn/Qwen3-1.7B-MNN/resolve/main/';
+// MNN 官方转好的 Qwen3-1.7B（INT4，~1.24GB）。默认用国内镜像 hf-mirror.com（resolve 直链）。
+// 如需官方源，把域名换回 'https://huggingface.co/...'（路径不变）。
+const MODEL_BASE_URL = 'https://hf-mirror.com/taobao-mnn/Qwen3-1.7B-MNN/resolve/main/';
 // 与原生读取目录一致（MnnDebugModule / MnnPerceptionEngine: filesDir/mnn_models/qwen3-1.7b）
 const MODEL_SUBDIR = 'mnn_models/qwen3-1.7b/';
 // Qwen3-1.7B-MNN 实际文件（来自 HF 仓库 tree）
