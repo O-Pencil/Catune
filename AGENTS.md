@@ -1,7 +1,7 @@
 # Catune · AGENTS.md
 
 > 项目代号：**Catune**（赛事名 *Omni-Posture Master*，包名 `com.catune`）
-> 类型：**React Native 0.76 跨平台 App（iOS + Android，一套 TS）**；端侧 AI 下沉到各平台原生
+> 类型：**统一 Expo SDK 54 / RN 0.81 App（iOS + Android + Web，一套 TS）**；端侧 AI 下沉到安卓原生
 > 文档协议：DIP（Dual-phase Isomorphic Documentation）· P1 根地图
 > 文档语言：**中文**
 
@@ -54,7 +54,7 @@ Catune/
 ├── App.tsx                       # RN 入口组件，仪表盘 + F7 Mock Console
 ├── index.js                      # AppRegistry 绑定
 ├── app.json                      # RN 应用元数据（name=Catune）
-├── package.json                  # 依赖（RN 0.76、react 18.3.1）
+├── package.json                  # 依赖（Expo SDK 54 / RN 0.81 / react 19 / react-native-web）
 ├── tsconfig.json                 # 继承 @react-native/typescript-config
 ├── babel.config.js               # @react-native/babel-preset
 ├── metro.config.js               # 默认 Metro 配置

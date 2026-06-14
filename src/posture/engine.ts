@@ -5,7 +5,7 @@
  *
  * [WHO] 导出 `createPostureEngine()`、`ruleFallback()`、`THRESHOLDS`、`BANNED_WORDS`、`sanitize()`
  * [FROM] 依赖 ./types
- * [TO] 被 src/posture/mock.ts 写入、Dashboard/App 订阅、expo-preview 复用
+ * [TO] 被 mock.ts/sensorSource.ts 写入、Dashboard/App 订阅（iOS/Android/Web 共用）
  * [HERE] src/posture/engine.ts · 姿态规则引擎（TS）
  *
  * 节点（PRD 3 节点）：neckPitch=颈椎前倾、thorPitch=胸椎后凸(驼背主指标)、lumbarRoll=腰椎侧倾。

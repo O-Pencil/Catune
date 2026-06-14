@@ -25,7 +25,7 @@ Catune 是一个 **React Native 跨平台手机 App（iOS + Android，一套 TS 
 
 ## 硬性技术口径（目标态）
 
-- **App 形态**：完整 React Native 手机 App（iOS + Android，一套 TS），React Native 0.76 + Hermes。✅ 已满足（构建出真原生 .apk/.ipa，非小程序/H5）
+- **App 形态**：统一 **Expo SDK 54 / React Native 0.81** 工程，一套 TS 跑 iOS / Android / Web(RNW)。✅ 已满足（构建出真原生 .apk/.ipa，非小程序/H5）
 - **端侧推理**：核心姿态分类与本地反馈在手机端通过 Qwen + MNN 运行，本地 CPU 推理为主。🟡 推理桥代码就绪、默认不编；待模型/SME2 库/真机，见 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md)
 - **Arm 加速**：MNN 库需使用支持 Arm SME2 的 arm64 构建；演示时展示 SME2/NEON 能力检测、模型加载状态和推理指标。🚧 随端侧模型一并接入
 - **云端边界**：云端 Qwen-VL/API 只做低频视觉评估、报告润色或兜底辅助，不能替代核心姿态判断。
@@ -47,36 +47,23 @@ Catune 是一个 **React Native 跨平台手机 App（iOS + Android，一套 TS 
 >
 > 已移除（PRD §0.5.7 Non-Goals）：MCP/Ktor、CameraX/音频、Watchdog、Compose 面板、`DefaultPerceptionEngine`/`HeuristicAnalyzer`。
 
-## 快速开始
+## 快速开始（一个 Expo 工程，三端同一份代码）
+
+项目已统一为单一 **Expo SDK 54 / RN 0.81** 工程，一套 UI/逻辑跑 iOS / Android / Web：
 
 ```bash
 npm install
-npm start
+npx expo install --fix    # 对齐 SDK 54 各依赖精确版本（首次必跑）
+npx expo start            # iOS/安卓：Expo Go 扫码（手机 IMU 真数据）
+npx expo start --web      # 浏览器：react-native-web 渲染同一套 Dashboard
 ```
 
-另开一个终端运行：
+- **iPhone/安卓**：装 Expo Go，与电脑同一 Wi-Fi，扫码即看；倾斜手机 → 颈/胸/腰角度+分数+建议实时变。
+  - 连不上多为网络：代理虚拟 IP `198.18.x` → `REACT_NATIVE_PACKAGER_HOSTNAME=<真实IP> npx expo start`；路由器隔离 → iPhone 热点。
+- **Web**：`expo start --web`，无传感器 → 自动回退 mock；F7 控制台可切 5 种姿态。
+- **原生构建**（`expo run:android/ios`）：需先 `expo prebuild` 重生成原生并迁回 MNN，见下「端侧模型」。
 
-```bash
-npm run android     # 安卓模拟器或真机
-npm run ios         # iOS 模拟器（需 Mac + Xcode）
-```
-
-### 在 iPhone 上扫码预览（Expo Go · 免 Mac）
-
-项目已接入 Expo，可用 **Expo Go** 在 iPhone/安卓真机上扫码即看纯 TS 版（不含端侧 AI 原生模块）：
-
-```bash
-npm install            # 安装依赖（含 expo SDK 52）
-npx expo install --fix # 对齐 expo/react-native 版本（首次建议执行）
-npx expo start         # 启动后终端会显示二维码
-```
-
-1. 手机装 **Expo Go**（iOS App Store / 安卓应用商店）。
-2. 手机与电脑同一 Wi-Fi。
-3. iPhone：用**相机**扫终端二维码 → 在 Expo Go 打开；安卓：用 Expo Go 内置扫码。
-4. 改 TS 代码即热更新。
-
-> Expo Go 只跑 JS/TS（UI + 规则逻辑）。端侧 Qwen+MNN 是原生模块，Expo Go 里没有——要带 AI 真跑得用原生构建（安卓 gradlew / iOS Xcode 或 EAS）。
+> Expo Go / Web 只跑 JS（UI + 规则逻辑）。端侧 Qwen+MNN 是**安卓原生模块**，决赛在安卓真机上跑。
 
 Android 原生构建（产出 .apk）：
 

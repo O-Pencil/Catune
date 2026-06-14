@@ -1,11 +1,11 @@
 /**
  * @file Dashboard.tsx
  * @description 共享仪表盘 UI（iOS/Android 通用，只用稳定 RN API）：渲染分数 + 3 节点角度(颈/胸/腰) + 状态 + 建议；底部 footer 槽放各 app 自己的控制区。
- *   主工程 App.tsx 与 expo-preview/App.tsx 都引用本组件（真·一份 UI）。
+ *   统一 App（iOS/Android/Web）的唯一仪表盘 UI（真·一份 UI）。
  *
  * [WHO] 默认导出 `Dashboard`，命名导出 `getStatusColor`
  * [FROM] 依赖 `react`、`react-native`(View/Text/StyleSheet/ScrollView)、`./types`(DashboardState)
- * [TO] 被 /App.tsx 与 expo-preview/App.tsx 复用；footer 传入 F7 控制台 / 传感器切换
+ * [TO] 被 /App.tsx 复用；footer 传入传感器切换 + F7 控制台
  * [HERE] src/posture/Dashboard.tsx · 共享仪表盘 UI
  */
 import React from 'react';

@@ -1,16 +1,16 @@
 /**
  * @file sensorSource.ts
- * @description 用 expo-sensors 的 DeviceMotion 读手机真实姿态，喂给共享 PostureEngine（3 节点：颈/胸/腰）。
- *   单个手机只有一个 IMU，无法物理分离 3 个脊柱节点——这里把手机一个朝向映射成 3 路演示值；
- *   真实 3 节点来自决赛的 BLE 姿态带（3 个 IMU）。映射：beta(前后俯仰)→胸椎/驼背 & 颈椎，gamma(左右翻滚)→腰椎侧倾。
+ * @description 共享数据源：用 expo-sensors 的 DeviceMotion 读手机真实姿态，喂给 PostureEngine（3 节点：颈/胸/腰）。
+ *   单手机一个 IMU 无法物理分离 3 个脊柱节点——把手机一个朝向映射成 3 路演示值；真实 3 节点来自决赛 BLE 姿态带。
+ *   web 上 DeviceMotion 多数不可用 → start() 返回 false，调用方回退 mock。
  *
  * [WHO] 导出 `SensorSource`、`createSensorSource(engine, intervalMs)`
- * [FROM] 依赖 `expo-sensors`(DeviceMotion)、`../src/posture/engine`(PostureEngine 类型)
- * [TO] 被 expo-preview/App.tsx 启动；不可用时由 App 回退到 mock
- * [HERE] expo-preview/sensorSource.ts · 手机 IMU 数据源（3 节点映射）
+ * [FROM] 依赖 `expo-sensors`(DeviceMotion)、`./engine`(PostureEngine 类型)
+ * [TO] 被 App.tsx 启动；不可用时由 App 回退到 mock
+ * [HERE] src/posture/sensorSource.ts · 手机 IMU 数据源（3 节点映射，iOS/Android）
  */
 import {DeviceMotion} from 'expo-sensors';
-import type {PostureEngine} from '../src/posture/engine';
+import type {PostureEngine} from './engine';
 
 const RAD2DEG = 180 / Math.PI;
 

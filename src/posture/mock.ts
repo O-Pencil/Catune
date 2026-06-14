@@ -5,7 +5,7 @@
  *
  * [WHO] 导出 `SCENARIOS`、`MockScenario`、`createMockSource(engine)`、`postureToScenario`
  * [FROM] 依赖 ./engine、./types
- * [TO] 被 App.tsx / expo-preview 启动；写入 PostureEngine
+ * [TO] 被 App.tsx 启动；写入 PostureEngine（传感器不可用时的回退源）
  * [HERE] src/posture/mock.ts · 模拟数据源（TS）
  */
 import {PostureEngine} from './engine';
