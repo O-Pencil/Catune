@@ -11,6 +11,7 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {NativeModules, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {theme} from '../theme';
 import {Card} from '../primitives/Card';
+import {ModelDownloadCard} from '../components/ModelDownloadCard';
 import {MockScenario, SCENARIOS} from '../../posture/mock';
 import {DashboardState} from '../../posture/types';
 
@@ -212,6 +213,8 @@ export function SettingsScreen({state, mode, onUseSensor, onUseMock, onScenario}
         </View>
         <Text style={styles.hint}>一键切换演示姿态（自动切到模拟数据源）。</Text>
       </Card>
+
+      <ModelDownloadCard />
 
       <MnnDebugCard />
 
