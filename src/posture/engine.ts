@@ -160,7 +160,7 @@ export function createPostureEngine(): PostureEngine {
 
   function commit(next: KinematicsState) {
     // 文案：当前走规则兜底（离线可用）。
-    // TODO(端侧模型): 模型就绪后在此 await NativeMnn.inferText(prompt)，失败再回退 ruleFallback。
+    // TODO(端侧模型): 模型就绪后在外围节流调用 CatuneMnn.inferText(prompt)，失败再回退 ruleFallback。
     const feedback = ruleFallback(signalsFrom(next));
     state = {...next, advice: feedback.advice, inferenceSource: feedback.source};
     emit();

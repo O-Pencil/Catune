@@ -504,7 +504,7 @@ CatuneMnn.getStatus()
 CatuneMnn.inferText(prompt)
 ```
 
-`CatunePackage` 已注册该模块，`App.tsx` 已增加 `MNN DEBUG` 面板，可查看 native/model 状态并触发一次文本推理。模型缺失时会显示错误，不影响 TS 姿态仪表盘。
+`CatunePackage` 已注册该模块，RN Settings 页已增加 `MNN DEBUG` 卡片，可查看 native/model 状态并触发一次文本推理。模型缺失时应显示明确错误，不影响 TS 姿态仪表盘。
 
 当前模拟器预期结果：
 
@@ -619,7 +619,7 @@ src/posture/engine.ts
 - [x] APK 内含 `libMNN.so` 和 `libposture_ai_bridge.so`。
 - [ ] 模型已推送到 `/data/data/com.catune/files/mnn_models/qwen3-vl-2b/`。
 - [x] 原生调试入口已注册，可调用 `inferText()`；模型缺失时返回明确错误。
-- [x] UI 已增加 `MNN DEBUG` 面板展示模型状态和推理结果。
+- [x] UI 已增加 `MNN DEBUG` 卡片展示模型状态和推理结果。
 
 ### C. 产品主链路
 
@@ -636,7 +636,7 @@ src/posture/engine.ts
 在当前 x86_64 模拟器上可以验证：
 
 1. RN 仪表盘可启动，F7 Mock Console 可切换姿态。
-2. `MNN DEBUG` 面板可显示 native/model 状态。
+2. `MNN DEBUG` 卡片可显示 native/model 状态。
 3. 点击 `INFER TEXT` 时，模型缺失或 ABI 不匹配会显示明确错误，App 不崩溃。
 4. 默认 Android Debug 构建通过。
 5. `-PenableMnn=true -PmnnSourceRoot=D:/Projects/MNN` 构建通过，证明 Catune 原生桥能链接 arm64 MNN 产物。

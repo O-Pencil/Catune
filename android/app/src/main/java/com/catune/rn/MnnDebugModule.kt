@@ -4,7 +4,7 @@
  *
  * [WHO] Exports `CatuneMnn.getStatus()` and `CatuneMnn.inferText(prompt)` to JS.
  * [FROM] Depends on `MnnPerceptionEngine` / `InferenceExecutor` and React Native bridge APIs.
- * [TO] Used by `App.tsx` debug panel before the model path is wired into the posture engine.
+ * [TO] Used by Settings MNN DEBUG card before the model path is wired into the posture engine.
  * [HERE] android/app/src/main/java/com/catune/rn/MnnDebugModule.kt - temporary MNN debug module.
  */
 package com.catune.rn
