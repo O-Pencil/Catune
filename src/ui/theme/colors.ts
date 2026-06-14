@@ -1,6 +1,6 @@
 /**
  * @file colors.ts
- * @description 调色板（RN 用 hex；从 web/ index.css 的 oklch :root 近似换算）。浅色 Haptic 拟物化主题。
+ * @description 调色板（RN 用 hex；对齐 web/ index.css 的 haptic 精确值）。浅色 Haptic 拟物化主题。
  *
  * [WHO] 导出 `colors`
  * [FROM] 无依赖
@@ -8,25 +8,29 @@
  * [HERE] src/ui/theme/colors.ts · 调色板
  */
 export const colors = {
-  // 背景 / 表面（对齐 web --background / --card / --muted）
-  background: '#FFFFFF',
+  // 背景 / 表面（haptic canvas / surface / neutral 渐变）
+  background: '#F2F0EC', // 暖中性 canvas
   surface: '#FFFFFF',
   surfaceMuted: '#F5F5F5',
-  border: '#EAEAEA',
+  neutralStart: '#FFFFFF',
+  neutralEnd: '#E5E5E5',
+  border: '#E5E5E5',
 
-  // 文字（--foreground / --muted-foreground）
-  textPrimary: '#1A1A1A',
-  textMuted: '#8A8A8A',
+  // 文字
+  textPrimary: '#141414',
+  textSecondary: '#666666',
+  textMuted: '#9B9590', // mono 标签
 
-  // 品牌橙（--primary: oklch(0.684 0.196 44.8) 近似）
-  primary: '#E8703A',
-  primaryFg: '#FFFFFF',
+  // 品牌橙（--color-haptic-brand）
+  primary: '#FB4B00',
+  primaryLight: '#FFA060',
+  primaryFg: '#FFF0EA',
 
-  // 姿态状态色
-  statusNormal: '#16A34A',
-  statusWarning: '#F59E0B',
-  statusAlert: '#E5484D', // 对齐 --destructive
-  statusOffline: '#9CA3AF',
+  // 姿态状态色（对齐 DeskPage STATUS_COLORS）
+  statusNormal: '#7BA05B', // healthy 暖鼠尾草绿
+  statusWarning: '#FB4B00', // warning 品牌橙
+  statusAlert: '#C75348', // alert 黏土红
+  statusOffline: '#AFA8A0',
 } as const;
 
 export type Colors = typeof colors;
