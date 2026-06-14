@@ -16,13 +16,14 @@ import {DeskScreen} from './screens/DeskScreen';
 import {PlantScreen} from './screens/PlantScreen';
 import {DataMode, SettingsScreen} from './screens/SettingsScreen';
 import {theme} from './theme';
+import {FanIcon, GaugeIcon, SettingsIcon} from './icons';
 import {MockScenario} from '../posture/mock';
 import {DashboardState} from '../posture/types';
 
 const TABS: Tab[] = [
-  {value: 'desk', label: 'Desk', icon: '🪑'},
-  {value: 'plant', label: 'Plant', icon: '🌱'},
-  {value: 'settings', label: 'Settings', icon: '⚙️'},
+  {value: 'desk', label: 'Desk', Icon: GaugeIcon},
+  {value: 'plant', label: 'Plant', Icon: FanIcon},
+  {value: 'settings', label: 'Settings', Icon: SettingsIcon},
 ];
 
 type Props = {

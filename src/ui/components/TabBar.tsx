@@ -1,18 +1,18 @@
 /**
  * @file TabBar.tsx
- * @description 底部 Haptic 标签栏（RN 原语，从 web/ components/layout/TabBar 重写）：浮动胶囊条 + 选中态高亮。
- *   web 的 motion layoutId 滑动指示器先用「选中态背景高亮」近似，动画后续用 Reanimated 加。
+ * @description 底部 Haptic 标签栏（RN 原语 + SVG 图标，从 web/ TabBar 重写）：浮动胶囊条 + 选中态高亮。
  *
  * [WHO] 导出 `Tab` 类型、`TabBar`
- * [FROM] 依赖 `react`、`react-native`(Pressable/View/Text)、`../theme`
+ * [FROM] 依赖 `react`、`react-native`(Pressable/View/Text)、`../theme`、`../icons`(IconProps)
  * [TO] 被 `AppShell` 消费
  * [HERE] src/ui/components/TabBar.tsx · 底部标签栏
  */
 import React from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {theme} from '../theme';
+import {IconProps} from '../icons';
 
-export type Tab = {value: string; label: string; icon: string};
+export type Tab = {value: string; label: string; Icon: React.FC<IconProps>};
 
 export function TabBar({
   tabs,
@@ -28,13 +28,15 @@ export function TabBar({
       <View style={styles.bar}>
         {tabs.map(tab => {
           const active = tab.value === value;
+          const color = active ? theme.colors.primary : theme.colors.textMuted;
+          const Icon = tab.Icon;
           return (
             <Pressable
               key={tab.value}
               style={[styles.tab, active && styles.tabActive]}
               onPress={() => onChange(tab.value)}>
-              <Text style={styles.icon}>{tab.icon}</Text>
-              <Text style={[styles.label, active && styles.labelActive]}>{tab.label}</Text>
+              <Icon size={20} color={color} />
+              <Text style={[styles.label, {color}]}>{tab.label}</Text>
             </Pressable>
           );
         })}
@@ -58,9 +60,7 @@ const styles = StyleSheet.create({
     width: '92%',
     ...theme.shadow.pill,
   },
-  tab: {flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: theme.radius.md, gap: 2},
+  tab: {flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: theme.radius.md, gap: 3},
   tabActive: {backgroundColor: theme.colors.surface, ...theme.shadow.pill},
-  icon: {fontSize: 18},
-  label: {fontSize: theme.font.sizeXs, color: theme.colors.textMuted, fontWeight: theme.font.weightBold},
-  labelActive: {color: theme.colors.textPrimary},
+  label: {fontSize: theme.font.sizeXs, fontWeight: theme.font.weightBold},
 });
