@@ -35,18 +35,89 @@ struct MNNCPUInfo {
 
 using MNNGetCPUInfoFn = const MNNCPUInfo* (*)();
 
+MNNGetCPUInfoFn resolveMNNGetCPUInfoFn() {
+    static MNNGetCPUInfoFn fn = nullptr;
+    static bool resolved = false;
+    if (resolved) return fn;
+    resolved = true;
+    void* handle = dlopen("libMNN.so", RTLD_NOW | RTLD_NOLOAD);
+    if (handle == nullptr) {
+        handle = dlopen("libMNN.so", RTLD_NOW);
+    }
+    if (handle != nullptr) {
+        fn = reinterpret_cast<MNNGetCPUInfoFn>(dlsym(handle, "MNNGetCPUInfo"));
+    }
+    if (fn == nullptr) {
+        fn = reinterpret_cast<MNNGetCPUInfoFn>(dlsym(RTLD_DEFAULT, "MNNGetCPUInfo"));
+    }
+    return fn;
+}
+
+bool readHwSme2FromProc() {
+    std::ifstream cpuinfo("/proc/cpuinfo");
+    if (!cpuinfo.is_open()) return false;
+    std::string line;
+    while (std::getline(cpuinfo, line)) {
+        if (line.find("Features") == std::string::npos && line.find("features") == std::string::npos) {
+            continue;
+        }
+        if (line.find("sme2") != std::string::npos) return true;
+    }
+    return false;
+}
+
 const MNNCPUInfo* queryMNNCPUInfo() {
-    static MNNGetCPUInfoFn fn = reinterpret_cast<MNNGetCPUInfoFn>(
-        dlsym(RTLD_DEFAULT, "MNNGetCPUInfo"));
+    MNNGetCPUInfoFn fn = resolveMNNGetCPUInfoFn();
     if (fn == nullptr) return nullptr;
     return fn();
 }
 
+bool libSme2Compiled() {
+#ifdef CATUNE_MNN_LIB_SME2
+    return true;
+#else
+    return false;
+#endif
+}
+
 std::string getBackendName() {
     const MNNCPUInfo* info = queryMNNCPUInfo();
-    if (info && info->sme2) return "SME2";
+    const bool hw_sme2 = (info != nullptr && info->sme2) || readHwSme2FromProc();
+    if (hw_sme2 && libSme2Compiled()) return "SME2";
     if (info && (info->fp16arith || info->dot)) return "NEON";
     return "CPU";
+}
+
+eyes::CpuCapability queryCpuCapabilityImpl() {
+    eyes::CpuCapability cap;
+    cap.lib_sme2 = libSme2Compiled();
+    const MNNCPUInfo* info = queryMNNCPUInfo();
+    if (info != nullptr) {
+        cap.probe_ok = true;
+        cap.fp16 = info->fp16arith;
+        cap.dot = info->dot;
+        cap.i8mm = info->i8mm;
+        cap.sve2 = info->sve2;
+        cap.sme2_hw = info->sme2;
+    } else {
+        cap.sme2_hw = readHwSme2FromProc();
+        cap.probe_ok = cap.sme2_hw || cap.lib_sme2;
+    }
+    cap.backend_label = getBackendName();
+    if (cap.sme2_hw && cap.lib_sme2) {
+        cap.readiness = "SME2 ready (hw+lib)";
+    } else if (cap.sme2_hw) {
+        cap.readiness = "hw SME2 yes, lib SME2 no";
+    } else if (cap.lib_sme2) {
+        cap.readiness = cap.probe_ok
+            ? "lib SME2 yes, hw no (emulator/NEON)"
+            : "lib SME2 yes, probe unavailable";
+    } else {
+        cap.readiness = "NEON/CPU only";
+    }
+    EYES_LOGD("CPU cap: fp16=%d dot=%d i8mm=%d sve2=%d sme2_hw=%d lib_sme2=%d backend=%s",
+              cap.fp16, cap.dot, cap.i8mm, cap.sve2, cap.sme2_hw, cap.lib_sme2, cap.backend_label.c_str());
+    return cap;
 }
 
 void restoreRunningIfNeeded(Llm* llm) {
@@ -121,14 +192,27 @@ void resolveEop(Llm* llm,
     }
 }
 
-std::string buildRuntimeConfig() {
+std::string formatQwenInstructPrompt(const std::string& system, const std::string& user) {
+    constexpr const char* kImEnd = "<|im_end|>";
+    return std::string("<|im_start|>system\n") + system + kImEnd +
+           "\n<|im_start|>user\n" + user + kImEnd + "\n<|im_start|>assistant\n";
+}
+
+std::string buildRuntimeConfig(const std::string& cache_dir) {
     return R"({
-        "max_new_tokens": 256,
+        "max_new_tokens": 64,
+        "max_all_tokens": 512,
         "thread_num": 4,
         "precision": "low",
         "memory": "low",
-        "use_mmap": false,
-        "keep_history": false
+        "sampler_type": "penalty",
+        "penalty": 1.1,
+        "penalty_sampler": "temperature",
+        "temperature": 0.7,
+        "use_template": false,
+        "use_mmap": true,
+        "tmp_path": ")" + cache_dir + R"(",
+        "async": false
     })";
 }
 
@@ -148,7 +232,7 @@ bool EyesLlmSession::load(const std::string& config_json_path, const std::string
         return false;
     }
 
-    if (!llm->set_config(buildRuntimeConfig())) {
+    if (!llm->set_config(buildRuntimeConfig(cache_dir))) {
         last_error_ = "set_config failed";
         Llm::destroy(llm);
         EYES_LOGE("%s", last_error_.c_str());
@@ -161,6 +245,8 @@ bool EyesLlmSession::load(const std::string& config_json_path, const std::string
         EYES_LOGE("%s", last_error_.c_str());
         return false;
     }
+
+    EYES_LOGD("EyesLlmSession dump_config: %s", llm->dump_config().c_str());
 
     llm_ = llm;
     ready_ = true;
@@ -203,34 +289,19 @@ std::string EyesLlmSession::infer(
         prompt = "<audio>" + audio_wav_path + "</audio>\n" + prompt;
     }
 
-    const int max_new_tokens = 256;
-    bool stop_requested = false;
-    bool generate_text_end = false;
-    std::stringstream response_buffer;
+    const std::string formatted_prompt =
+        formatQwenInstructPrompt("You are a helpful assistant.", prompt);
+    const std::string prompt_preview =
+        formatted_prompt.size() > 400 ? formatted_prompt.substr(0, 400) + "..." : formatted_prompt;
+    EYES_LOGD("Formatted prompt preview: %s", prompt_preview.c_str());
 
-    StreamState stream_state{response_buffer, generate_text_end, stop_requested};
-    eyes::Utf8StreamProcessor processor([&stream_state](const std::string& utf8_char) {
-        stream_state.processChunk(utf8_char);
-    });
-    LlmStreamBuffer stream_buffer([&processor](const char* str, size_t len) {
-        processor.processStream(str, len);
-    });
-    std::ostream output_ostream(&stream_buffer);
-
-    MNN::Transformer::ChatMessages history;
-    history.emplace_back("user", prompt);
-
-    restoreRunningIfNeeded(llm);
-    llm->response(history, &output_ostream, "<eop>", 0);
-
-    int current_size = 0;
-    resolveEop(llm, stream_state, current_size, max_new_tokens, response_buffer);
-    while (!stop_requested && !generate_text_end && current_size < max_new_tokens) {
-        llm->generate(1);
-        current_size++;
-        resolveEop(llm, stream_state, current_size, max_new_tokens, response_buffer);
+    const std::vector<int> prompt_ids = llm->tokenizer_encode(formatted_prompt);
+    EYES_LOGD("Prompt token count: %zu", prompt_ids.size());
+    for (size_t i = 0; i < std::min(prompt_ids.size(), size_t(6)); ++i) {
+        EYES_LOGD("Prompt tok[%zu] id=%d piece=%s", i, prompt_ids[i], llm->tokenizer_decode(prompt_ids[i]).c_str());
     }
-    stream_state.finalize();
+
+    llm->response(formatted_prompt);
 
     const auto* context = llm->getContext();
     if (context != nullptr) {
@@ -245,10 +316,23 @@ std::string EyesLlmSession::infer(
                         static_cast<float>(context->decode_us);
             metrics_["decode_tps"] = std::to_string(tps);
         }
+        if (!context->output_tokens.empty()) {
+            std::ostringstream token_log;
+            const size_t n = std::min<size_t>(context->output_tokens.size(), 8);
+            for (size_t i = 0; i < n; ++i) {
+                if (i > 0) token_log << ',';
+                token_log << context->output_tokens[i];
+            }
+            EYES_LOGD("First output token ids: %s", token_log.str().c_str());
+        }
     }
 
-    std::string result = response_buffer.str();
-    if (result.empty()) {
+    std::string result = context != nullptr ? context->generate_str : "";
+    if (context != nullptr && context->status == LlmStatus::INTERNAL_ERROR) {
+        last_error_ = "LLM internal error at prefill/decode (often OOM on emulator). "
+                      "Use arm64 device or raise AVD RAM; max_all_tokens=512 on this build.";
+        EYES_LOGE("%s", last_error_.c_str());
+    } else if (result.empty()) {
         last_error_ = "Empty model response";
         EYES_LOGE("%s", last_error_.c_str());
     } else {
@@ -267,6 +351,10 @@ std::string EyesLlmSession::getMetric(const std::string& key) const {
     auto it = metrics_.find(key);
     if (it == metrics_.end()) return "";
     return it->second;
+}
+
+CpuCapability queryCpuCapability() {
+    return queryCpuCapabilityImpl();
 }
 
 }  // namespace eyes

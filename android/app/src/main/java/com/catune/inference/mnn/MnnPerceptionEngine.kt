@@ -43,7 +43,7 @@ data class MnnTextResult(
 /**
  * Bridge to Alibaba MNN / Qwen3-VL on-device inference.
  *
- * Model weights: filesDir/mnn_models/qwen3-1.7b/
+ * Model weights: filesDir/${MnnModelPaths.SUBDIR}/
  * Native lib: jniLibs/arm64-v8a/libMNN.so + eyes_mnn_bridge
  */
 class MnnPerceptionEngine private constructor(
@@ -180,8 +180,33 @@ class MnnPerceptionEngine private constructor(
         @JvmStatic
         external fun getLastError(): String?
 
+        @JvmStatic
+        external fun nativeGetCpuInfoJson(): String
+
+        fun getCpuInfoMap(): Map<String, Any?> {
+            loadNativeLibs()
+            if (!isNativeLibLoaded()) return emptyMap()
+            return try {
+                val raw = nativeGetCpuInfoJson()
+                val json = org.json.JSONObject(raw)
+                mapOf(
+                    "probeOk" to json.optBoolean("probeOk"),
+                    "fp16" to json.optBoolean("fp16"),
+                    "dot" to json.optBoolean("dot"),
+                    "i8mm" to json.optBoolean("i8mm"),
+                    "sve2" to json.optBoolean("sve2"),
+                    "sme2Hw" to json.optBoolean("sme2Hw"),
+                    "libSme2" to json.optBoolean("libSme2"),
+                    "backend" to json.optString("backend"),
+                    "readiness" to json.optString("readiness"),
+                )
+            } catch (_: Throwable) {
+                emptyMap()
+            }
+        }
+
         fun tryCreate(context: Context): MnnPerceptionEngine? {
-            val modelDir = File(context.filesDir, "mnn_models/qwen3-1.7b")
+            val modelDir = File(context.filesDir, MnnModelPaths.SUBDIR)
             if (!modelDir.exists()) modelDir.mkdirs()
             loadNativeLibs()
             return MnnPerceptionEngine(modelDir)

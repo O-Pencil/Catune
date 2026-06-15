@@ -25,15 +25,6 @@ type Props = {
   onScenario: (s: MockScenario) => void;
 };
 
-type CatuneMnnStatus = {
-  nativeLibLoaded?: boolean;
-  modelDirExists?: boolean;
-  configExists?: boolean;
-  modelLoaded?: boolean;
-  modelDir?: string;
-  loadError?: string | null;
-};
-
 type CatuneMnnInferResult = {
   rawOutput?: string;
   inferenceMs?: number;
@@ -47,9 +38,51 @@ type CatuneMnnInferResult = {
   };
 };
 
+type CatuneMnnCpuInfo = {
+  probeOk?: boolean;
+  fp16?: boolean;
+  dot?: boolean;
+  i8mm?: boolean;
+  sve2?: boolean;
+  sme2Hw?: boolean;
+  libSme2?: boolean;
+  backend?: string;
+  readiness?: string;
+};
+
+type CatuneMnnStatus = {
+  nativeLibLoaded?: boolean;
+  modelDirExists?: boolean;
+  configExists?: boolean;
+  modelLoaded?: boolean;
+  modelDir?: string;
+  loadError?: string | null;
+  cpu?: CatuneMnnCpuInfo;
+};
+
+type CatuneMnnBenchRun = {
+  run?: number;
+  label?: string;
+  inferenceMs?: number;
+  rawOutput?: string;
+  metrics?: CatuneMnnInferResult['metrics'];
+};
+
+type CatuneMnnBenchResult = {
+  runs?: CatuneMnnBenchRun[];
+  summary?: {
+    avgDecodeTps?: number;
+    backend?: string;
+    readiness?: string;
+    sme2Hw?: boolean;
+    libSme2?: boolean;
+  };
+};
+
 type CatuneMnnModule = {
   getStatus: () => Promise<CatuneMnnStatus>;
   inferText: (prompt: string) => Promise<CatuneMnnInferResult>;
+  runBenchmark: (prompt: string) => Promise<CatuneMnnBenchResult>;
 };
 
 const CatuneMnn = NativeModules.CatuneMnn as CatuneMnnModule | undefined;
@@ -89,9 +122,12 @@ function DebugButton({label, disabled, onPress}: {label: string; disabled?: bool
 function MnnDebugCard(): React.JSX.Element {
   const [status, setStatus] = useState<CatuneMnnStatus | null>(null);
   const [result, setResult] = useState<CatuneMnnInferResult | null>(null);
+  const [bench, setBench] = useState<CatuneMnnBenchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const available = Boolean(CatuneMnn);
+  const cpu = status?.cpu;
+  const activeBackend = result?.metrics?.backend ?? bench?.summary?.backend ?? cpu?.backend ?? 'unknown';
 
   const readStatus = useCallback(async () => {
     if (!CatuneMnn) {
@@ -118,9 +154,30 @@ function MnnDebugCard(): React.JSX.Element {
     setBusy(true);
     setError(null);
     setResult(null);
+    setBench(null);
     try {
       const next = await CatuneMnn.inferText(MNN_TEST_PROMPT);
       setResult(next);
+      const nextStatus = await CatuneMnn.getStatus();
+      setStatus(nextStatus);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  const runBench = useCallback(async () => {
+    if (!CatuneMnn) {
+      setError('CatuneMnn native module unavailable');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setBench(null);
+    try {
+      const next = await CatuneMnn.runBenchmark(MNN_TEST_PROMPT);
+      setBench(next);
       const nextStatus = await CatuneMnn.getStatus();
       setStatus(nextStatus);
     } catch (e) {
@@ -159,8 +216,17 @@ function MnnDebugCard(): React.JSX.Element {
         <StatusRow label="loaded">
           <BoolValue value={status?.modelLoaded} />
         </StatusRow>
+        <StatusRow label="hw sme2">
+          <BoolValue value={cpu?.sme2Hw} />
+        </StatusRow>
+        <StatusRow label="lib sme2">
+          <BoolValue value={cpu?.libSme2} />
+        </StatusRow>
+        <StatusRow label="SME2 verdict">
+          <Text style={styles.valueText} numberOfLines={2}>{cpu?.readiness ?? 'unknown'}</Text>
+        </StatusRow>
         <StatusRow label="backend">
-          <Text style={styles.valueText}>{metrics?.backend ?? 'unknown'}</Text>
+          <Text style={styles.valueText}>{activeBackend}</Text>
         </StatusRow>
         <StatusRow label="ttft / tps">
           <Text style={styles.valueText}>
@@ -173,12 +239,27 @@ function MnnDebugCard(): React.JSX.Element {
       {status?.loadError ? <Text style={styles.errorText} numberOfLines={3}>{status.loadError}</Text> : null}
       {error ? <Text style={styles.errorText} numberOfLines={3}>{error}</Text> : null}
       {result?.rawOutput ? <Text style={styles.rawOutput} numberOfLines={4}>{result.rawOutput}</Text> : null}
+      {bench?.summary ? (
+        <Text style={styles.rawOutput} numberOfLines={5}>
+          {`BENCH avg tps=${(bench.summary.avgDecodeTps ?? 0).toFixed(2)} backend=${bench.summary.backend ?? '?'} readiness=${bench.summary.readiness ?? '?'}`}
+          {'\n'}
+          {bench.runs
+            ?.filter(r => r.label === 'timed')
+            .map(r => `#${r.run} ${Math.round(r.inferenceMs ?? 0)}ms tps=${(r.metrics?.decodeTps ?? 0).toFixed(2)}`)
+            .join('\n')}
+        </Text>
+      ) : null}
 
       <View style={styles.rowGap}>
         <DebugButton label={busy ? '...' : 'REFRESH'} disabled={busy} onPress={readStatus} />
         <DebugButton label="INFER TEXT" disabled={busy || !available} onPress={runInfer} />
       </View>
-      <Text style={styles.hint}>Android arm64 原生模型探针；iOS / Web / Expo Go 无原生模块时会显示 unavailable。</Text>
+      <View style={styles.rowGap}>
+        <DebugButton label="BENCH x2" disabled={busy || !available} onPress={runBench} />
+      </View>
+      <Text style={styles.hint}>
+        SME2：hw sme2=芯片能力，lib sme2=APK 内 libMNN 是否含 SME2 编译；两者均为 true 且 backend=SME2 才算走 SME2 加速。真机装此 APK 后点 BENCH x2 可录 demo。
+      </Text>
     </Card>
   );
 }

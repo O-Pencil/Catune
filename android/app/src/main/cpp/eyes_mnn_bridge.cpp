@@ -9,6 +9,7 @@
 
 #include <fstream>
 #include <mutex>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -186,6 +187,24 @@ Java_com_catune_inference_mnn_MnnPerceptionEngine_getLastError(JNIEnv* env, jcla
     std::lock_guard<std::mutex> lock(g_mutex);
     if (g_last_error.empty()) return nullptr;
     return stdToJstring(env, g_last_error);
+}
+
+JNIEXPORT jstring JNICALL
+Java_com_catune_inference_mnn_MnnPerceptionEngine_nativeGetCpuInfoJson(JNIEnv* env, jclass) {
+    const eyes::CpuCapability cap = eyes::queryCpuCapability();
+    std::ostringstream json;
+    json << "{"
+         << "\"probeOk\":" << (cap.probe_ok ? "true" : "false") << ","
+         << "\"fp16\":" << (cap.fp16 ? "true" : "false") << ","
+         << "\"dot\":" << (cap.dot ? "true" : "false") << ","
+         << "\"i8mm\":" << (cap.i8mm ? "true" : "false") << ","
+         << "\"sve2\":" << (cap.sve2 ? "true" : "false") << ","
+         << "\"sme2Hw\":" << (cap.sme2_hw ? "true" : "false") << ","
+         << "\"libSme2\":" << (cap.lib_sme2 ? "true" : "false") << ","
+         << "\"backend\":\"" << cap.backend_label << "\","
+         << "\"readiness\":\"" << cap.readiness << "\""
+         << "}";
+    return stdToJstring(env, json.str());
 }
 
 extern "C" JNIEXPORT jfloatArray JNICALL

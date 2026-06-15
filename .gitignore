@@ -85,3 +85,9 @@ web-build/
 
 # Local agent logs / token traces
 .nanopencil/
+
+# MNN source (build locally; see android README)
+android/app/src/main/cpp/third_party/MNN/
+
+# Large demo artifacts (regenerate locally)
+docs/demos/*.apk

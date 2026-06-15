@@ -13,6 +13,20 @@
 
 namespace eyes {
 
+struct CpuCapability {
+    bool probe_ok = false;
+    bool fp16 = false;
+    bool dot = false;
+    bool i8mm = false;
+    bool sve2 = false;
+    bool sme2_hw = false;
+    bool lib_sme2 = false;
+    std::string backend_label;
+    std::string readiness;  // human-readable SME2 verdict
+};
+
+CpuCapability queryCpuCapability();
+
 class EyesLlmSession {
 public:
     bool load(const std::string& config_json_path, const std::string& cache_dir);

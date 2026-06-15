@@ -35,11 +35,17 @@ object InferenceExecutor {
 
     fun loadError(): String? = loadError
 
+    /** Clears a prior load failure so INFER/REFRESH can retry without restarting the app. */
+    fun resetLoadFailure() {
+        loadFailed.set(false)
+        loadError = null
+    }
+
     suspend fun ensureModelLoaded(context: Context): Boolean = run {
         if (modelLoaded.get()) return@run true
         if (loadFailed.get()) return@run false
 
-        val modelDir = File(context.filesDir, "mnn_models/qwen3-vl-2b")
+        val modelDir = File(context.filesDir, MnnModelPaths.SUBDIR)
         val configFile = File(modelDir, "config.json")
         if (!configFile.exists()) {
             loadError = "config.json not found in ${modelDir.absolutePath}"

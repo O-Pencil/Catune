@@ -16,13 +16,18 @@ import * as FileSystem from 'expo-file-system/legacy';
 import {theme} from '../theme';
 import {Card} from '../primitives/Card';
 
-// MNN 官方转好的 Qwen3-1.7B（INT4，~1.24GB）。默认用国内镜像 hf-mirror.com（resolve 直链）。
-// 如需官方源，把域名换回 'https://huggingface.co/...'（路径不变）。
-const MODEL_BASE_URL = 'https://hf-mirror.com/taobao-mnn/Qwen3-1.7B-MNN/resolve/main/';
-// 与原生读取目录一致（MnnDebugModule / MnnPerceptionEngine: filesDir/mnn_models/qwen3-1.7b）
-const MODEL_SUBDIR = 'mnn_models/qwen3-1.7b/';
-// Qwen3-1.7B-MNN 实际文件（来自 HF 仓库 tree）
-const MODEL_FILES = ['config.json', 'llm_config.json', 'llm.mnn', 'llm.mnn.weight', 'tokenizer.txt'];
+// Qwen2.5-0.5B-Instruct-MNN（INT4，~550MB 含 embeddings），模拟器/low-RAM 联调用。
+// 真机 SME2/1.7B 验收时改回 taobao-mnn/Qwen3-1.7B-MNN 并同步 MnnModelPaths.SUBDIR。
+const MODEL_BASE_URL = 'https://hf-mirror.com/taobao-mnn/Qwen2.5-0.5B-Instruct-MNN/resolve/main/';
+const MODEL_SUBDIR = 'mnn_models/qwen2.5-0.5b/';
+const MODEL_FILES = [
+  'config.json',
+  'llm_config.json',
+  'llm.mnn',
+  'llm.mnn.weight',
+  'tokenizer.txt',
+  'embeddings_bf16.bin',
+];
 
 type Status = 'idle' | 'checking' | 'ready' | 'downloading' | 'done' | 'error';
 
@@ -115,8 +120,8 @@ export function ModelDownloadCard(): React.JSX.Element {
             <Text style={styles.btnText}>{status === 'ready' || status === 'done' ? '重新下载' : '下载模型'}</Text>
           </Pressable>
           <Text style={styles.hint}>
-            下到 App 私有目录（{MODEL_SUBDIR}），与原生读取路径一致 → 下完即可在「MNN DEBUG」加载。{'\n'}
-            模型须为 MNN 格式（config.json / llm.mnn / llm.mnn.weight），不是 AWQ / GGUF。
+            当前：Qwen2.5-0.5B（约 550MB，模拟器友好）。下到 {MODEL_SUBDIR}，下完在「MNN DEBUG」点 INFER TEXT。{'\n'}
+            模型须为 MNN 格式，不是 AWQ / GGUF。
           </Text>
         </View>
       )}
