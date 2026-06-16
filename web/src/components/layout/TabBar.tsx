@@ -25,7 +25,7 @@ export function TabBar({ tabs, value, onValueChange }: TabBarProps) {
     <nav className="fixed bottom-0 left-0 right-0 z-50">
       <div className="mx-auto max-w-lg">
         <div
-          className="mx-4 mb-4 rounded-2xl bg-gradient-to-b from-white to-[#e5e5e5] p-1"
+          className="mx-8 mb-5 rounded-[14px] bg-gradient-to-b from-white to-[#eeeeee] p-1"
           style={{
             boxShadow:
               "inset 0 1px 0 0 rgba(255,255,255,0.6), inset 0 -1px 0 0 rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.06)",
@@ -37,7 +37,7 @@ export function TabBar({ tabs, value, onValueChange }: TabBarProps) {
                 key={tab.value}
                 onClick={() => onValueChange(tab.value)}
                 className={cn(
-                  "relative flex-1 flex flex-col items-center gap-1 py-2.5 px-3 rounded-xl transition-colors",
+                  "relative flex-1 flex flex-col items-center gap-0.5 py-2 px-3 rounded-[12px] transition-colors",
                   value === tab.value
                     ? "text-[#141414]"
                     : "text-[#666666] hover:text-[#333333]"
@@ -46,7 +46,7 @@ export function TabBar({ tabs, value, onValueChange }: TabBarProps) {
                 {value === tab.value && (
                   <motion.span
                     layoutId="tab-indicator"
-                    className="absolute inset-0 rounded-xl bg-gradient-to-b from-white to-[#f5f5f5]"
+                    className="absolute inset-0 rounded-[12px] bg-gradient-to-b from-white to-[#f7f7f7]"
                     style={{
                       boxShadow:
                         "inset 0 1px 0 0 rgba(255,255,255,0.8), 0 1px 3px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.06)",

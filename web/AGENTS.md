@@ -1,136 +1,240 @@
-# web/ · P2 模块地图
+# web/ UI 布局实现说明
 
-> 层级：P2（模块成员清单）
-> 父级：[../AGENTS.md](../AGENTS.md)
-> 语言：**中文**
-
----
-
-## 1. 模块定位
-
-Web 端 Haptic 拟物化设计系统演示 + 仪表盘原型，基于 React 19 + Vite 8 + Tailwind CSS 4 + shadcn/ui + Framer Motion。
+> 参考图：`public/design.png`
+> 页面：Catune Desk 首页
+> 目标：对齐前端实现中的移动端布局、视频主视觉区域和传感器数据展示
 
 ---
 
-## 2. 目录结构
+## 1. 页面定位
 
-```
-web/src/
-├── app/                          # 应用入口
-│   ├── main.tsx                  # Vite 入口，挂载 React root
-│   └── App.tsx                   # 根组件，Tab 路由（Desk / Plant / Settings）
-├── components/
-│   ├── haptic/                   # Haptic 设计系统（20 个组件 + tokens + motion）
-│   │   ├── index.ts              # 桶导出，聚合所有 haptic 组件
-│   │   ├── tokens.ts             # 设计 token（调色板 / 渐变 / 阴影 / 圆角 / 尺寸类型）
-│   │   ├── motion.ts             # 动画预设（springSnappy / springSoft / tweenSurface）
-│   │   ├── icons.tsx             # SVG 图标组件（Filter / Plus / Minus / Chevron / Check / Search）
-│   │   ├── haptic-accordion.tsx  # 可折叠手风琴
-│   │   ├── haptic-avatar.tsx     # 头像（尺寸 / 环 / 状态变体）
-│   │   ├── haptic-badge.tsx      # 徽章（dot / pill / count / outline）
-│   │   ├── haptic-button.tsx     # Utility 风格按钮（standard / primary）
-│   │   ├── haptic-checkbox.tsx   # 动画复选框
-│   │   ├── haptic-chip.tsx       # 彩色标签（7 色 + light/dark）
-│   │   ├── haptic-icon-button.tsx# 图标按钮（复用 hapticButtonVariants）
-│   │   ├── haptic-knob.tsx       # 旋转旋钮（拖拽 + 键盘）
-│   │   ├── haptic-progress.tsx   # 进度条（5 色 + 条纹 + 不确定态）
-│   │   ├── haptic-radio.tsx      # 动画单选按钮
-│   │   ├── haptic-segmented-control.tsx # iOS 风格分段控件
-│   │   ├── haptic-select.tsx     # 下拉选择（动画列表 + 描述）
-│   │   ├── haptic-slider.tsx     # 范围滑块（纯 CSS 过渡）
-│   │   ├── haptic-stepper.tsx    # 数字步进器
-│   │   ├── haptic-switch.tsx     # 开关（checked / unchecked）
-│   │   ├── haptic-tabs.tsx       # 标签栏（default / pill / underline）
-│   │   └── haptic-tooltip.tsx    # 工具提示（4 方位 + 4 变体）
-│   ├── icons/                    # App 级动画图标
-│   │   ├── GaugeIcon.tsx         # 仪表图标（Desk tab）
-│   │   ├── FanIcon.tsx           # 风扇图标（Plant tab）
-│   │   └── SettingsIcon.tsx      # 齿轮图标（Settings tab）
-│   ├── layout/
-│   │   └── TabBar.tsx            # 底部标签栏（layoutId 动画指示器）
-│   └── ui/                       # shadcn/ui 基础组件
-│       ├── button.tsx            # 按钮（6 变体 + 4 尺寸）
-│       ├── card.tsx              # 卡片布局族（7 个子组件）
-│       └── input.tsx             # 文本输入框
-├── demo/
-│   └── SkeuomorphismShowcase.tsx # 设计系统全量展示页
-├── lib/
-│   └── utils.ts                  # cn() 工具（clsx + tailwind-merge）
-├── pages/
-│   ├── DeskPage.tsx              # 主仪表盘（脊柱可视化 + 设备状态 + 角度卡片）
-│   ├── PlantPage.tsx             # 植物养成页（5 阶段 SVG + 积分表格）
-│   └── SettingsPage.tsx          # 设置页（设备 / AI / MCP / 通知 / 关于）
-└── styles/
-    └── index.css                 # 全局样式（shadcn 主题 + Haptic token + 拟物工具类）
+该页面是 Catune 坐姿助手的移动端 Desk 首页。它不是营销页，也不是静态插画页，而是一个围绕「黑猫坐姿视频背景 + 传感器数据 + 模型对话反馈」构建的应用界面。
+
+前端实现时应优先保证布局结构稳定：
+
+- 顶部 Header 固定在页面上方。
+- 底部 Tab 固定在页面下方。
+- 中间内容区域根据不同手机高度自适应。
+- 主视觉区域以视频帧/视频背景为核心，承载黑猫、椅子、桌子、植物和传感器点位。
+
+---
+
+## 2. 总体布局
+
+整个页面按竖向结构拆成三块：
+
+| 区域 | 定位方式 | 说明 |
+| --- | --- | --- |
+| 顶部 Header | 顶部固定 | 放品牌、问候语、坐姿反馈文案 |
+| 中间自适应区域 | 弹性伸缩 | 放模型对话区域、三项数据指标卡、视频主视觉 |
+| 底部 Tab | 底部固定 | 放 `Desk / Plant / Settings` 三个导航入口 |
+
+布局示意：
+
+```text
+┌──────────────────────────────┐
+│ Header 固定区                 │
+│ CATUNE / Good afternoon...    │
+│ 模型反馈文案                  │
+├──────────────────────────────┤
+│ 中间自适应区                  │
+│ 模型对话区域                  │
+│ 三个数据指标卡                │
+│                              │
+│ 视频主视觉背景                │
+│ - 植物                        │
+│ - 桌子                        │
+│ - 椅子                        │
+│ - 黑猫姿态                    │
+│ - 传感器点位                  │
+│                              │
+├──────────────────────────────┤
+│ Bottom Tab 固定区             │
+│ Desk / Plant / Settings       │
+└──────────────────────────────┘
 ```
 
----
-
-## 3. 成员清单
-
-| 文件 | 职责 |
-|------|------|
-| `app/main.tsx` | Vite 入口，`createRoot` 挂载 `<App />` |
-| `app/App.tsx` | 根组件，Tab 路由 + URL query 参数 + 动画图标管理 |
-| `lib/utils.ts` | `cn()` 合并 Tailwind 类名 |
-| `components/haptic/tokens.ts` | 设计 token 常量（调色板 / 渐变 / 阴影 / 圆角 / 类型定义） |
-| `components/haptic/motion.ts` | 动画预设（springSnappy / springSoft / tweenSurface） |
-| `components/haptic/icons.tsx` | 8 个 SVG 图标组件 |
-| `components/haptic/index.ts` | 桶导出，聚合所有 haptic 组件 + token + 图标 |
-| `components/haptic/haptic-accordion.tsx` | 可折叠手风琴（单/多模式，受控/非受控） |
-| `components/haptic/haptic-avatar.tsx` | 头像（尺寸 / 环 / 状态变体，initials 回退） |
-| `components/haptic/haptic-badge.tsx` | 徽章（dot / pill / count / outline，7 色） |
-| `components/haptic/haptic-button.tsx` | Utility 按钮（standard / primary，图标 + motion 反馈） |
-| `components/haptic/haptic-checkbox.tsx` | 动画复选框（选中/未选中 + 尺寸/缩进） |
-| `components/haptic/haptic-chip.tsx` | 彩色标签（7 色 + light/dark + 尺寸/形状） |
-| `components/haptic/haptic-icon-button.tsx` | 图标按钮（复用 hapticButtonVariants） |
-| `components/haptic/haptic-knob.tsx` | 旋转旋钮（拖拽旋转 + 键盘 + 3 尺寸） |
-| `components/haptic/haptic-progress.tsx` | 进度条（5 色 + 条纹 + 不确定态） |
-| `components/haptic/haptic-radio.tsx` | 动画单选按钮（选中/未选中 + 尺寸/缩进） |
-| `components/haptic/haptic-segmented-control.tsx` | iOS 分段控件（滑动指示器 + 键盘） |
-| `components/haptic/haptic-select.tsx` | 下拉选择（动画列表 + 描述 + 勾选） |
-| `components/haptic/haptic-slider.tsx` | 范围滑块（纯 CSS 过渡，无 motion 依赖） |
-| `components/haptic/haptic-stepper.tsx` | 数字步进器（+/- 按钮 + min/max） |
-| `components/haptic/haptic-switch.tsx` | 开关（checked/unchecked + motion 反馈） |
-| `components/haptic/haptic-tabs.tsx` | 标签栏（default / pill / underline 变体） |
-| `components/haptic/haptic-tooltip.tsx` | 工具提示（4 方位 + 4 变体 + 延迟） |
-| `components/icons/GaugeIcon.tsx` | 仪表 SVG 图标（Desk tab，forwardRef + 动画） |
-| `components/icons/FanIcon.tsx` | 风扇 SVG 图标（Plant tab，spring 旋转） |
-| `components/icons/SettingsIcon.tsx` | 齿轮 SVG 图标（Settings tab，180° 旋转） |
-| `components/layout/TabBar.tsx` | 底部标签栏（layoutId 动画指示器） |
-| `components/ui/button.tsx` | shadcn 按钮（6 变体 + 4 尺寸） |
-| `components/ui/card.tsx` | shadcn 卡片族（Card + 6 子组件） |
-| `components/ui/input.tsx` | shadcn 文本输入框 |
-| `demo/SkeuomorphismShowcase.tsx` | 设计系统全量展示页 |
-| `pages/DeskPage.tsx` | 主仪表盘（脊柱 SVG + 设备状态 + 角度卡片） |
-| `pages/PlantPage.tsx` | 植物养成（5 阶段 SVG + 积分表格） |
-| `pages/SettingsPage.tsx` | 设置页（设备 / AI / MCP / 通知 / 关于） |
-| `styles/index.css` | 全局样式（shadcn 主题 + Haptic token + 拟物工具类 + 动画） |
+说明：手机系统自带的时间、信号、Wi-Fi、电池、电量等状态栏不属于我们的 UI 布局，不需要在前端页面中绘制。
 
 ---
 
-## 4. 依赖关系
+## 3. 顶部 Header
 
-```
-main.tsx → App.tsx → TabBar / DeskPage / PlantPage / SettingsPage
-                  → GaugeIcon / FanIcon / SettingsIcon
+Header 是页面顶部固定区，位于系统安全区下方。它负责展示品牌和模型生成的坐姿反馈摘要。
 
-SettingsPage → haptic-switch.tsx（直接导入）
+内容包括：
 
-SkeuomorphismShowcase → haptic/index.ts → 全部 18 个 haptic 组件
-                      → ui/card.tsx, input.tsx
+| 元素 | 示例 | 说明 |
+| --- | --- | --- |
+| 品牌小字 | `CATUNE` | 极小字号，浅灰色，大写 |
+| 问候语 | `Good afternoon, Xiao Yu` | 常规字号，用户名使用橙红色强调 |
+| 坐姿反馈 | `Your sitting posture is very standard...` | 加粗黑色，可换行 |
 
-utils.ts ← 19 个组件文件（几乎所有 UI 组件都依赖）
-tokens.ts ← motion.ts, haptic-button, haptic-checkbox, haptic-chip,
-            haptic-icon-button, haptic-progress, haptic-radio, index.ts
-motion.ts ← 14 个 haptic 组件
-icons.tsx ← haptic-accordion, haptic-button, haptic-checkbox,
-            haptic-chip, haptic-icon-button, haptic-select, haptic-stepper
-```
+实现规则：
+
+- Header 不绘制手机系统状态栏。
+- Header 不放进卡片，不加边框。
+- Header 高度应相对稳定，避免模型文案变化造成整体跳动。
+- 长文案应限制行数或使用合理换行，不能挤压底部 Tab。
 
 ---
 
-## 5. 维护纪律
+## 4. 中间自适应区域
 
-- 新增/删除/移动任何源文件 → 必须同步更新本文件的成员清单。
-- 修改任何模块边界（导入/导出/职责）→ 必须同步更新对应文件的 P3 头部。
+中间区域是页面的核心，需要根据手机高度动态伸缩。不同屏幕尺寸下，顶部 Header 和底部 Tab 固定，中间区域承担高度变化。
+
+中间区域从上到下包含：
+
+1. 模型对话区域
+2. 三个数据指标卡
+3. 视频主视觉背景
+
+其中视频主视觉应获得最大可用空间，是页面的视觉重心。
+
+---
+
+## 5. 模型对话区域
+
+模型对话区域用于展示端侧模型或规则回退生成的自然语言反馈。它在 Header 下方，数据指标卡上方。
+
+实现规则：
+
+- 对话内容应像 App 内反馈文本，不做聊天软件式气泡堆叠。
+- 文案需要支持模型输出和规则回退输出。
+- 区域高度应可控，避免长文本压缩视频主视觉。
+- 当前设计图中的坐姿反馈文案可视为模型对话区域的一种首屏形态。
+
+---
+
+## 6. 三个数据指标卡
+
+三个数据指标卡位于模型对话区域下方，视频主视觉上方或覆盖在视频区域上沿附近。
+
+指标内容：
+
+| 指标 | 标签 | 示例值 | 传感器含义 |
+| --- | --- | --- | --- |
+| 颈部 | `C7 Neck` | `5.2°` | 颈椎/头前倾相关 |
+| 胸部 | `T12 Thor.` | `3.4°` | 胸椎姿态相关 |
+| 腰部 | `L5 Lumbar` | `1.8°` | 腰椎侧倾相关 |
+
+视觉规则：
+
+- 三项横向排列，列间距稳定。
+- 标签使用浅灰色小字号。
+- 数值使用橙红色，字号大于标签。
+- 它们是数据指标卡，但视觉应轻量，不要做厚重卡片。
+- 数据卡位置必须和模型对话区域、视频主视觉保持明确层级。
+
+---
+
+## 7. 视频主视觉区域
+
+中间主视觉区域的核心是视频背景，不是普通静态图片。前端实现时应按「视频帧背景」理解和组织。
+
+视频画面由多层视觉元素构建：
+
+| 层级 | 元素 | 说明 |
+| --- | --- | --- |
+| 背景层 | 白色/浅色空间 | 保持干净、轻量 |
+| 桌面层 | 桌子 | 横向贯穿画面，建立场景基准 |
+| 物件层 | 植物 | 位于桌面左侧，提供生活化办公场景 |
+| 主体层 | 黑猫 + 椅子 | 黑猫背对用户坐在椅子上，是主视觉核心 |
+| 状态层 | 三个传感器点 | 显示在猫身体对应位置 |
+| 姿态层 | 猫的不同姿势 | 根据传感器状态切换或播放不同视频帧 |
+
+核心理解：
+
+- 黑猫不是装饰物，而是姿态可视化主体。
+- 猫身上的三个点对应三个传感器位置。
+- 不同传感器数据会驱动黑猫呈现不同姿势。
+- 视频主视觉需要表达坐姿变化，而不是只展示一张固定图片。
+
+---
+
+## 8. 传感器点位
+
+猫身上应显示三个传感器点，沿猫背或躯干纵向分布。
+
+点位含义：
+
+| 点位 | 对应指标 | 说明 |
+| --- | --- | --- |
+| 上部点 | `C7 Neck` | 颈部/头前倾 |
+| 中部点 | `T12 Thor.` | 胸椎 |
+| 下部点 | `L5 Lumbar` | 腰椎 |
+
+实现规则：
+
+- 点位应贴合猫身体，不要漂浮到背景上。
+- 点位应随猫姿态视频帧变化保持相对正确的位置。
+- 可以用轻量圆点、细线、微弱高亮表现传感器。
+- 传感器点不能遮挡猫的主体轮廓和围巾关键视觉。
+
+---
+
+## 9. 姿态状态与视频帧
+
+主视觉应支持根据姿态状态切换不同视频表现。
+
+建议状态：
+
+| 状态 | 视频表现 |
+| --- | --- |
+| `NORMAL` | 黑猫坐姿端正 |
+| `SLUMPED` | 黑猫上背或整体塌陷 |
+| `TECH_NECK` | 黑猫头颈前倾 |
+| `LEFT_LEAN` | 黑猫身体向左侧倾 |
+| `OFFLINE` | 传感器弱化或显示离线状态 |
+
+实现原则：
+
+- 视频背景可以是连续视频，也可以是按状态切换的视频帧序列。
+- 状态变化时应平滑过渡，避免硬切造成跳变。
+- 姿态状态由传感器数据或 mock 数据驱动。
+- 视觉状态要和三个指标卡数值保持一致。
+
+---
+
+## 10. 底部 Tab
+
+底部 Tab 是固定导航区，位于页面底部安全区上方。
+
+Tab 项：
+
+| Tab | 说明 |
+| --- | --- |
+| `Desk` | 当前首页，坐姿监测主界面 |
+| `Plant` | 训练/养成/陪伴相关页面 |
+| `Settings` | 设置与调试页面 |
+
+视觉规则：
+
+- 底部 Tab 固定，不随中间内容滚动。
+- 导航容器为浅色背景，带轻微阴影和圆角。
+- 当前选中的 `Desk` 可使用浅色胶囊底突出。
+- Tab 不得遮挡黑猫主体和关键传感器点位。
+
+---
+
+## 11. 响应式约束
+
+前端实现时需要优先适配不同手机高度：
+
+- Header 和底部 Tab 高度固定或半固定。
+- 中间区域使用弹性布局，占满剩余空间。
+- 视频主视觉区域应使用稳定比例或 `object-fit` 策略。
+- 小屏下优先保证 Header、三个指标卡、黑猫主体和底部 Tab 可见。
+- 大屏下可以增加主视觉留白，但不要改变核心布局顺序。
+
+---
+
+## 12. 实现边界
+
+- 不绘制手机系统状态栏。
+- 不把主视觉做成普通卡片。
+- 不把视频主视觉替换成抽象 SVG 背景。
+- 不做营销落地页结构。
+- 不让模型对话区域无限增高。
+- 不让数据指标卡脱离传感器点位和黑猫姿态的对应关系。
+

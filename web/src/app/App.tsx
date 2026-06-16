@@ -78,35 +78,13 @@ function App() {
   ]
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Status Bar */}
-      <div className="flex items-center justify-between px-6 pt-3 pb-1 text-[11px] font-mono text-[#9B9590]">
-        <span>9:41</span>
-        <div className="flex items-center gap-1.5">
-          <span>████</span>
-          <span>5G</span>
-          <span>89%</span>
-        </div>
-      </div>
-
-      {/* App Title */}
-      <div className="text-center pt-2 pb-3">
-        <h1
-          className="text-3xl font-bold tracking-tight text-[#fb4b00]"
-          style={{ fontFamily: "'Fredoka', sans-serif" }}
-        >
-          Catune
-        </h1>
-      </div>
-
-      {/* Page Content */}
-      <main className="max-w-lg mx-auto">
+    <div className="min-h-screen bg-white text-[#141414]">
+      <main className="mx-auto flex min-h-screen max-w-lg flex-col overflow-hidden">
         {activeTab === "desk" && <DeskPage />}
         {activeTab === "plant" && <PlantPage />}
         {activeTab === "settings" && <SettingsPage />}
       </main>
 
-      {/* Bottom Tab Bar */}
       <TabBar tabs={tabs} value={activeTab} onValueChange={setActiveTab} />
     </div>
   )

@@ -1,222 +1,163 @@
-// Status colors: brand-coherent, not Duolingo-palette
-// Healthy = warm sage (echoes the Haptic warm-neutral background), warning = brand orange, alert = muted clay
-
 /**
  * [WHO]: 导出 DeskPage（函数组件）
- * [FROM]: 无依赖（自包含 mock 数据 + 内联 SVG）
+ * [FROM]: public/mp4/left2right.mp4（视频帧占位）
  * [TO]: 被 App.tsx 消费
- * [HERE]: web/src/pages/DeskPage.tsx · 主仪表盘（脊柱 SVG 可视化 + 设备状态 + 角度卡片）
+ * [HERE]: web/src/pages/DeskPage.tsx · Desk 首页布局原型（Header + 模型反馈 + 三指标 + 视频主视觉）
  */
 
-const STATUS_COLORS = {
-  healthy: "#7BA05B",
-  warning: "#fb4b00",
-  alert: "#C75348",
-  offline: "#AFA8A0",
-} as const
+import { useEffect, useMemo, useState } from "react"
 
-// Mock data
+const BRAND_ORANGE = "#fb4b00"
+const POSTURE_VIDEO_SRC = "/mp4/left2right.mp4"
+
 const MOCK_DATA = {
-  score: 92,
+  userName: "Xiao Yu",
   state: "NORMAL",
-  nodes: {
-    c7: { angle: 5.2, status: "healthy" as const },
-    t12: { angle: 2.1, status: "healthy" as const },
-    l5: { angle: 3.4, status: "healthy" as const },
-  },
-  device: {
-    name: "PoseMaster-C6",
-    battery: 72,
-    signal: -52,
-    firmware: "v1.2.3",
-    connected: true,
-  },
+  message:
+    "Your sitting posture is very standard, please keep it up, you have been sitting still for 3h 28min already!",
+  nodes: [
+    { key: "c7", label: "C7 Neck", angle: 5.2 },
+    { key: "t12", label: "T12 Thor.", angle: 3.4 },
+    { key: "l5", label: "L5 Lumbar", angle: 1.8 },
+  ],
 }
 
-function DeviceStatus() {
-  const { device } = MOCK_DATA
+const SENSOR_MOCK_FRAMES = [
+  { c7: 0, t12: 0, l5: 0 },
+  { c7: 10, t12: 4, l5: -2 },
+  { c7: -8, t12: -3, l5: 5 },
+  { c7: 4, t12: 8, l5: 2 },
+]
+
+function DeskHeader() {
   return (
-    <div className="skeuo-card p-4">
-      <div className="flex items-center gap-3">
-        <div
-          className="size-10 rounded-xl flex items-center justify-center"
-          style={{
-            background: "rgba(251, 75, 0, 0.1)",
-            boxShadow: "inset 0 0 0 1px rgba(251, 75, 0, 0.2)",
-          }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fb4b00" strokeWidth="2">
-            <rect x="4" y="6" width="16" height="12" rx="2" />
-            <circle cx="8" cy="12" r="1.5" fill="#fb4b00" />
-            <circle cx="16" cy="12" r="1.5" fill="#fb4b00" />
-          </svg>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-sm font-semibold text-[#141414]">{device.name}</span>
-            <span
-              className="size-2 rounded-full"
-              style={{ background: device.connected ? STATUS_COLORS.healthy : STATUS_COLORS.offline }}
-            />
-          </div>
-          <div className="text-[10px] text-[#666666] font-mono">
-            3 Nodes · {device.signal}dBm · {device.firmware}
-          </div>
-        </div>
-        <div className="flex flex-col items-end">
-          <div className="flex items-center gap-1">
-            <svg width="18" height="10" viewBox="0 0 22 12" fill="none">
-              <rect x="0.5" y="0.5" width="18" height="11" rx="2" stroke="#9B9590" />
-              <rect x="20" y="4" width="2" height="4" rx="1" fill="#9B9590" />
-              <rect x="2" y="2" width="13" height="8" rx="1" fill="#fb4b00" />
-            </svg>
-            <span className="text-[11px] font-mono font-bold text-[#333333]">{device.battery}%</span>
-          </div>
-        </div>
+    <header className="shrink-0 px-8 pt-9 pb-2">
+      <div className="text-[8px] font-semibold uppercase tracking-[0.06em] text-[#a9a29b]">
+        CATUNE
       </div>
-    </div>
-  )
-}
-
-function SpineVisualizer() {
-  const { score, state } = MOCK_DATA
-
-  const stateLabel = state === "NORMAL" ? "Good Posture" : state === "FORWARD" ? "Slouching" : "Leaning"
-  const stateColor = state === "NORMAL" ? STATUS_COLORS.healthy : state === "FORWARD" ? STATUS_COLORS.warning : STATUS_COLORS.alert
-
-  return (
-    <div
-      className="skeuo-card p-4 relative overflow-hidden"
-      style={{ height: 380 }}
-    >
-      {/* Status pill */}
-      <div className="absolute top-3 left-3 z-10">
-        <span
-          className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold"
-          style={{
-            background: `${stateColor}15`,
-            color: stateColor,
-            boxShadow: `inset 0 0 0 1px ${stateColor}40`,
-          }}
-        >
-          <span className="size-1.5 rounded-full" style={{ background: stateColor }} />
-          {stateLabel}
-        </span>
-      </div>
-
-      {/* Score */}
-      <div className="absolute top-3 right-3 z-10 text-right">
-        <div className="text-[9px] font-mono text-[#9B9590] font-bold tracking-wider">SCORE</div>
-        <div
-          className="font-mono text-4xl leading-none font-extrabold"
-          style={{ color: stateColor }}
-        >
-          {score}
-        </div>
-      </div>
-
-      {/* Desk scene image */}
-      <img
-        src="/src/assets/desk-scene.png"
-        alt="Desk scene"
-        className="w-full h-full object-contain"
-      />
-
-      {/* Spine nodes overlay */}
-      <svg
-        viewBox="0 0 400 380"
-        className="w-full h-full absolute inset-0 pointer-events-none"
-        preserveAspectRatio="xMidYMid meet"
+      <div
+        className="mt-1 text-[13px] leading-none text-[#222222]"
+        style={{ fontFamily: "'Quicksand', sans-serif" }}
       >
-        {/* C7 Node */}
-        <g>
-          <circle cx="295" cy="110" r="7" fill="none" stroke={STATUS_COLORS.healthy} strokeWidth="2.5">
-            <animate attributeName="r" values="7;9;7" dur="2.4s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="1;0.7;1" dur="2.4s" repeatCount="indefinite" />
-          </circle>
-          <circle cx="295" cy="110" r="4" fill={STATUS_COLORS.healthy}>
-            <animate attributeName="r" values="4;5;4" dur="2.4s" repeatCount="indefinite" />
-          </circle>
-          <rect x="305" y="100" width="28" height="20" rx="6" fill="white" stroke={STATUS_COLORS.healthy} strokeWidth="1.5" />
-          <text x="319" y="114" textAnchor="middle" fontFamily="monospace" fontSize="10" fontWeight="700" fill="#141414">C7</text>
-        </g>
+        Good afternoon, <span className="text-[#fb4b00]">{MOCK_DATA.userName}</span>
+      </div>
+      <p
+        className="mt-2 max-w-[280px] text-[12px] font-bold leading-[1.22] text-[#111111]"
+        style={{ fontFamily: "'Quicksand', sans-serif" }}
+      >
+        {MOCK_DATA.message}
+      </p>
+    </header>
+  )
+}
 
-        {/* T12 Node */}
-        <g>
-          <circle cx="293" cy="155" r="7" fill="none" stroke={STATUS_COLORS.healthy} strokeWidth="2.5">
-            <animate attributeName="r" values="7;9;7" dur="2.4s" begin="0.4s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="1;0.7;1" dur="2.4s" begin="0.4s" repeatCount="indefinite" />
-          </circle>
-          <circle cx="293" cy="155" r="4" fill={STATUS_COLORS.healthy}>
-            <animate attributeName="r" values="4;5;4" dur="2.4s" begin="0.4s" repeatCount="indefinite" />
-          </circle>
-          <rect x="303" y="145" width="30" height="20" rx="6" fill="white" stroke={STATUS_COLORS.healthy} strokeWidth="1.5" />
-          <text x="318" y="159" textAnchor="middle" fontFamily="monospace" fontSize="10" fontWeight="700" fill="#141414">T12</text>
-        </g>
+function MetricStrip() {
+  return (
+    <section className="grid shrink-0 grid-cols-3 gap-5 px-8 pb-1">
+      {MOCK_DATA.nodes.map((node) => (
+        <div key={node.key} className="min-w-0">
+          <div className="truncate text-[7px] font-semibold text-[#aaa29a]">{node.label}</div>
+          <div className="mt-1 font-mono text-[13px] font-bold leading-none" style={{ color: BRAND_ORANGE }}>
+            {node.angle.toFixed(1)}°
+          </div>
+        </div>
+      ))}
+    </section>
+  )
+}
 
-        {/* L5 Node */}
-        <g>
-          <circle cx="291" cy="205" r="7" fill="none" stroke={STATUS_COLORS.healthy} strokeWidth="2.5">
-            <animate attributeName="r" values="7;9;7" dur="2.4s" begin="0.8s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="1;0.7;1" dur="2.4s" begin="0.8s" repeatCount="indefinite" />
-          </circle>
-          <circle cx="291" cy="205" r="4" fill={STATUS_COLORS.healthy}>
-            <animate attributeName="r" values="4;5;4" dur="2.4s" begin="0.8s" repeatCount="indefinite" />
-          </circle>
-          <rect x="301" y="195" width="28" height="20" rx="6" fill="white" stroke={STATUS_COLORS.healthy} strokeWidth="1.5" />
-          <text x="315" y="209" textAnchor="middle" fontFamily="monospace" fontSize="10" fontWeight="700" fill="#141414">L5</text>
-        </g>
-      </svg>
+function SensorOverlay() {
+  const [frameIndex, setFrameIndex] = useState(0)
+  const sensorFrame = SENSOR_MOCK_FRAMES[frameIndex]
+  const basePoints = useMemo(
+    () => [
+      { key: "c7", y: 62, offsetAngle: sensorFrame.c7 },
+      { key: "t12", y: 108, offsetAngle: sensorFrame.t12 },
+      { key: "l5", y: 154, offsetAngle: sensorFrame.l5 },
+    ],
+    [sensorFrame],
+  )
+  const pixelsPerDegree = 1.5
+  const centerX = 92
+  const points = basePoints.map((point) => ({
+    ...point,
+    x: centerX + point.offsetAngle * pixelsPerDegree,
+  }))
+  const curvePath = `M ${points[0].x} ${points[0].y} C ${points[0].x} ${(points[0].y + points[1].y) / 2}, ${points[1].x} ${(points[0].y + points[1].y) / 2}, ${points[1].x} ${points[1].y} S ${points[2].x} ${(points[1].y + points[2].y) / 2}, ${points[2].x} ${points[2].y}`
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setFrameIndex((current) => (current + 1) % SENSOR_MOCK_FRAMES.length)
+    }, 1800)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  return (
+    <div className="pointer-events-none absolute inset-0">
+      <div className="absolute left-1/2 top-[32%] h-[190px] w-[184px] -translate-x-1/2">
+        <svg
+          className="absolute inset-0 h-full w-full overflow-visible"
+          viewBox="0 0 184 190"
+          aria-hidden="true"
+        >
+          <path
+            className="cat-sensor-curve"
+            d={curvePath}
+            fill="none"
+            stroke="#5f625d"
+            strokeOpacity="0.48"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+          />
+        </svg>
+
+        {points.map((point) => (
+          <div
+            key={point.key}
+            className="cat-sensor-point absolute flex size-[14px] -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/85 bg-[#141414]/35 shadow-[0_1px_4px_rgba(0,0,0,0.2)]"
+            style={{
+              left: point.x,
+              top: point.y,
+            }}
+            aria-hidden="true"
+          >
+            <span className="size-[4px] rounded-full bg-white" />
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 
-function NodeAngleCard({ label, angle, status }: { label: string; angle: number; status: "healthy" | "warning" | "alert" }) {
+function PostureScene() {
   return (
-    <div
-      className="flex-1 rounded-xl p-3 text-center"
-      style={{
-        background: `linear-gradient(to bottom, #ffffff, #f5f5f5)`,
-        boxShadow:
-          "inset 0 1px 0 0 rgba(255,255,255,0.6), inset 0 -1px 0 0 rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.06)",
-      }}
-    >
-      <div className="text-[10px] font-mono text-[#9B9590] font-bold">{label}</div>
-      <div className="text-lg font-mono font-bold" style={{ color: STATUS_COLORS[status] }}>
-        {angle}°
+    <section className="relative flex min-h-[290px] flex-1 overflow-hidden px-0">
+      <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-b from-transparent via-white/80 to-white" />
+      <div className="relative h-full min-h-[290px] w-full">
+        <div className="absolute inset-0 overflow-hidden">
+          <video
+            className="absolute bottom-[1%] left-1/2 h-[96%] max-w-none -translate-x-[54%] object-contain"
+            src={POSTURE_VIDEO_SRC}
+            aria-label="Cat posture video frame"
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+          />
+          <SensorOverlay />
+        </div>
       </div>
-    </div>
+    </section>
   )
 }
 
 export function DeskPage() {
-  const { nodes } = MOCK_DATA
-
   return (
-    <div className="pb-24 px-4 space-y-3">
-      {/* Greeting */}
-      <div className="pt-2 pb-1">
-        <div className="text-[10px] font-mono text-[#9B9590] font-bold tracking-wider">POSTURE-AI</div>
-        <div
-          className="text-lg font-bold tracking-tight text-[#141414]"
-          style={{ fontFamily: "'Quicksand', sans-serif" }}
-        >
-          Good afternoon, <span className="text-[#fb4b00]">Xiao Yu</span>
-        </div>
-      </div>
-
-      {/* Device Status */}
-      <DeviceStatus />
-
-      {/* Spine Visualizer */}
-      <SpineVisualizer />
-
-      {/* Node Angles */}
-      <div className="flex gap-2">
-        <NodeAngleCard label="C7 Neck" angle={nodes.c7.angle} status={nodes.c7.status} />
-        <NodeAngleCard label="T12 Thor." angle={nodes.t12.angle} status={nodes.t12.status} />
-        <NodeAngleCard label="L5 Lumbar" angle={nodes.l5.angle} status={nodes.l5.status} />
-      </div>
+    <div className="flex min-h-screen flex-col bg-white pb-24">
+      <DeskHeader />
+      <MetricStrip />
+      <PostureScene />
     </div>
   )
 }

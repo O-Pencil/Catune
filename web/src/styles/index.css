@@ -1857,3 +1857,14 @@
     display: none;
   }
 }
+
+.cat-sensor-point {
+  transition:
+    left 420ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    top 420ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.cat-sensor-curve {
+  transition: d 420ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
