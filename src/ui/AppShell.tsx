@@ -7,10 +7,11 @@
  * [TO] 被 /App.tsx 渲染；数据/控制由 App 透传
  * [HERE] src/ui/AppShell.tsx · 应用外壳（Tab 导航）
  */
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {SafeAreaView, StyleSheet} from 'react-native';
 import {StatusBar} from 'expo-status-bar';
 
+import {ModelDownloadBanner} from './components/ModelDownloadBanner';
 import {Tab, TabBar} from './components/TabBar';
 import {DeskScreen} from './screens/DeskScreen';
 import {PlantScreen} from './screens/PlantScreen';
@@ -19,6 +20,7 @@ import {theme} from './theme';
 import {FanIcon, GaugeIcon, SettingsIcon} from './icons';
 import {MockScenario} from '../posture/mock';
 import {DashboardState} from '../posture/types';
+import {resumePendingDownloadIfNeeded} from '../mnn/modelDownloadService';
 
 const TABS: Tab[] = [
   {value: 'desk', label: 'Desk', Icon: GaugeIcon},
@@ -37,9 +39,15 @@ type Props = {
 
 export function AppShell({state, mode, deskSubtitle, onUseSensor, onUseMock, onScenario}: Props): React.JSX.Element {
   const [tab, setTab] = useState('desk');
+
+  useEffect(() => {
+    resumePendingDownloadIfNeeded();
+  }, []);
+
   return (
     <SafeAreaView style={styles.root}>
       <StatusBar style="dark" />
+      <ModelDownloadBanner onOpenSettings={() => setTab('settings')} />
       {tab === 'desk' && <DeskScreen state={state} subtitle={deskSubtitle} />}
       {tab === 'plant' && <PlantScreen />}
       {tab === 'settings' && (

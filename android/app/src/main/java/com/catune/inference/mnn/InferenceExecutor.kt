@@ -28,6 +28,8 @@ object InferenceExecutor {
     private val loadFailed = AtomicBoolean(false)
     @Volatile
     private var loadError: String? = null
+    @Volatile
+    private var loadedConfigPath: String? = null
 
     suspend fun <T> run(block: suspend () -> T): T = withContext(dispatcher) { block() }
 
@@ -42,11 +44,19 @@ object InferenceExecutor {
     }
 
     suspend fun ensureModelLoaded(context: Context): Boolean = run {
-        if (modelLoaded.get()) return@run true
+        val modelDir = MnnModelPaths.resolveModelDir(context)
+        val configFile = File(modelDir, "config.json")
+        val configPath = configFile.absolutePath
+
+        if (modelLoaded.get() && loadedConfigPath == configPath) return@run true
+        if (modelLoaded.get() && loadedConfigPath != configPath) {
+            MnnPerceptionEngine.nativeRelease()
+            modelLoaded.set(false)
+            loadFailed.set(false)
+            loadError = null
+        }
         if (loadFailed.get()) return@run false
 
-        val modelDir = File(context.filesDir, MnnModelPaths.SUBDIR)
-        val configFile = File(modelDir, "config.json")
         if (!configFile.exists()) {
             loadError = "config.json not found in ${modelDir.absolutePath}"
             loadFailed.set(true)
@@ -69,6 +79,7 @@ object InferenceExecutor {
         }
 
         modelLoaded.set(true)
+        loadedConfigPath = configPath
         loadError = null
         true
     }
@@ -77,6 +88,7 @@ object InferenceExecutor {
         if (!modelLoaded.get()) return@run
         MnnPerceptionEngine.nativeRelease()
         modelLoaded.set(false)
+        loadedConfigPath = null
         loadFailed.set(false)
         loadError = null
     }

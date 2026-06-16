@@ -1,7 +1,19 @@
 # Expo 原生统一 + MNN 接入（在 M2 Mac 上跑）
 
-> 版本：2026-06-14
+> 版本：**2026-06-16**（联调实测见 [联调进度与实测记录](./联调进度与实测记录.md)）  
 > 目标：把 Android 原生统一到 **Expo SDK 54 / RN 0.81**（与 JS 一致）+ 自动链接 expo-sensors / react-native-svg，并保留端侧 **MNN** 原生模块；之后在 **arm64 模拟器或真机**上调试端侧模型。
+
+---
+
+## 当前结论（2026-06-16）
+
+| 项 | 状态 |
+| --- | --- |
+| 联调模型 | **Qwen2.5-0.5B-Instruct-MNN**（~550MB，INT4） |
+| 模拟器 | 链路跑通；输出乱码/!!!! **预期内**，仅用于 UI/下载/加载 |
+| 真机 | 中文正常；**TPS ~88.7**（0.5B，CPU/NEON 回退） |
+| SME2 | lib 已编 SME2；当前真机 **hw sme2=false**，未走 SME2 backend |
+| 模型进机 | App 内下载（断点续传 + 后台 + 多模型切换/删除），**免 adb push** |
 
 ---
 
@@ -117,31 +129,26 @@ adb install app-release.apk   # 或发文件给手机，开"未知来源"安装
 
 模拟器(arm64) 与真机(arm64) 同一 ABI，**同一个 APK 都能跑**；真机若是 SME2 芯片且 ship 了 SME2 版 `libMNN.so`，才会走 SME2。
 
-## 5. 模型怎么进手机：App 内「下载模型」按钮（免 adb）✅
+## 5. 模型怎么进手机：App 内「下载模型」✅（2026-06-16 增强）
 
-模型太大（~1GB+）不打进 APK。给别人「直接用」的标准做法是 **App 内下载到私有目录**：
+模型不打进 APK。标准流程：**装 APK 一次 → App 内下载 → 自动写入 `filesDir/mnn_models/`**。
 
-```ts
-// 用 expo-file-system 下载到 App 私有目录（= 原生 filesDir）
-import * as FileSystem from 'expo-file-system';
+实现位置：
 
-const MODEL_DIR = FileSystem.documentDirectory + 'mnn_models/qwen3-1.7b/';
-async function downloadModel(baseUrl: string, onProgress: (p: number) => void) {
-  await FileSystem.makeDirectoryAsync(MODEL_DIR, {intermediates: true});
-  for (const f of ['config.json', 'llm.mnn', 'llm.mnn.weight']) {
-    const dl = FileSystem.createDownloadResumable(baseUrl + f, MODEL_DIR + f, {}, d =>
-      onProgress(d.totalBytesWritten / d.totalBytesExpectedToWrite),
-    );
-    await dl.downloadAsync();
-  }
-}
-```
+- `src/mnn/modelCatalog.ts` — 模型清单（Qwen2.5-0.5B / Qwen3-1.7B）
+- `src/mnn/modelDownloadService.ts` — 全局下载（切 Tab / 退后台可继续；杀进程后自动续传）
+- `src/ui/components/ModelDownloadCard.tsx` — 下载 / 更换 / 删除 / 设为此模型
+- `mnn_models/.active` — 当前推理使用的 model id（原生 `MnnModelPaths.resolveSubdir()` 读取）
 
-- `documentDirectory` 就是原生 `context.filesDir`，与 `MnnDebugModule` 读取路径一致 → 下完即可加载。
-- 需要一个**托管模型的 URL**（你自己的服务器 / OSS / HF）。
-- 这样：装 APK（一次）→ App 里点「下载模型」→ 自动下到手机 → 直接用，**不用 adb、不用真机导入**。
+特性：
 
-> 注意区分：**APK** 是 App（装一次）；**模型**是数据（App 内下载）。下载按钮下的是模型文件，不是再装一个 APK。
+- **断点续传**：`mnn_models/.download_state.json` + `DownloadResumable`
+- **后台**：顶部 `ModelDownloadBanner`；下载与 Settings 卡片生命周期解耦
+- **多模型**：已安装列表、删除垃圾、切换活跃模型时 `CatuneMnn.releaseModel()`
+
+`documentDirectory` = 原生 `context.filesDir`，与 `MnnDebugModule` 路径一致。
+
+> **APK** = App；**模型** = 数据（App 内下载）。模拟器 INT4 乱码不能靠换模型根治，中文质量以真机为准（见联调记录）。
 
 ## 6. 之后可自动化
 

@@ -206,7 +206,7 @@ class MnnPerceptionEngine private constructor(
         }
 
         fun tryCreate(context: Context): MnnPerceptionEngine? {
-            val modelDir = File(context.filesDir, MnnModelPaths.SUBDIR)
+            val modelDir = MnnModelPaths.resolveModelDir(context)
             if (!modelDir.exists()) modelDir.mkdirs()
             loadNativeLibs()
             return MnnPerceptionEngine(modelDir)

@@ -56,6 +56,7 @@ type CatuneMnnStatus = {
   configExists?: boolean;
   modelLoaded?: boolean;
   modelDir?: string;
+  activeModelId?: string;
   loadError?: string | null;
   cpu?: CatuneMnnCpuInfo;
 };
@@ -83,6 +84,7 @@ type CatuneMnnModule = {
   getStatus: () => Promise<CatuneMnnStatus>;
   inferText: (prompt: string) => Promise<CatuneMnnInferResult>;
   runBenchmark: (prompt: string) => Promise<CatuneMnnBenchResult>;
+  releaseModel?: () => Promise<boolean>;
 };
 
 const CatuneMnn = NativeModules.CatuneMnn as CatuneMnnModule | undefined;
@@ -119,7 +121,7 @@ function DebugButton({label, disabled, onPress}: {label: string; disabled?: bool
   );
 }
 
-function MnnDebugCard(): React.JSX.Element {
+function MnnDebugCard({refreshKey}: {refreshKey: number}): React.JSX.Element {
   const [status, setStatus] = useState<CatuneMnnStatus | null>(null);
   const [result, setResult] = useState<CatuneMnnInferResult | null>(null);
   const [bench, setBench] = useState<CatuneMnnBenchResult | null>(null);
@@ -189,7 +191,7 @@ function MnnDebugCard(): React.JSX.Element {
 
   useEffect(() => {
     readStatus();
-  }, [readStatus]);
+  }, [readStatus, refreshKey]);
 
   const metrics = result?.metrics;
 
@@ -215,6 +217,9 @@ function MnnDebugCard(): React.JSX.Element {
         </StatusRow>
         <StatusRow label="loaded">
           <BoolValue value={status?.modelLoaded} />
+        </StatusRow>
+        <StatusRow label="active model">
+          <Text style={styles.valueText}>{status?.activeModelId ?? 'unknown'}</Text>
         </StatusRow>
         <StatusRow label="hw sme2">
           <BoolValue value={cpu?.sme2Hw} />
@@ -265,6 +270,8 @@ function MnnDebugCard(): React.JSX.Element {
 }
 
 export function SettingsScreen({state, mode, onUseSensor, onUseMock, onScenario}: Props): React.JSX.Element {
+  const [mnnRefreshKey, setMnnRefreshKey] = useState(0);
+
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.container}>
       <Text style={styles.title}>设置</Text>
@@ -295,9 +302,9 @@ export function SettingsScreen({state, mode, onUseSensor, onUseMock, onScenario}
         <Text style={styles.hint}>一键切换演示姿态（自动切到模拟数据源）。</Text>
       </Card>
 
-      <ModelDownloadCard />
+      <ModelDownloadCard onModelsChanged={() => setMnnRefreshKey(k => k + 1)} />
 
-      <MnnDebugCard />
+      <MnnDebugCard refreshKey={mnnRefreshKey} />
 
       <Card style={styles.card}>
         <Text style={styles.cardTitle}>关于</Text>

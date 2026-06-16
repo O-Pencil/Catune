@@ -60,7 +60,7 @@ class MnnDebugModule(
         scope.launch {
             try {
                 InferenceExecutor.resetLoadFailure()
-                val modelDir = File(reactContext.filesDir, MnnModelPaths.SUBDIR)
+                val modelDir = MnnModelPaths.resolveModelDir(reactContext)
                 MnnPerceptionEngine.loadNativeLibs()
                 val status = Arguments.createMap().apply {
                     putBoolean("nativeLibLoaded", MnnPerceptionEngine.isNativeLibLoaded())
@@ -68,6 +68,7 @@ class MnnDebugModule(
                     putBoolean("configExists", File(modelDir, "config.json").exists())
                     putBoolean("modelLoaded", InferenceExecutor.isModelLoaded())
                     putString("modelDir", modelDir.absolutePath)
+                    putString("activeModelId", MnnModelPaths.resolveActiveModelId(reactContext))
                     putString("loadError", InferenceExecutor.loadError())
                     putCpuInfo(this)
                 }
@@ -173,6 +174,19 @@ class MnnDebugModule(
                 )
             } catch (error: Throwable) {
                 promise.reject("CATUNE_MNN_BENCH_EXCEPTION", error.message, error)
+            }
+        }
+    }
+
+    /** 卸载已加载模型（切换/删除模型后由 JS 调用，下次 infer 会按 .active 重载）。 */
+    @ReactMethod
+    fun releaseModel(promise: Promise) {
+        scope.launch {
+            try {
+                InferenceExecutor.release()
+                promise.resolve(true)
+            } catch (error: Throwable) {
+                promise.reject("CATUNE_MNN_RELEASE_FAILED", error.message, error)
             }
         }
     }

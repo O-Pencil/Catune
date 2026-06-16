@@ -1,99 +1,236 @@
 /**
  * @file ModelDownloadCard.tsx
- * @description Settings 内「下载端侧模型」卡片：用 expo-file-system 把 MNN 模型下到 App 私有目录（= 原生 filesDir，与 MnnDebugModule 读取路径一致），带进度。免 adb。
- *
- * [WHO] 导出 `ModelDownloadCard`
- * [FROM] 依赖 `react`、`react-native`、`expo-file-system/legacy`、`../theme`、`../primitives/Card`
- * [TO] 被 SettingsScreen 渲染
- * [HERE] src/ui/components/ModelDownloadCard.tsx · 模型下载卡片
- *
- * 用前必填 MODEL_BASE_URL（你托管的 MNN 模型地址）。模型须为 MNN 格式（config.json/llm.mnn/llm.mnn.weight），不是 AWQ/GGUF。
+ * @description 端侧模型下载/切换/删除：断点续传、后台下载、已安装检测、活跃模型标记。
  */
 import React, {useCallback, useEffect, useState} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
-// SDK 54 经典 API 在 /legacy（documentDirectory / createDownloadResumable）
+import {Alert, NativeModules, Pressable, StyleSheet, Text, View} from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
+import {DEFAULT_MODEL_ID, getDefaultModel, getModelById, MODEL_CATALOG} from '../../mnn/modelCatalog';
+import {getDownloadSnapshot, startModelDownload, subscribeModelDownload} from '../../mnn/modelDownloadService';
+import {
+  deleteModelFiles,
+  formatBytes,
+  getModelInstallState,
+  InstalledModelInfo,
+  listInstalledModels,
+  readActiveModelId,
+  readDownloadState,
+  writeActiveModelId,
+} from '../../mnn/modelStorage';
 import {theme} from '../theme';
 import {Card} from '../primitives/Card';
 
-// Qwen2.5-0.5B-Instruct-MNN（INT4，~550MB 含 embeddings），模拟器/low-RAM 联调用。
-// 真机 SME2/1.7B 验收时改回 taobao-mnn/Qwen3-1.7B-MNN 并同步 MnnModelPaths.SUBDIR。
-const MODEL_BASE_URL = 'https://hf-mirror.com/taobao-mnn/Qwen2.5-0.5B-Instruct-MNN/resolve/main/';
-const MODEL_SUBDIR = 'mnn_models/qwen2.5-0.5b/';
-const MODEL_FILES = [
-  'config.json',
-  'llm_config.json',
-  'llm.mnn',
-  'llm.mnn.weight',
-  'tokenizer.txt',
-  'embeddings_bf16.bin',
-];
+type Props = {
+  onModelsChanged?: () => void;
+};
 
-type Status = 'idle' | 'checking' | 'ready' | 'downloading' | 'done' | 'error';
+type UiStatus = 'idle' | 'checking' | 'downloading' | 'error';
 
-export function ModelDownloadCard(): React.JSX.Element {
+type CatuneMnnModule = {
+  releaseModel?: () => Promise<boolean>;
+};
+
+const CatuneMnn = NativeModules.CatuneMnn as CatuneMnnModule | undefined;
+
+async function releaseNativeModel(): Promise<void> {
+  try {
+    await CatuneMnn?.releaseModel?.();
+  } catch {
+    // ignore
+  }
+}
+
+export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
   const docDir: string | null = FileSystem.documentDirectory ?? null;
   const supported = Boolean(docDir);
-  const modelDir = supported ? docDir + MODEL_SUBDIR : '';
 
-  const [status, setStatus] = useState<Status>('idle');
+  const [uiStatus, setUiStatus] = useState<UiStatus>('checking');
+  const [selectedId, setSelectedId] = useState(DEFAULT_MODEL_ID);
+  const [activeId, setActiveId] = useState(DEFAULT_MODEL_ID);
+  const [installState, setInstallState] = useState<'missing' | 'partial' | 'ready'>('missing');
+  const [installed, setInstalled] = useState<InstalledModelInfo[]>([]);
   const [progress, setProgress] = useState(0);
-  const [current, setCurrent] = useState('');
+  const [currentFile, setCurrentFile] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [hasPendingDownload, setHasPendingDownload] = useState(false);
 
-  const checkExisting = useCallback(async () => {
-    if (!supported) {
+  const selectedModel = getModelById(selectedId) ?? getDefaultModel();
+  const isActive = activeId === selectedId && installState === 'ready';
+  const isDownloading = uiStatus === 'downloading';
+
+  const refresh = useCallback(async () => {
+    if (!docDir) {
       return;
     }
-    setStatus('checking');
-    try {
-      const info = await FileSystem.getInfoAsync(modelDir + 'config.json');
-      setStatus(info.exists ? 'ready' : 'idle');
-    } catch {
-      setStatus('idle');
-    }
-  }, [supported, modelDir]);
-
-  useEffect(() => {
-    checkExisting();
-  }, [checkExisting]);
-
-  const download = async () => {
-    if (!MODEL_BASE_URL) {
-      setError('请先在 ModelDownloadCard.tsx 填 MODEL_BASE_URL（MNN 模型托管地址）。');
-      setStatus('error');
-      return;
-    }
-    setStatus('downloading');
+    const model = getModelById(selectedId) ?? getDefaultModel();
+    setUiStatus('checking');
     setError(null);
-    setProgress(0);
     try {
-      await FileSystem.makeDirectoryAsync(modelDir, {intermediates: true});
-      for (let i = 0; i < MODEL_FILES.length; i++) {
-        const f = MODEL_FILES[i];
-        setCurrent(f);
-        const dl = FileSystem.createDownloadResumable(MODEL_BASE_URL + f, modelDir + f, {}, p => {
-          const filePct = p.totalBytesExpectedToWrite > 0 ? p.totalBytesWritten / p.totalBytesExpectedToWrite : 0;
-          setProgress((i + filePct) / MODEL_FILES.length);
-        });
-        await dl.downloadAsync();
-      }
-      setProgress(1);
-      setStatus('done');
+      const [nextActive, nextInstalled, pending] = await Promise.all([
+        readActiveModelId(docDir),
+        listInstalledModels(docDir),
+        readDownloadState(docDir),
+      ]);
+      setActiveId(nextActive);
+      setInstalled(nextInstalled);
+      setHasPendingDownload(Boolean(pending && pending.modelId === selectedId));
+      const state = await getModelInstallState(docDir, model);
+      setInstallState(state);
+      const job = getDownloadSnapshot();
+      setUiStatus(job.status === 'downloading' && job.modelId === selectedId ? 'downloading' : 'idle');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
-      setStatus('error');
+      setUiStatus('error');
+    }
+  }, [docDir, selectedId]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh, selectedId]);
+
+  useEffect(
+    () =>
+      subscribeModelDownload(job => {
+        if (job.modelId !== selectedId && job.status === 'downloading') {
+          return;
+        }
+        if (job.status === 'downloading') {
+          setUiStatus('downloading');
+          setProgress(job.progress);
+          setCurrentFile(job.currentFile);
+          setError(null);
+        } else if (job.status === 'error') {
+          setUiStatus('error');
+          setError(job.error);
+          setHasPendingDownload(true);
+        } else if (job.status === 'done') {
+          setProgress(1);
+          setUiStatus('idle');
+          refresh().then(() => onModelsChanged?.());
+        }
+      }),
+    [onModelsChanged, refresh, selectedId],
+  );
+
+  const activateModel = useCallback(
+    async (modelId: string) => {
+      if (!docDir) {
+        return;
+      }
+      const model = getModelById(modelId);
+      if (!model) {
+        return;
+      }
+      const state = await getModelInstallState(docDir, model);
+      if (state !== 'ready') {
+        setError('模型文件不完整，请重新下载或继续下载。');
+        return;
+      }
+      await writeActiveModelId(docDir, modelId);
+      await releaseNativeModel();
+      setActiveId(modelId);
+      await refresh();
+      onModelsChanged?.();
+    },
+    [docDir, onModelsChanged, refresh],
+  );
+
+  const runDownload = async (replaceExisting: boolean) => {
+    setError(null);
+    try {
+      await startModelDownload(selectedId, replaceExisting);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setHasPendingDownload(true);
+      setUiStatus('error');
     }
   };
 
-  const statusText =
-    status === 'ready' || status === 'done'
-      ? '✓ 模型已就绪'
-      : status === 'downloading'
-      ? `下载中：${current}  ${(progress * 100).toFixed(0)}%`
-      : status === 'checking'
-      ? '检查中…'
-      : '未下载';
+  const onPressDownload = () => {
+    if (installState === 'ready') {
+      Alert.alert('更换模型', `将重新下载并覆盖 ${selectedModel.label} 的本地文件。`, [
+        {text: '取消', style: 'cancel'},
+        {text: '继续', style: 'destructive', onPress: () => runDownload(true)},
+      ]);
+      return;
+    }
+    runDownload(false);
+  };
+
+  const onPressDelete = () => {
+    Alert.alert(
+      '删除模型',
+      `确定删除 ${selectedModel.label}？将释放 ${selectedModel.sizeHint} 左右空间。`,
+      [
+        {text: '取消', style: 'cancel'},
+        {
+          text: '删除',
+          style: 'destructive',
+          onPress: async () => {
+            if (!docDir) {
+              return;
+            }
+            await deleteModelFiles(docDir, selectedModel);
+            if (activeId === selectedId) {
+              const remaining = installed.filter(x => x.model.id !== selectedId && x.state === 'ready');
+              if (remaining.length > 0) {
+                await writeActiveModelId(docDir, remaining[0].model.id);
+              } else {
+                await FileSystem.deleteAsync(docDir + 'mnn_models/.active', {idempotent: true});
+              }
+              await releaseNativeModel();
+            }
+            setInstallState('missing');
+            await refresh();
+            onModelsChanged?.();
+          },
+        },
+      ],
+    );
+  };
+
+  const primaryLabel = (() => {
+    if (isDownloading) {
+      return '下载中…';
+    }
+    if (hasPendingDownload && installState !== 'ready') {
+      return '继续下载';
+    }
+    if (installState === 'ready') {
+      return isActive ? '更换模型' : '设为此模型';
+    }
+    if (installState === 'partial') {
+      return '继续下载';
+    }
+    return '下载模型';
+  })();
+
+  const onPressPrimary = () => {
+    if (isDownloading) {
+      return;
+    }
+    if (installState === 'ready' && !isActive) {
+      activateModel(selectedId);
+      return;
+    }
+    onPressDownload();
+  };
+
+  const statusLine = (() => {
+    if (isDownloading) {
+      return `下载中：${currentFile} ${(progress * 100).toFixed(0)}%（可切 Tab / 退后台）`;
+    }
+    if (installState === 'ready' && isActive) {
+      return '✓ 已安装 · 当前使用';
+    }
+    if (installState === 'ready') {
+      return '✓ 已安装（未选用）';
+    }
+    if (installState === 'partial' || hasPendingDownload) {
+      return '⚠ 未完整（可继续下载）';
+    }
+    return '未下载';
+  })();
 
   return (
     <Card style={styles.card}>
@@ -102,26 +239,74 @@ export function ModelDownloadCard(): React.JSX.Element {
         <Text style={styles.hint}>下载仅手机端（iOS/Android）支持；Web 端不可用。</Text>
       ) : (
         <View>
-          <Text style={styles.statusText}>{statusText}</Text>
-          {status === 'downloading' ? (
+          <Text style={styles.sectionLabel}>选择模型</Text>
+          <View style={styles.wrapRow}>
+            {MODEL_CATALOG.map(m => (
+              <Pressable
+                key={m.id}
+                style={[styles.pill, selectedId === m.id && styles.pillActive]}
+                disabled={isDownloading}
+                onPress={() => setSelectedId(m.id)}>
+                <Text style={[styles.pillText, selectedId === m.id && styles.pillTextActive]}>{m.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <Text style={styles.statusText}>{statusLine}</Text>
+          <Text style={styles.metaText}>
+            {selectedModel.label} · {selectedModel.sizeHint} · 目录 {selectedModel.subdir}
+          </Text>
+          {isActive ? (
+            <Text style={styles.metaText}>当前 App 推理使用此模型（与 MNN DEBUG 路径一致）</Text>
+          ) : null}
+
+          {isDownloading ? (
             <View style={styles.bar}>
-              <View style={[styles.barFill, {width: `${progress * 100}%`}]} />
+              <View style={[styles.barFill, {width: `${Math.max(progress, 0.02) * 100}%`}]} />
             </View>
           ) : null}
+
           {error ? (
-            <Text style={styles.error} numberOfLines={3}>
+            <Text style={styles.error} numberOfLines={4}>
               {error}
             </Text>
           ) : null}
-          <Pressable
-            style={[styles.btn, status === 'downloading' && styles.btnDisabled]}
-            disabled={status === 'downloading'}
-            onPress={download}>
-            <Text style={styles.btnText}>{status === 'ready' || status === 'done' ? '重新下载' : '下载模型'}</Text>
-          </Pressable>
+
+          <View style={styles.rowGap}>
+            <Pressable
+              style={[styles.btn, styles.btnPrimary, isDownloading && styles.btnDisabled]}
+              disabled={isDownloading}
+              onPress={onPressPrimary}>
+              <Text style={styles.btnText}>{primaryLabel}</Text>
+            </Pressable>
+            {(installState === 'ready' || installState === 'partial') && !isDownloading ? (
+              <Pressable style={[styles.btn, styles.btnDanger]} onPress={onPressDelete}>
+                <Text style={styles.btnDangerText}>删除</Text>
+              </Pressable>
+            ) : null}
+          </View>
+
+          {installed.length > 0 ? (
+            <View style={styles.installedBlock}>
+              <Text style={styles.sectionLabel}>本机已安装</Text>
+              {installed.map(item => (
+                <Text key={item.model.id} style={styles.installedRow}>
+                  {item.model.label}
+                  {item.state === 'partial' ? '（不完整）' : ''}
+                  {activeId === item.model.id && item.state === 'ready' ? ' · 使用中' : ''}
+                  {' · '}
+                  {formatBytes(item.dirSizeBytes)}
+                </Text>
+              ))}
+            </View>
+          ) : null}
+
           <Text style={styles.hint}>
-            当前：Qwen2.5-0.5B（约 550MB，模拟器友好）。下到 {MODEL_SUBDIR}，下完在「MNN DEBUG」点 INFER TEXT。{'\n'}
-            模型须为 MNN 格式，不是 AWQ / GGUF。
+            支持断点续传与后台下载：切 Tab 或按 Home 退后台可继续；若系统杀进程，下次打开 App 自动续传。{'\n'}
+            {selectedModel.emulatorNote ?? ''}
+            {'\n'}
+            模拟器 INT4 乱码/!!!! 属虚拟 CPU 限制，换更小模型无法根治；真机中文已验证可用。{'\n'}
+            模型须为 MNN 格式（config.json / llm.mnn / llm.mnn.weight），不是 AWQ / GGUF。
           </Text>
         </View>
       )}
@@ -131,21 +316,44 @@ export function ModelDownloadCard(): React.JSX.Element {
 
 const styles = StyleSheet.create({
   card: {marginBottom: theme.spacing.md},
-  cardTitle: {color: theme.colors.textPrimary, fontSize: theme.font.sizeMd, fontWeight: theme.font.weightBold, marginBottom: 12},
-  statusText: {color: theme.colors.textSecondary, fontSize: theme.font.sizeSm},
+  cardTitle: {
+    color: theme.colors.textPrimary,
+    fontSize: theme.font.sizeMd,
+    fontWeight: theme.font.weightBold,
+    marginBottom: 12,
+  },
+  sectionLabel: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginBottom: 8},
+  statusText: {color: theme.colors.textSecondary, fontSize: theme.font.sizeSm, marginTop: 4},
+  metaText: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: 4, lineHeight: 16},
   bar: {height: 6, borderRadius: 3, backgroundColor: theme.colors.surfaceMuted, marginTop: 10, overflow: 'hidden'},
   barFill: {height: 6, borderRadius: 3, backgroundColor: theme.colors.primary},
   error: {color: '#C20A0A', fontSize: theme.font.sizeXs, marginTop: 10, lineHeight: 17},
+  rowGap: {flexDirection: 'row', gap: theme.spacing.sm, marginTop: 12, flexWrap: 'wrap'},
+  wrapRow: {flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm},
   btn: {
-    marginTop: 12,
     paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: theme.radius.md,
     borderWidth: 1,
-    borderColor: theme.colors.primary,
-    backgroundColor: '#FCEAE0',
     alignItems: 'center',
   },
+  btnPrimary: {borderColor: theme.colors.primary, backgroundColor: '#FCEAE0'},
+  btnDanger: {borderColor: '#C20A0A', backgroundColor: '#FFF5F5'},
   btnDisabled: {opacity: 0.5},
   btnText: {color: theme.colors.primary, fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
-  hint: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: 10, lineHeight: 18},
+  btnDangerText: {color: '#C20A0A', fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
+  pill: {
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceMuted,
+  },
+  pillActive: {borderColor: theme.colors.primary, backgroundColor: '#FCEAE0'},
+  pillText: {color: theme.colors.textMuted, fontSize: theme.font.sizeSm},
+  pillTextActive: {color: theme.colors.primary, fontWeight: theme.font.weightBold},
+  installedBlock: {marginTop: 14},
+  installedRow: {color: theme.colors.textSecondary, fontSize: theme.font.sizeXs, lineHeight: 18},
+  hint: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: 12, lineHeight: 18},
 });
