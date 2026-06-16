@@ -28,7 +28,7 @@ export function TabBar({
       <View style={styles.bar}>
         {tabs.map(tab => {
           const active = tab.value === value;
-          const color = active ? theme.colors.primary : theme.colors.textMuted;
+          const color = active ? theme.colors.textPrimary : theme.colors.textMuted;
           const Icon = tab.Icon;
           return (
             <Pressable

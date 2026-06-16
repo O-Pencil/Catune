@@ -1,212 +1,294 @@
 /**
  * @file DeskScreen.tsx
- * @description 书桌/仪表盘屏（= web DeskPage 的 RN 还原）：问候头 + 设备状态卡 + 脊柱可视化(react-native-svg 3 节点) + 节点角度卡 + 建议。浅色 Haptic。
+ * @description Desk 首页：Header + 模型反馈 + 三指标 + portal.png 主视觉 + 传感器点位曲线。三端共用（iOS/Android/Web）。
  *
  * [WHO] 导出 `DeskScreen`
- * [FROM] 依赖 `react`、`react-native`、`react-native-svg`、`../theme`、`../primitives/Card`、`../icons`、`../../posture/types`
+ * [FROM] 依赖 `react`、`react-native`、`react-native-svg`、`../../posture/types`、`../theme`、`../../../public/portal.png`
  * [TO] 被 `AppShell` 在 desk tab 渲染
- * [HERE] src/ui/screens/DeskScreen.tsx · 仪表盘屏
+ * [HERE] src/ui/screens/DeskScreen.tsx · Desk 首页布局原型的 RNW 迁移版
  */
-import React from 'react';
-import {ScrollView, StyleSheet, Text, View} from 'react-native';
-import Svg, {Circle, Ellipse, G, Rect, Text as SvgText} from 'react-native-svg';
-import {theme, statusColor} from '../theme';
-import {Card} from '../primitives/Card';
-import {BatteryIcon, DeviceIcon} from '../icons';
-import {DashboardState} from '../../posture/types';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
+import {Animated, Easing, Image, StyleSheet, Text, View} from 'react-native';
+import Svg, {Circle, Path} from 'react-native-svg';
 
-// 设备数据暂为 mock（真实 3 节点 BLE 姿态带为决赛硬件）
-const DEVICE = {name: 'PoseMaster-C6', battery: 72, signal: -52, firmware: 'v1.2.3', connected: true};
+import {DashboardState} from '../../posture/types';
+import {theme} from '../theme';
+
+const PORTAL_IMAGE = require('../../../public/portal.png');
+
+const SENSOR_VIEWBOX = {width: 184, height: 190};
+const SENSOR_CENTER_X = 92;
+const SENSOR_PIXELS_PER_DEGREE = 1.5;
+const SENSOR_MAX_OFFSET_DEG = 18;
+
+type SensorAngles = {
+  c7: number;
+  t12: number;
+  l5: number;
+};
+
+type SensorPoint = {
+  key: keyof SensorAngles;
+  x: number;
+  y: number;
+};
 
 function greeting(): string {
   const h = new Date().getHours();
-  return h < 12 ? '早上好' : h < 18 ? '下午好' : '晚上好';
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
 }
 
-/** 单节点角度 → 状态色（healthy/warning/alert）。 */
-function nodeColor(value: number, healthyMax: number, warnMax: number): string {
-  const v = Math.abs(value);
-  if (v <= healthyMax) {
-    return theme.colors.statusNormal;
-  }
-  if (v <= warnMax) {
-    return theme.colors.statusWarning;
-  }
-  return theme.colors.statusAlert;
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
-function Greeting(): React.JSX.Element {
+function formatDeg(value: number): string {
+  return `${Math.abs(value).toFixed(1)}°`;
+}
+
+function sensorPoints(angles: SensorAngles): SensorPoint[] {
+  const base: Array<{key: keyof SensorAngles; y: number}> = [
+    {key: 'c7', y: 54},
+    {key: 't12', y: 104},
+    {key: 'l5', y: 154},
+  ];
+
+  return base.map(point => {
+    const angle = clamp(angles[point.key], -SENSOR_MAX_OFFSET_DEG, SENSOR_MAX_OFFSET_DEG);
+    return {
+      ...point,
+      x: SENSOR_CENTER_X + angle * SENSOR_PIXELS_PER_DEGREE,
+    };
+  });
+}
+
+function curvePath(points: SensorPoint[]): string {
+  const [c7, t12, l5] = points;
+  const midC7T12 = (c7.y + t12.y) / 2;
+  const midT12L5 = (t12.y + l5.y) / 2;
+  return `M ${c7.x} ${c7.y} C ${c7.x} ${midC7T12}, ${t12.x} ${midC7T12}, ${t12.x} ${t12.y} S ${l5.x} ${midT12L5}, ${l5.x} ${l5.y}`;
+}
+
+function useAnimatedSensorAngles(target: SensorAngles): SensorAngles {
+  const c7 = useRef(new Animated.Value(target.c7)).current;
+  const t12 = useRef(new Animated.Value(target.t12)).current;
+  const l5 = useRef(new Animated.Value(target.l5)).current;
+  const [current, setCurrent] = useState(target);
+
+  useEffect(() => {
+    const c7Listener = c7.addListener(({value}) => {
+      setCurrent(previous => ({...previous, c7: value}));
+    });
+    const t12Listener = t12.addListener(({value}) => {
+      setCurrent(previous => ({...previous, t12: value}));
+    });
+    const l5Listener = l5.addListener(({value}) => {
+      setCurrent(previous => ({...previous, l5: value}));
+    });
+
+    return () => {
+      c7.removeListener(c7Listener);
+      t12.removeListener(t12Listener);
+      l5.removeListener(l5Listener);
+    };
+  }, [c7, t12, l5]);
+
+  useEffect(() => {
+    const config = {
+      duration: 420,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    };
+    Animated.parallel([
+      Animated.timing(c7, {...config, toValue: target.c7}),
+      Animated.timing(t12, {...config, toValue: target.t12}),
+      Animated.timing(l5, {...config, toValue: target.l5}),
+    ]).start();
+  }, [c7, l5, t12, target.c7, target.l5, target.t12]);
+
+  return current;
+}
+
+function DeskHeader({state}: {state: DashboardState}): React.JSX.Element {
+  const feedback =
+    state.advice ||
+    'Your sitting posture is very standard, please keep it up, you have been sitting still for 3h 28min already!';
+
   return (
-    <View style={styles.greeting}>
-      <Text style={styles.kicker}>POSTURE-AI</Text>
-      <Text style={styles.greetText}>
-        {greeting()}，<Text style={{color: theme.colors.primary}}>同学</Text>
+    <View style={styles.header}>
+      <Text style={styles.kicker}>CATUNE</Text>
+      <Text style={styles.greeting}>
+        {greeting()}, <Text style={styles.highlight}>Xiao Yu</Text>
+      </Text>
+      <Text style={styles.feedback} numberOfLines={3}>
+        {state.streaming ? `${feedback} ▍` : feedback}
       </Text>
     </View>
   );
 }
 
-function DeviceStatus(): React.JSX.Element {
-  return (
-    <Card style={styles.deviceCard}>
-      <View style={styles.deviceIcon}>
-        <DeviceIcon size={18} color={theme.colors.primary} />
-      </View>
-      <View style={{flex: 1}}>
-        <View style={styles.deviceNameRow}>
-          <Text style={styles.deviceName}>{DEVICE.name}</Text>
-          <View style={[styles.dot, {backgroundColor: DEVICE.connected ? theme.colors.statusNormal : theme.colors.statusOffline}]} />
-        </View>
-        <Text style={styles.deviceMeta}>
-          3 Nodes · {DEVICE.signal}dBm · {DEVICE.firmware}
-        </Text>
-      </View>
-      <View style={styles.batteryRow}>
-        <BatteryIcon level={DEVICE.battery / 100} />
-        <Text style={styles.battery}>{DEVICE.battery}%</Text>
-      </View>
-    </Card>
-  );
-}
-
-/** 脊柱可视化：椎骨盘 + 3 个监测节点（react-native-svg）。 */
-function SpineVisualizer({state}: {state: DashboardState}): React.JSX.Element {
-  const color = statusColor(state.posture);
-  const nodes = [
-    {label: 'C7', y: 44, c: nodeColor(state.neckPitch, 20, 30)},
-    {label: 'T12', y: 120, c: nodeColor(state.thorPitch, 15, 25)},
-    {label: 'L5', y: 196, c: nodeColor(state.lumbarRoll, 10, 20)},
+function MetricStrip({state}: {state: DashboardState}): React.JSX.Element {
+  const metrics = [
+    {label: 'C7 Neck', value: state.neckPitch},
+    {label: 'T12 Thor.', value: state.thorPitch},
+    {label: 'L5 Lumbar', value: state.lumbarRoll},
   ];
-  const curveX = (y: number) => 56 + 6 * Math.sin(y / 38);
-
-  const discs: {x: number; y: number}[] = [];
-  for (let y = 24; y <= 216; y += 16) {
-    discs.push({x: curveX(y), y});
-  }
 
   return (
-    <Card style={styles.spineCard}>
-      <View style={[styles.pill, {backgroundColor: `${color}22`, borderColor: color}]}>
-        <View style={[styles.pillDot, {backgroundColor: color}]} />
-        <Text style={[styles.pillText, {color}]}>{state.postureLabel}</Text>
-      </View>
-      <View style={styles.scoreBox}>
-        <Text style={styles.scoreKicker}>SCORE</Text>
-        <Text style={[styles.scoreNum, {color}]}>{state.score}</Text>
-      </View>
-
-      <View style={styles.spineSvgWrap}>
-        <Svg width="100%" height="100%" viewBox="0 0 120 240" preserveAspectRatio="xMidYMid meet">
-          {discs.map((d, i) => (
-            <Ellipse key={i} cx={d.x} cy={d.y} rx={7} ry={3.2} fill={theme.colors.border} />
-          ))}
-          {nodes.map(n => {
-            const x = curveX(n.y);
-            return (
-              <G key={n.label}>
-                <Circle cx={x} cy={n.y} r={9} stroke={n.c} strokeWidth={2.5} fill={theme.colors.surface} />
-                <Circle cx={x} cy={n.y} r={4} fill={n.c} />
-                <Rect x={x + 12} y={n.y - 9} width={28} height={18} rx={5} fill={theme.colors.surface} stroke={n.c} strokeWidth={1.5} />
-                <SvgText x={x + 26} y={n.y + 4} fontSize={10} fontWeight="700" fill={theme.colors.textPrimary} textAnchor="middle">
-                  {n.label}
-                </SvgText>
-              </G>
-            );
-          })}
-        </Svg>
-      </View>
-    </Card>
+    <View style={styles.metrics}>
+      {metrics.map(metric => (
+        <View key={metric.label} style={styles.metricItem}>
+          <Text style={styles.metricLabel} numberOfLines={1}>
+            {metric.label}
+          </Text>
+          <Text style={styles.metricValue}>{formatDeg(metric.value)}</Text>
+        </View>
+      ))}
+    </View>
   );
 }
 
-function NodeAngleCard({label, value, color}: {label: string; value: number; color: string}): React.JSX.Element {
+function SensorOverlay({state}: {state: DashboardState}): React.JSX.Element {
+  const targetAngles = useMemo(
+    () => ({
+      c7: state.neckPitch,
+      t12: state.thorPitch,
+      l5: state.lumbarRoll,
+    }),
+    [state.lumbarRoll, state.neckPitch, state.thorPitch],
+  );
+  const animatedAngles = useAnimatedSensorAngles(targetAngles);
+  const points = sensorPoints(animatedAngles);
+  const path = curvePath(points);
+
   return (
-    <Card style={styles.angleCard}>
-      <Text style={styles.angleLabel}>{label}</Text>
-      <Text style={[styles.angleValue, {color}]}>{value.toFixed(0)}°</Text>
-    </Card>
+    <View style={styles.sensorOverlay} pointerEvents="none">
+      <Svg
+        width="100%"
+        height="100%"
+        viewBox={`0 0 ${SENSOR_VIEWBOX.width} ${SENSOR_VIEWBOX.height}`}
+        preserveAspectRatio="xMidYMid meet">
+        <Path d={path} fill="none" stroke="#5F625D" strokeOpacity={0.48} strokeWidth={1.4} strokeLinecap="round" />
+        {points.map(point => (
+          <Circle
+            key={point.key}
+            cx={point.x}
+            cy={point.y}
+            r={7}
+            fill="rgba(20,20,20,0.35)"
+            stroke="rgba(255,255,255,0.9)"
+            strokeWidth={1.2}
+          />
+        ))}
+        {points.map(point => (
+          <Circle key={`${point.key}-core`} cx={point.x} cy={point.y} r={2.3} fill="#FFFFFF" />
+        ))}
+      </Svg>
+    </View>
+  );
+}
+
+function PostureScene({state}: {state: DashboardState}): React.JSX.Element {
+  return (
+    <View style={styles.scene}>
+      <View style={styles.sceneFrame}>
+        <Image source={PORTAL_IMAGE} style={styles.sceneImage} resizeMode="contain" />
+        <SensorOverlay state={state} />
+      </View>
+    </View>
   );
 }
 
 export function DeskScreen({state}: {state: DashboardState; subtitle?: string}): React.JSX.Element {
-  const cNeck = nodeColor(state.neckPitch, 20, 30);
-  const cThor = nodeColor(state.thorPitch, 15, 25);
-  const cLum = nodeColor(state.lumbarRoll, 10, 20);
   return (
-    <ScrollView style={styles.root} contentContainerStyle={styles.container}>
-      <Greeting />
-      <DeviceStatus />
-      <SpineVisualizer state={state} />
-
-      <View style={styles.row}>
-        <NodeAngleCard label="C7 Neck" value={state.neckPitch} color={cNeck} />
-        <NodeAngleCard label="T12 Thor." value={state.thorPitch} color={cThor} />
-        <NodeAngleCard label="L5 Lumbar" value={state.lumbarRoll} color={cLum} />
-      </View>
-
-      {state.advice ? (
-        <Card style={styles.adviceCard}>
-          <Text style={styles.adviceLabel}>
-            建议{state.inferenceSource === 'RULE_FALLBACK' ? '（规则）' : ''}
-          </Text>
-          <Text style={styles.adviceText}>{state.advice}</Text>
-        </Card>
-      ) : null}
-    </ScrollView>
+    <View style={styles.root}>
+      <DeskHeader state={state} />
+      <MetricStrip state={state} />
+      <PostureScene state={state} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {flex: 1, backgroundColor: theme.colors.background},
-  container: {padding: theme.spacing.md, paddingTop: 48, paddingBottom: 120, gap: theme.spacing.sm},
-
-  greeting: {paddingHorizontal: 4, paddingBottom: 4},
-  kicker: {color: theme.colors.textMuted, fontSize: 10, fontWeight: theme.font.weightBold, letterSpacing: 1},
-  greetText: {color: theme.colors.textPrimary, fontSize: theme.font.sizeLg, fontWeight: theme.font.weightBold, marginTop: 2},
-
-  deviceCard: {flexDirection: 'row', alignItems: 'center', gap: 12, padding: theme.spacing.md},
-  deviceIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(251,75,0,0.10)',
-    alignItems: 'center',
-    justifyContent: 'center',
+  root: {
+    flex: 1,
+    backgroundColor: theme.colors.surface,
+    paddingBottom: 104,
   },
-  deviceNameRow: {flexDirection: 'row', alignItems: 'center', gap: 6},
-  deviceName: {color: theme.colors.textPrimary, fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
-  dot: {width: 8, height: 8, borderRadius: 4},
-  deviceMeta: {color: theme.colors.textSecondary, fontSize: 10, marginTop: 2},
-  batteryRow: {flexDirection: 'row', alignItems: 'center', gap: 6},
-  battery: {color: theme.colors.textSecondary, fontSize: 11, fontWeight: theme.font.weightBold},
-
-  spineCard: {height: 300, position: 'relative', padding: theme.spacing.md},
-  pill: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    zIndex: 10,
+  header: {
+    paddingHorizontal: 32,
+    paddingTop: 36,
+    paddingBottom: 8,
+  },
+  kicker: {
+    color: theme.colors.textMuted,
+    fontSize: 8,
+    fontWeight: theme.font.weightBold,
+    letterSpacing: 0.5,
+  },
+  greeting: {
+    color: theme.colors.textPrimary,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
+  },
+  highlight: {
+    color: theme.colors.primary,
+  },
+  feedback: {
+    color: theme.colors.textPrimary,
+    fontSize: 13,
+    fontWeight: theme.font.weightBold,
+    lineHeight: 17,
+    marginTop: 6,
+    maxWidth: 300,
+  },
+  metrics: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    borderRadius: theme.radius.pill,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 32,
+    paddingBottom: 8,
+    gap: 20,
   },
-  pillDot: {width: 6, height: 6, borderRadius: 3},
-  pillText: {fontSize: 11, fontWeight: theme.font.weightBold},
-  scoreBox: {position: 'absolute', top: 12, right: 12, zIndex: 10, alignItems: 'flex-end'},
-  scoreKicker: {color: theme.colors.textMuted, fontSize: 9, fontWeight: theme.font.weightBold, letterSpacing: 1},
-  scoreNum: {fontSize: 38, fontWeight: theme.font.weightHeavy, lineHeight: 40},
-  spineSvgWrap: {flex: 1, marginTop: 36},
-
-  row: {flexDirection: 'row', gap: theme.spacing.sm},
-  angleCard: {flex: 1, alignItems: 'center', paddingVertical: theme.spacing.md},
-  angleLabel: {color: theme.colors.textMuted, fontSize: 10, fontWeight: theme.font.weightBold},
-  angleValue: {fontSize: theme.font.sizeLg, fontWeight: theme.font.weightBold, marginTop: 4},
-
-  adviceCard: {},
-  adviceLabel: {color: theme.colors.primary, fontSize: theme.font.sizeXs, fontWeight: theme.font.weightBold, marginBottom: 6},
-  adviceText: {color: theme.colors.textPrimary, fontSize: theme.font.sizeSm, lineHeight: 20},
+  metricItem: {
+    flex: 1,
+    minWidth: 0,
+  },
+  metricLabel: {
+    color: theme.colors.textMuted,
+    fontSize: 8,
+    fontWeight: theme.font.weightBold,
+  },
+  metricValue: {
+    color: theme.colors.primary,
+    fontSize: 14,
+    fontWeight: theme.font.weightBold,
+    lineHeight: 18,
+    marginTop: 3,
+  },
+  scene: {
+    flex: 1,
+    minHeight: 300,
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
+  },
+  sceneFrame: {
+    width: '100%',
+    height: '100%',
+    maxHeight: '100%',
+    position: 'relative',
+  },
+  sceneImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+  },
+  sensorOverlay: {
+    position: 'absolute',
+    left: '62%',
+    top: '28%',
+    width: 184,
+    height: 190,
+    marginLeft: -92,
+  },
 });
