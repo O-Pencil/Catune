@@ -1,26 +1,22 @@
 /**
  * @file PlantScreen.tsx
- * @description 植物养成屏（= web PlantPage 的 RN 还原）：5 阶段植物 SVG + 阶段选择 + 积分日志。浅色 Haptic。
+ * @description 植物养成屏（= web PlantPage 的 RN 还原）：5 阶段植物 SVG + 阶段进度 + 真实积分日志。浅色 Haptic。
+ *   数据由 src/posture/growth.ts 的成长累加器驱动（真实坐姿 → 积分/阶段/日志），阶段条为只读进度指示。
  *
  * [WHO] 导出 `PlantScreen`
- * [FROM] 依赖 `react`、`react-native`、`react-native-svg`、`../theme`、`../primitives/Card`、`../icons`(SunIcon)
- * [TO] 被 `AppShell` 在 plant tab 渲染
+ * [FROM] 依赖 `react`、`react-native`、`react-native-svg`、`../theme`、`../primitives/Card`、`../icons`(SunIcon)、`../../posture/growth`(GrowthState)
+ * [TO] 被 `AppShell` 在 plant tab 渲染（接收 growth 真实数据）
  * [HERE] src/ui/screens/PlantScreen.tsx · 植物养成屏
  */
-import React, {useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import React from 'react';
+import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import Svg, {Circle, Ellipse, Path, Rect} from 'react-native-svg';
 import {theme} from '../theme';
 import {Card} from '../primitives/Card';
 import {SunIcon} from '../icons';
+import {GrowthState, STAGE_NAMES} from '../../posture/growth';
 
-const STAGES = [
-  {id: 0, name: 'Seed'},
-  {id: 1, name: 'Sprout'},
-  {id: 2, name: 'Sapling'},
-  {id: 3, name: 'Bud'},
-  {id: 4, name: 'Fruit'},
-];
+const STAGES = STAGE_NAMES.map((name, id) => ({id, name}));
 
 const P = {
   potBody: '#C2725A',
@@ -38,19 +34,6 @@ const P = {
   fruitRed: '#C75348',
   fruitYellow: '#E8A93C',
 };
-
-const SCORE_LOG = [
-  {id: 1, time: '06-08 14:30', action: 'Good posture 30 min', delta: 5, score: 92},
-  {id: 2, time: '06-08 12:00', action: 'Missed stretch break', delta: -3, score: 87},
-  {id: 3, time: '06-08 09:15', action: 'Morning check-in', delta: 2, score: 90},
-  {id: 4, time: '06-07 18:30', action: 'Sustained good posture', delta: 8, score: 88},
-  {id: 5, time: '06-07 15:00', action: 'Slouching detected', delta: -5, score: 80},
-  {id: 6, time: '06-07 10:00', action: 'Morning check-in', delta: 2, score: 85},
-  {id: 7, time: '06-06 20:15', action: 'Evening stretch done', delta: 3, score: 83},
-  {id: 8, time: '06-06 14:00', action: 'Forward head posture', delta: -4, score: 80},
-  {id: 9, time: '06-06 09:30', action: 'Morning check-in', delta: 2, score: 84},
-  {id: 10, time: '06-05 16:45', action: 'Good posture 45 min', delta: 7, score: 82},
-];
 
 function PlantSvg({stage}: {stage: number}): React.JSX.Element {
   return (
@@ -112,9 +95,9 @@ function PlantSvg({stage}: {stage: number}): React.JSX.Element {
   );
 }
 
-export function PlantScreen(): React.JSX.Element {
-  const [stage, setStage] = useState(2);
-  const currentScore = SCORE_LOG[0]?.score ?? 0;
+export function PlantScreen({growth}: {growth: GrowthState}): React.JSX.Element {
+  const stage = growth.stage;
+  const log = growth.log;
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.container}>
       <Text style={styles.title}>Posture Plant</Text>
@@ -128,7 +111,7 @@ export function PlantScreen(): React.JSX.Element {
           <View style={{alignItems: 'flex-end'}}>
             <Text style={styles.dim}>Current Stage</Text>
             <Text style={styles.stageText}>
-              {stage} · {STAGES[stage].name}
+              {stage} · {growth.stageName}
             </Text>
           </View>
         </View>
@@ -141,14 +124,15 @@ export function PlantScreen(): React.JSX.Element {
           <PlantSvg stage={stage} />
         </View>
 
+        {/* 阶段条为只读进度指示：高亮当前由积分推导的阶段 */}
         <View style={styles.selector}>
           {STAGES.map(st => {
             const active = st.id === stage;
             return (
-              <Pressable key={st.id} style={[styles.stageBtn, active && styles.stageBtnActive]} onPress={() => setStage(st.id)}>
+              <View key={st.id} style={[styles.stageBtn, active && styles.stageBtnActive]}>
                 <Text style={[styles.stageNum, active && styles.stageActiveText]}>{st.id}</Text>
                 <Text style={[styles.stageName, active && styles.stageActiveText]}>{st.name}</Text>
-              </Pressable>
+              </View>
             );
           })}
         </View>
@@ -158,24 +142,28 @@ export function PlantScreen(): React.JSX.Element {
         <View style={styles.logHeader}>
           <Text style={styles.kicker}>SCORE LOG</Text>
           <View style={styles.scoreRow}>
-            <Text style={styles.scoreNum}>{currentScore}</Text>
+            <Text style={styles.scoreNum}>{growth.points}</Text>
             <Text style={styles.dim}> pts</Text>
           </View>
         </View>
-        {SCORE_LOG.map((e, i) => (
-          <View key={e.id} style={[styles.logRow, i < SCORE_LOG.length - 1 && styles.logDivider]}>
-            <View style={styles.logTextBlock}>
-              <Text style={styles.logTime}>{e.time}</Text>
-              <Text style={styles.logAction} numberOfLines={1}>
-                {e.action}
+        {log.length === 0 ? (
+          <Text style={styles.emptyLog}>保持坐姿即可累积积分；异常坐姿会在此记录。</Text>
+        ) : (
+          log.map((e, i) => (
+            <View key={e.id} style={[styles.logRow, i < log.length - 1 && styles.logDivider]}>
+              <View style={styles.logTextBlock}>
+                <Text style={styles.logTime}>{e.time}</Text>
+                <Text style={styles.logAction} numberOfLines={1}>
+                  {e.action}
+                </Text>
+              </View>
+              <Text style={[styles.logDelta, {color: e.delta > 0 ? '#3A9E1F' : '#C20A0A'}]}>
+                {e.delta > 0 ? '+' : ''}
+                {e.delta}
               </Text>
             </View>
-            <Text style={[styles.logDelta, {color: e.delta > 0 ? '#3A9E1F' : '#C20A0A'}]}>
-              {e.delta > 0 ? '+' : ''}
-              {e.delta}
-            </Text>
-          </View>
-        ))}
+          ))
+        )}
       </Card>
     </ScrollView>
   );
@@ -228,4 +216,5 @@ const styles = StyleSheet.create({
   logTime: {color: theme.colors.textMuted, fontSize: 11},
   logAction: {color: theme.colors.textSecondary, fontSize: 13, marginTop: 2},
   logDelta: {fontSize: 14, fontWeight: theme.font.weightBold, marginLeft: 12},
+  emptyLog: {color: theme.colors.textMuted, fontSize: 12, lineHeight: 18, paddingVertical: 8},
 });

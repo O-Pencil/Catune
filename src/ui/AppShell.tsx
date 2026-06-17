@@ -20,6 +20,7 @@ import {theme} from './theme';
 import {FanIcon, GaugeIcon, SettingsIcon} from './icons';
 import {MockScenario} from '../posture/mock';
 import {DashboardState} from '../posture/types';
+import {GrowthState} from '../posture/growth';
 import {resumePendingDownloadIfNeeded} from '../mnn/modelDownloadService';
 
 const TABS: Tab[] = [
@@ -30,6 +31,7 @@ const TABS: Tab[] = [
 
 type Props = {
   state: DashboardState;
+  growth: GrowthState;
   mode: DataMode;
   deskSubtitle?: string;
   onUseSensor: () => void;
@@ -37,7 +39,7 @@ type Props = {
   onScenario: (s: MockScenario) => void;
 };
 
-export function AppShell({state, mode, deskSubtitle, onUseSensor, onUseMock, onScenario}: Props): React.JSX.Element {
+export function AppShell({state, growth, mode, deskSubtitle, onUseSensor, onUseMock, onScenario}: Props): React.JSX.Element {
   const [tab, setTab] = useState('desk');
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export function AppShell({state, mode, deskSubtitle, onUseSensor, onUseMock, onS
       <StatusBar style="dark" />
       <ModelDownloadBanner onOpenSettings={() => setTab('settings')} />
       {tab === 'desk' && <DeskScreen state={state} subtitle={deskSubtitle} />}
-      {tab === 'plant' && <PlantScreen />}
+      {tab === 'plant' && <PlantScreen growth={growth} />}
       {tab === 'settings' && (
         <SettingsScreen
           state={state}

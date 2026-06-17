@@ -15,6 +15,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import {AppShell} from './src/ui/AppShell';
 import {createPostureEngine} from './src/posture/engine';
 import {createAdviceOrchestrator} from './src/posture/adviceOrchestrator';
+import {createGrowthTracker, GrowthState} from './src/posture/growth';
 import {createMockSource, MockScenario, MockSource} from './src/posture/mock';
 import {createSensorSource, SensorSource} from './src/posture/sensorSource';
 import {DashboardState} from './src/posture/types';
@@ -35,14 +36,17 @@ const INITIAL: DashboardState = {
 type Mode = 'loading' | 'sensor' | 'mock';
 
 function App(): React.JSX.Element {
-  const [k, setK] = useState<DashboardState>(INITIAL);
-  const [mode, setMode] = useState<Mode>('loading');
-
   const engineRef = useRef(createPostureEngine());
   const sensorRef = useRef<SensorSource>(createSensorSource(engineRef.current));
   const mockRef = useRef<MockSource>(createMockSource(engineRef.current));
   // 模型建议异步编排（姿态变化/久持时后台生成温暖文案，流式写回；规则先兜底）
   const adviceRef = useRef(createAdviceOrchestrator(engineRef.current));
+  // 植物成长累加器（真实坐姿 → 积分/阶段/日志，驱动 Plant 页）
+  const growthRef = useRef(createGrowthTracker(engineRef.current));
+
+  const [k, setK] = useState<DashboardState>(INITIAL);
+  const [growth, setGrowth] = useState<GrowthState>(() => growthRef.current.getState());
+  const [mode, setMode] = useState<Mode>('loading');
 
   const useSensor = async () => {
     mockRef.current.stop();
@@ -71,11 +75,15 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     const unsubscribe = engineRef.current.subscribe(setK);
+    const unsubscribeGrowth = growthRef.current.subscribe(setGrowth);
     adviceRef.current.start();
+    growthRef.current.start();
     useSensor();
     return () => {
       unsubscribe();
+      unsubscribeGrowth();
       adviceRef.current.stop();
+      growthRef.current.stop();
       sensorRef.current.stop();
       mockRef.current.stop();
     };
@@ -92,6 +100,7 @@ function App(): React.JSX.Element {
   return (
     <AppShell
       state={k}
+      growth={growth}
       mode={mode}
       deskSubtitle={subtitle}
       onUseSensor={useSensor}
