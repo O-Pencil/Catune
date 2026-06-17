@@ -33,6 +33,8 @@ type Props = {
   invert?: boolean;
   /** 角度变化 → 帧号滑动的缓动时长（ms）。越大越"重"、越小越跟手。 */
   glideMs?: number;
+  /** 当前显示帧号变化时回调（供点位层锁定当前帧的脊柱锚点）。 */
+  onFrameChange?: (frameIndex: number) => void;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -56,12 +58,17 @@ export function CatFlipbook({
   maxDeg = 25,
   invert = false,
   glideMs = 260,
+  onFrameChange,
   style,
 }: Props): React.JSX.Element | null {
   const count = frames.length;
   const initial = angleToIndex(angle, count, minDeg, maxDeg, invert);
   const idx = useRef(new Animated.Value(initial)).current;
   const [display, setDisplay] = useState(Math.round(initial));
+
+  // 用 ref 持有最新回调，避免它频繁变更触发监听器重订阅
+  const onFrameChangeRef = useRef(onFrameChange);
+  onFrameChangeRef.current = onFrameChange;
 
   // 角度变化 → 平滑滑到目标帧（中间帧一张张划过 = 连续转头，而非瞬移切图）
   useEffect(() => {
@@ -84,6 +91,14 @@ export function CatFlipbook({
     });
     return () => idx.removeListener(sub);
   }, [idx]);
+
+  // 帧号变化 → 通知点位层（锁定当前帧的脊柱锚点）
+  useEffect(() => {
+    if (count === 0) {
+      return;
+    }
+    onFrameChangeRef.current?.(Math.max(0, Math.min(count - 1, display)));
+  }, [display, count]);
 
   if (count === 0) {
     return null;

@@ -14,113 +14,41 @@
  * [TO] 被 `AppShell` 在 desk tab 渲染
  * [HERE] src/ui/screens/DeskScreen.tsx · Desk 首页布局原型的 RNW 迁移版
  */
-import React, {useEffect, useMemo, useRef, useState} from 'react';
-import {Animated, Easing, Image, StyleSheet, Text, View} from 'react-native';
+import React, {useMemo, useState} from 'react';
+import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import Svg, {Circle, Path} from 'react-native-svg';
 
 import {DashboardState} from '../../posture/types';
 import {theme} from '../theme';
 import {CatFlipbook} from '../components/CatFlipbook';
 import {LEAN_FRAMES} from '../assets/leanFrames';
+import {anchorsAt} from '../assets/catAnchors';
 
 const PORTAL_IMAGE = require('../../../public/portal.png');
 /** 左右倾翻页的可视角度范围（lumbarRoll 度）→ 第 0..N-1 帧。按视频实拍幅度可调。 */
 const LEAN_RANGE_DEG = 25;
+/** 点位校准模式：开启后点击猫身打印该点的 (u,v) + 当前帧号，用于填 catAnchors 的关键帧表。 */
+const CALIBRATE = false;
 const SCENE_ASPECT_RATIO = 2 / 3;
 const SCENE_MAX_WIDTH = 360;
 const SCENE_BOTTOM_GAP = 10;
 
-const SENSOR_VIEWBOX = {width: 184, height: 190};
-const SENSOR_CENTER_X = 92;
-const SENSOR_PIXELS_PER_DEGREE = 1.5;
-const SENSOR_MAX_OFFSET_DEG = 18;
-
-type SensorAngles = {
-  c7: number;
-  t12: number;
-  l5: number;
-};
-
-type SensorPoint = {
-  key: keyof SensorAngles;
-  x: number;
-  y: number;
-};
+type Pixel = {x: number; y: number};
 
 function greeting(): string {
   const h = new Date().getHours();
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
-
 function formatDeg(value: number): string {
   return `${Math.abs(value).toFixed(1)}°`;
 }
 
-function sensorPoints(angles: SensorAngles): SensorPoint[] {
-  const base: Array<{key: keyof SensorAngles; y: number}> = [
-    {key: 'c7', y: 54},
-    {key: 't12', y: 104},
-    {key: 'l5', y: 154},
-  ];
-
-  return base.map(point => {
-    const angle = clamp(angles[point.key], -SENSOR_MAX_OFFSET_DEG, SENSOR_MAX_OFFSET_DEG);
-    return {
-      ...point,
-      x: SENSOR_CENTER_X + angle * SENSOR_PIXELS_PER_DEGREE,
-    };
-  });
-}
-
-function curvePath(points: SensorPoint[]): string {
-  const [c7, t12, l5] = points;
-  const midC7T12 = (c7.y + t12.y) / 2;
-  const midT12L5 = (t12.y + l5.y) / 2;
-  return `M ${c7.x} ${c7.y} C ${c7.x} ${midC7T12}, ${t12.x} ${midC7T12}, ${t12.x} ${t12.y} S ${l5.x} ${midT12L5}, ${l5.x} ${l5.y}`;
-}
-
-function useAnimatedSensorAngles(target: SensorAngles): SensorAngles {
-  const c7 = useRef(new Animated.Value(target.c7)).current;
-  const t12 = useRef(new Animated.Value(target.t12)).current;
-  const l5 = useRef(new Animated.Value(target.l5)).current;
-  const [current, setCurrent] = useState(target);
-
-  useEffect(() => {
-    const c7Listener = c7.addListener(({value}) => {
-      setCurrent(previous => ({...previous, c7: value}));
-    });
-    const t12Listener = t12.addListener(({value}) => {
-      setCurrent(previous => ({...previous, t12: value}));
-    });
-    const l5Listener = l5.addListener(({value}) => {
-      setCurrent(previous => ({...previous, l5: value}));
-    });
-
-    return () => {
-      c7.removeListener(c7Listener);
-      t12.removeListener(t12Listener);
-      l5.removeListener(l5Listener);
-    };
-  }, [c7, t12, l5]);
-
-  useEffect(() => {
-    const config = {
-      duration: 420,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    };
-    Animated.parallel([
-      Animated.timing(c7, {...config, toValue: target.c7}),
-      Animated.timing(t12, {...config, toValue: target.t12}),
-      Animated.timing(l5, {...config, toValue: target.l5}),
-    ]).start();
-  }, [c7, l5, t12, target.c7, target.l5, target.t12]);
-
-  return current;
+/** 经过 C7→T12→L5 三点的平滑脊柱曲线（像素坐标）。 */
+function spineCurvePath(c7: Pixel, t12: Pixel, l5: Pixel): string {
+  const midUpper = (c7.y + t12.y) / 2;
+  const midLower = (t12.y + l5.y) / 2;
+  return `M ${c7.x} ${c7.y} C ${c7.x} ${midUpper}, ${t12.x} ${midUpper}, ${t12.x} ${t12.y} S ${l5.x} ${midLower}, ${l5.x} ${l5.y}`;
 }
 
 function DeskHeader({state}: {state: DashboardState}): React.JSX.Element {
@@ -162,26 +90,23 @@ function MetricStrip({state}: {state: DashboardState}): React.JSX.Element {
   );
 }
 
-function SensorOverlay({state}: {state: DashboardState}): React.JSX.Element {
-  const targetAngles = useMemo(
-    () => ({
-      c7: state.neckPitch,
-      t12: state.thorPitch,
-      l5: state.lumbarRoll,
-    }),
-    [state.lumbarRoll, state.neckPitch, state.thorPitch],
-  );
-  const animatedAngles = useAnimatedSensorAngles(targetAngles);
-  const points = sensorPoints(animatedAngles);
-  const path = curvePath(points);
+/** 点位层：按「当前帧」的脊柱锚点（比例）× 猫盒子尺寸换算成像素，贴在猫的头→腰上。 */
+function SensorOverlay({frameIndex, boxW, boxH}: {frameIndex: number; boxW: number; boxH: number}): React.JSX.Element | null {
+  if (boxW <= 0 || boxH <= 0) {
+    return null;
+  }
+  const spine = anchorsAt(frameIndex);
+  const points = [
+    {key: 'c7', x: spine.c7.u * boxW, y: spine.c7.v * boxH},
+    {key: 't12', x: spine.t12.u * boxW, y: spine.t12.v * boxH},
+    {key: 'l5', x: spine.l5.u * boxW, y: spine.l5.v * boxH},
+  ];
+  const [c7, t12, l5] = points;
+  const path = spineCurvePath(c7, t12, l5);
 
   return (
-    <View style={styles.sensorOverlay} pointerEvents="none">
-      <Svg
-        width="100%"
-        height="100%"
-        viewBox={`0 0 ${SENSOR_VIEWBOX.width} ${SENSOR_VIEWBOX.height}`}
-        preserveAspectRatio="xMidYMid meet">
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Svg width={boxW} height={boxH} viewBox={`0 0 ${boxW} ${boxH}`}>
         <Path d={path} fill="none" stroke="#5F625D" strokeOpacity={0.48} strokeWidth={1.4} strokeLinecap="round" />
         {points.map(point => (
           <Circle
@@ -205,7 +130,21 @@ function SensorOverlay({state}: {state: DashboardState}): React.JSX.Element {
 function PostureScene({state}: {state: DashboardState}): React.JSX.Element {
   const hasFrames = LEAN_FRAMES.length > 1;
   const [visualSize, setVisualSize] = useState<{width: number; height: number} | null>(null);
-  const visualStyle = useMemo(() => [styles.sceneVisual, visualSize ?? undefined], [visualSize]);
+  const [frameIndex, setFrameIndex] = useState(0);
+  const boxStyle = useMemo(() => [styles.sceneVisual, visualSize ?? undefined], [visualSize]);
+  const boxW = visualSize?.width ?? 0;
+  const boxH = visualSize?.height ?? 0;
+
+  // 校准：点击猫身 → 打印该点比例 (u,v) + 当前帧号，照着填 catAnchors 的关键帧表
+  const onCalibrateTap = (evt: {nativeEvent: {locationX: number; locationY: number}}) => {
+    if (boxW <= 0 || boxH <= 0) {
+      return;
+    }
+    const u = (evt.nativeEvent.locationX / boxW).toFixed(3);
+    const v = (evt.nativeEvent.locationY / boxH).toFixed(3);
+    // eslint-disable-next-line no-console
+    console.log(`[catAnchors] frame=${frameIndex}  u=${u}  v=${v}`);
+  };
 
   return (
     <View style={styles.scene}>
@@ -223,19 +162,27 @@ function PostureScene({state}: {state: DashboardState}): React.JSX.Element {
               : {width: nextWidth, height: nextHeight},
           );
         }}>
-        {hasFrames ? (
-          // 角度驱动翻页：左右倾 → 帧序列平滑播放（无帧时下面回退静态图）
-          <CatFlipbook
-            frames={LEAN_FRAMES}
-            angle={state.lumbarRoll}
-            minDeg={-LEAN_RANGE_DEG}
-            maxDeg={LEAN_RANGE_DEG}
-            style={visualStyle}
-          />
-        ) : (
-          <Image source={PORTAL_IMAGE} style={visualStyle} resizeMode="contain" />
-        )}
-        <SensorOverlay state={state} />
+        {/* 猫盒子：翻页图 + 点位层共用同一矩形，点位用比例坐标自动贴合 */}
+        <View style={boxStyle}>
+          {hasFrames ? (
+            <CatFlipbook
+              frames={LEAN_FRAMES}
+              angle={state.lumbarRoll}
+              minDeg={-LEAN_RANGE_DEG}
+              maxDeg={LEAN_RANGE_DEG}
+              onFrameChange={setFrameIndex}
+              style={StyleSheet.absoluteFill}
+            />
+          ) : (
+            <Image source={PORTAL_IMAGE} style={StyleSheet.absoluteFill} resizeMode="contain" />
+          )}
+          <SensorOverlay frameIndex={frameIndex} boxW={boxW} boxH={boxH} />
+          {CALIBRATE ? (
+            <Pressable style={StyleSheet.absoluteFill} onPress={onCalibrateTap}>
+              <Text style={styles.calibrateBadge}>CAL · frame {frameIndex}</Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
     </View>
   );
@@ -325,13 +272,18 @@ const styles = StyleSheet.create({
   sceneVisual: {
     marginBottom: SCENE_BOTTOM_GAP,
     overflow: 'hidden',
+    position: 'relative',
   },
-  sensorOverlay: {
+  calibrateBadge: {
     position: 'absolute',
-    left: '62%',
-    top: '28%',
-    width: 184,
-    height: 190,
-    marginLeft: -92,
+    top: 6,
+    left: 6,
+    color: '#FB4B00',
+    fontSize: 11,
+    fontWeight: theme.font.weightBold,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
 });
