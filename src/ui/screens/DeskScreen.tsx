@@ -1,9 +1,15 @@
 /**
  * @file DeskScreen.tsx
- * @description Desk 首页：Header + 模型反馈 + 三指标 + portal.png 主视觉 + 传感器点位曲线。三端共用（iOS/Android/Web）。
+ * @description Desk 首页：Header + 模型反馈 + 三指标 + 主视觉（猫翻页帧序列，回退 portal.png）+ 传感器点位曲线。三端共用。
+ *
+ * 主视觉「角度驱动翻页」：左右倾(lumbar)映射到 LEAN_FRAMES 帧下标，由 CatFlipbook 平滑播放（等价视频、零解码）。
+ * 接入帧（单轴样例，用现有 left2right.mp4）：
+ *   1) 切帧：ffmpeg -i public/mp4/left2right.mp4 -vsync 0 public/frames/lean/lean_%04d.png
+ *   2) 生成清单：node scripts/gen-frame-manifest.mjs lean
+ *   帧密度足够（≤1°/帧）+ CatFlipbook 帧号缓动 → 视觉与视频无异。无帧时自动回退 portal.png。
  *
  * [WHO] 导出 `DeskScreen`
- * [FROM] 依赖 `react`、`react-native`、`react-native-svg`、`../../posture/types`、`../theme`、`../../../public/portal.png`
+ * [FROM] 依赖 `react`、`react-native`、`react-native-svg`、`../../posture/types`、`../theme`、`../components/CatFlipbook`、`../assets/leanFrames`、`../../../public/portal.png`
  * [TO] 被 `AppShell` 在 desk tab 渲染
  * [HERE] src/ui/screens/DeskScreen.tsx · Desk 首页布局原型的 RNW 迁移版
  */
@@ -13,8 +19,12 @@ import Svg, {Circle, Path} from 'react-native-svg';
 
 import {DashboardState} from '../../posture/types';
 import {theme} from '../theme';
+import {CatFlipbook} from '../components/CatFlipbook';
+import {LEAN_FRAMES} from '../assets/leanFrames';
 
 const PORTAL_IMAGE = require('../../../public/portal.png');
+/** 左右倾翻页的可视角度范围（lumbarRoll 度）→ 第 0..N-1 帧。按视频实拍幅度可调。 */
+const LEAN_RANGE_DEG = 25;
 
 const SENSOR_VIEWBOX = {width: 184, height: 190};
 const SENSOR_CENTER_X = 92;
@@ -189,10 +199,22 @@ function SensorOverlay({state}: {state: DashboardState}): React.JSX.Element {
 }
 
 function PostureScene({state}: {state: DashboardState}): React.JSX.Element {
+  const hasFrames = LEAN_FRAMES.length > 1;
   return (
     <View style={styles.scene}>
       <View style={styles.sceneFrame}>
-        <Image source={PORTAL_IMAGE} style={styles.sceneImage} resizeMode="contain" />
+        {hasFrames ? (
+          // 角度驱动翻页：左右倾 → 帧序列平滑播放（无帧时下面回退静态图）
+          <CatFlipbook
+            frames={LEAN_FRAMES}
+            angle={state.lumbarRoll}
+            minDeg={-LEAN_RANGE_DEG}
+            maxDeg={LEAN_RANGE_DEG}
+            style={styles.sceneImage}
+          />
+        ) : (
+          <Image source={PORTAL_IMAGE} style={styles.sceneImage} resizeMode="contain" />
+        )}
         <SensorOverlay state={state} />
       </View>
     </View>
