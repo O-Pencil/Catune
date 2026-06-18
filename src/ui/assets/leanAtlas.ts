@@ -25,7 +25,7 @@ export type AtlasMeta = {
 
 // AUTO-GENERATED-ATLAS-START
 export const LEAN_ATLAS: AtlasMeta = {
-  source: null, // 打包后由 scripts/pack-atlas.mjs 改为 require('../../../public/atlas/lean_atlas.png')
+  source: require('../../../public/atlas/lean_atlas.png'),
   cols: 8,
   rows: 8,
   count: 60,
