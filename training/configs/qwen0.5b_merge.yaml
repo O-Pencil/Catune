@@ -1,0 +1,13 @@
+# LLaMA-Factory · 把 LoRA 合并回基座，导出完整 HF 模型（再转 MNN）
+# llamafactory-cli export training/configs/qwen0.5b_merge.yaml
+
+model_name_or_path: Qwen/Qwen2.5-0.5B-Instruct
+adapter_name_or_path: training/saves/qwen0.5b-catune-lora
+template: qwen
+finetuning_type: lora
+trust_remote_code: true
+
+export_dir: training/saves/qwen0.5b-catune-merged
+export_size: 2
+export_device: cpu
+export_legacy_format: false

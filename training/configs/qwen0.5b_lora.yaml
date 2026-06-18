@@ -1,0 +1,45 @@
+# LLaMA-Factory · Qwen2.5-0.5B 坐姿教练 LoRA SFT
+# 在你的本地 GPU 机器上跑：llamafactory-cli train training/configs/qwen0.5b_lora.yaml
+
+### model
+model_name_or_path: Qwen/Qwen2.5-0.5B-Instruct
+trust_remote_code: true
+
+### method
+stage: sft
+do_train: true
+finetuning_type: lora
+lora_target: all
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+
+### dataset
+dataset: catune_posture
+dataset_dir: training/data        # 指向放 dataset_info.json + train.jsonl 的目录
+template: qwen
+cutoff_len: 512
+overwrite_cache: true
+preprocessing_num_workers: 4
+
+### output
+output_dir: training/saves/qwen0.5b-catune-lora
+logging_steps: 10
+save_steps: 200
+plot_loss: true
+overwrite_output_dir: true
+
+### train（0.5B + 数百样本，单卡 8GB 显存足够）
+per_device_train_batch_size: 8
+gradient_accumulation_steps: 2
+learning_rate: 2.0e-4
+num_train_epochs: 4.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+bf16: true
+
+### eval
+val_size: 0.1
+per_device_eval_batch_size: 8
+eval_strategy: steps
+eval_steps: 200
