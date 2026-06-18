@@ -2,12 +2,10 @@
  * @file leanAtlas.ts
  * @description 左右倾（lumbar）轴的雪碧图（sprite sheet）元数据。所有帧拼成一张图集，CatSprite 据此裁剪平移。
  *
- * 打包步骤（在你的 Mac 上跑；本仓库环境无 ffmpeg）：
- *   mkdir -p public/atlas
- *   # 60 帧缩到 320×480，8×8 行优先拼成一张（行优先 = CatSprite 的 col=i%cols 排布）
- *   ffmpeg -start_number 1 -i public/frames/lean/lean_stage_%04d.png \
- *     -vf "scale=320:480,tile=8x8" -frames:v 1 public/atlas/lean_atlas.png
- * 打包后：把下方 source 改成 require('../../../public/atlas/lean_atlas.png')，并核对 cols/rows/count。
+ * 打包（在你的 Mac 上，一条命令搞定，自动写好下方 meta）：
+ *   node scripts/pack-atlas.mjs lean
+ *   （脚本会按帧数算 8×N 网格、scale 到 320×480、ffmpeg tile 拼图，并把 source/cols/rows/count 写回本文件）
+ * 没装 ffmpeg 时脚本会打印手动命令；手动打包后再跑一次脚本写 meta。
  *
  * [WHO] 导出 `AtlasMeta`、`LEAN_ATLAS`
  * [FROM] public/atlas/lean_atlas.png（构建期由 Metro 打包）
@@ -25,9 +23,11 @@ export type AtlasMeta = {
   count: number;
 };
 
+// AUTO-GENERATED-ATLAS-START
 export const LEAN_ATLAS: AtlasMeta = {
-  source: null, // 打包后改为：require('../../../public/atlas/lean_atlas.png')
+  source: null, // 打包后由 scripts/pack-atlas.mjs 改为 require('../../../public/atlas/lean_atlas.png')
   cols: 8,
   rows: 8,
   count: 60,
 };
+// AUTO-GENERATED-ATLAS-END
