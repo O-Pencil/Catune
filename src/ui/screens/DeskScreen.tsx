@@ -21,7 +21,9 @@ import Svg, {Circle, Path} from 'react-native-svg';
 import {DashboardState} from '../../posture/types';
 import {theme} from '../theme';
 import {CatFlipbook} from '../components/CatFlipbook';
+import {CatSprite} from '../components/CatSprite';
 import {LEAN_FRAMES} from '../assets/leanFrames';
+import {LEAN_ATLAS} from '../assets/leanAtlas';
 import {anchorsAt} from '../assets/catAnchors';
 
 const PORTAL_IMAGE = require('../../../public/portal.png');
@@ -127,10 +129,17 @@ function SensorOverlay({frameIndex, boxW, boxH}: {frameIndex: number; boxW: numb
   );
 }
 
+type RenderMode = 'sprite' | 'frames';
+
 function PostureScene({state}: {state: DashboardState}): React.JSX.Element {
+  const hasAtlas = LEAN_ATLAS.source != null && LEAN_ATLAS.count > 1;
   const hasFrames = LEAN_FRAMES.length > 1;
   const [visualSize, setVisualSize] = useState<{width: number; height: number} | null>(null);
   const [frameIndex, setFrameIndex] = useState(0);
+  // 渲染方式：默认雪碧图；两者都就绪时可切到旧的逐帧关键帧渲染做对比
+  const [renderMode, setRenderMode] = useState<RenderMode>('sprite');
+  const useSprite = renderMode === 'sprite' && hasAtlas;
+  const showModeToggle = hasAtlas && hasFrames;
   const boxStyle = useMemo(() => [styles.sceneVisual, visualSize ?? undefined], [visualSize]);
   const boxW = visualSize?.width ?? 0;
   const boxH = visualSize?.height ?? 0;
@@ -162,9 +171,25 @@ function PostureScene({state}: {state: DashboardState}): React.JSX.Element {
               : {width: nextWidth, height: nextHeight},
           );
         }}>
-        {/* 猫盒子：翻页图 + 点位层共用同一矩形，点位用比例坐标自动贴合 */}
+        {/* 猫盒子：主视觉 + 点位层共用同一矩形，点位用比例坐标自动贴合 */}
         <View style={boxStyle}>
-          {hasFrames ? (
+          {useSprite && LEAN_ATLAS.source ? (
+            // 雪碧图：UI 线程平移，无逐帧解码/重渲染（首选，最顺）
+            <CatSprite
+              atlas={LEAN_ATLAS.source}
+              cols={LEAN_ATLAS.cols}
+              rows={LEAN_ATLAS.rows}
+              count={LEAN_ATLAS.count}
+              angle={state.lumbarRoll}
+              cellWidth={boxW}
+              cellHeight={boxH}
+              minDeg={-LEAN_RANGE_DEG}
+              maxDeg={LEAN_RANGE_DEG}
+              onFrameChange={setFrameIndex}
+              style={StyleSheet.absoluteFill}
+            />
+          ) : hasFrames ? (
+            // 旧方案：逐帧关键帧（保留用于对比）
             <CatFlipbook
               frames={LEAN_FRAMES}
               angle={state.lumbarRoll}
@@ -183,6 +208,21 @@ function PostureScene({state}: {state: DashboardState}): React.JSX.Element {
             </Pressable>
           ) : null}
         </View>
+
+        {showModeToggle ? (
+          <View style={styles.modeToggle}>
+            <Pressable
+              style={[styles.modeSeg, renderMode === 'sprite' && styles.modeSegActive]}
+              onPress={() => setRenderMode('sprite')}>
+              <Text style={[styles.modeSegText, renderMode === 'sprite' && styles.modeSegTextActive]}>雪碧图</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.modeSeg, renderMode === 'frames' && styles.modeSegActive]}
+              onPress={() => setRenderMode('frames')}>
+              <Text style={[styles.modeSegText, renderMode === 'frames' && styles.modeSegTextActive]}>关键帧</Text>
+            </Pressable>
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -273,6 +313,33 @@ const styles = StyleSheet.create({
     marginBottom: SCENE_BOTTOM_GAP,
     overflow: 'hidden',
     position: 'relative',
+  },
+  modeToggle: {
+    position: 'absolute',
+    top: 4,
+    right: 8,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    padding: 2,
+  },
+  modeSeg: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: theme.radius.pill,
+  },
+  modeSegActive: {
+    backgroundColor: '#FCEAE0',
+  },
+  modeSegText: {
+    color: theme.colors.textMuted,
+    fontSize: 11,
+    fontWeight: theme.font.weightBold,
+  },
+  modeSegTextActive: {
+    color: theme.colors.primary,
   },
   calibrateBadge: {
     position: 'absolute',
