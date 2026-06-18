@@ -22,6 +22,18 @@ export const POSTURE_LABELS: Record<PostureName, string> = {
 /** 文案来源：端侧模型 / 规则兜底。 */
 export type InferenceSource = 'MODEL' | 'RULE_FALLBACK';
 
+/** 脊柱三节点（用于点位高亮）。 */
+export type SpineNode = 'c7' | 't12' | 'l5';
+
+/** 建议动作（来自模型输出的 [动作:xxx] 标签，或规则按姿态推导）。驱动猫点位高亮 / 跟练联动。 */
+export type PostureAction =
+  | 'NECK_RETRACTION' // 颈部回缩
+  | 'THORACIC_EXTENSION' // 胸椎伸展
+  | 'SCAPULAR_RETRACTION' // 肩胛收紧
+  | 'WEIGHT_CENTERING' // 重心摆正
+  | 'STAND_BREAK' // 起身活动
+  | 'HOLD'; // 保持
+
 /** 端侧模型输入信号（一个时间窗口的角度 + 上下文）。 */
 export interface PostureSignals {
   neckPitchDeg: number;
@@ -65,4 +77,6 @@ export interface DashboardState extends KinematicsState {
   inferenceSource: InferenceSource;
   /** 端侧模型是否正在流式生成（UI 可据此显示"AI 生成中 ▍"光标）。 */
   streaming: boolean;
+  /** 当前建议动作（模型 [动作:] 标签解析 / 规则按姿态推导）；驱动点位高亮与跟练联动。 */
+  action: PostureAction | null;
 }

@@ -18,7 +18,8 @@ import React, {useMemo, useState} from 'react';
 import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import Svg, {Circle, Path} from 'react-native-svg';
 
-import {DashboardState} from '../../posture/types';
+import {DashboardState, SpineNode} from '../../posture/types';
+import {ACTION_META} from '../../posture/actionTag';
 import {theme} from '../theme';
 import {CatFlipbook} from '../components/CatFlipbook';
 import {CatSprite} from '../components/CatSprite';
@@ -57,6 +58,8 @@ function DeskHeader({state}: {state: DashboardState}): React.JSX.Element {
   const feedback =
     state.advice ||
     'Your sitting posture is very standard, please keep it up, you have been sitting still for 3h 28min already!';
+  // 模型/规则给出的建议动作（HOLD/保持 不展示 chip）
+  const showAction = state.action != null && state.action !== 'HOLD';
 
   return (
     <View style={styles.header}>
@@ -67,6 +70,12 @@ function DeskHeader({state}: {state: DashboardState}): React.JSX.Element {
       <Text style={styles.feedback} numberOfLines={3}>
         {state.streaming ? `${feedback} ▍` : feedback}
       </Text>
+      {showAction && state.action ? (
+        <View style={styles.actionChip}>
+          <View style={styles.actionDot} />
+          <Text style={styles.actionChipText}>建议动作 · {ACTION_META[state.action].label}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -92,13 +101,24 @@ function MetricStrip({state}: {state: DashboardState}): React.JSX.Element {
   );
 }
 
-/** 点位层：按「当前帧」的脊柱锚点（比例）× 猫盒子尺寸换算成像素，贴在猫的头→腰上。 */
-function SensorOverlay({frameIndex, boxW, boxH}: {frameIndex: number; boxW: number; boxH: number}): React.JSX.Element | null {
+/** 点位层：按「当前帧」的脊柱锚点（比例）× 猫盒子尺寸换算成像素，贴在猫的头→腰上。
+ *  highlightNode：当前建议动作对应的节点 → 该点位橙色高亮 + 光环，把"模型说的动作"指到猫身上。 */
+function SensorOverlay({
+  frameIndex,
+  boxW,
+  boxH,
+  highlightNode,
+}: {
+  frameIndex: number;
+  boxW: number;
+  boxH: number;
+  highlightNode: SpineNode | null;
+}): React.JSX.Element | null {
   if (boxW <= 0 || boxH <= 0) {
     return null;
   }
   const spine = anchorsAt(frameIndex);
-  const points = [
+  const points: Array<{key: SpineNode; x: number; y: number}> = [
     {key: 'c7', x: spine.c7.u * boxW, y: spine.c7.v * boxH},
     {key: 't12', x: spine.t12.u * boxW, y: spine.t12.v * boxH},
     {key: 'l5', x: spine.l5.u * boxW, y: spine.l5.v * boxH},
@@ -110,20 +130,23 @@ function SensorOverlay({frameIndex, boxW, boxH}: {frameIndex: number; boxW: numb
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       <Svg width={boxW} height={boxH} viewBox={`0 0 ${boxW} ${boxH}`}>
         <Path d={path} fill="none" stroke="#5F625D" strokeOpacity={0.48} strokeWidth={1.4} strokeLinecap="round" />
-        {points.map(point => (
-          <Circle
-            key={point.key}
-            cx={point.x}
-            cy={point.y}
-            r={7}
-            fill="rgba(20,20,20,0.35)"
-            stroke="rgba(255,255,255,0.9)"
-            strokeWidth={1.2}
-          />
-        ))}
-        {points.map(point => (
-          <Circle key={`${point.key}-core`} cx={point.x} cy={point.y} r={2.3} fill="#FFFFFF" />
-        ))}
+        {points.map(point => {
+          const hot = point.key === highlightNode;
+          return (
+            <React.Fragment key={point.key}>
+              {hot ? <Circle cx={point.x} cy={point.y} r={13} fill="rgba(251,75,0,0.18)" /> : null}
+              <Circle
+                cx={point.x}
+                cy={point.y}
+                r={hot ? 9 : 7}
+                fill={hot ? 'rgba(251,75,0,0.30)' : 'rgba(20,20,20,0.35)'}
+                stroke={hot ? '#FB4B00' : 'rgba(255,255,255,0.9)'}
+                strokeWidth={hot ? 2 : 1.2}
+              />
+              <Circle cx={point.x} cy={point.y} r={2.3} fill={hot ? '#FFE6D8' : '#FFFFFF'} />
+            </React.Fragment>
+          );
+        })}
       </Svg>
     </View>
   );
@@ -140,6 +163,8 @@ function PostureScene({state}: {state: DashboardState}): React.JSX.Element {
   const [renderMode, setRenderMode] = useState<RenderMode>('sprite');
   const useSprite = renderMode === 'sprite' && hasAtlas;
   const showModeToggle = hasAtlas && hasFrames;
+  // 建议动作 → 高亮对应脊柱节点（把"模型说的动作"指到猫身上）
+  const highlightNode: SpineNode | null = state.action ? ACTION_META[state.action].node : null;
   const boxStyle = useMemo(() => [styles.sceneVisual, visualSize ?? undefined], [visualSize]);
   const boxW = visualSize?.width ?? 0;
   const boxH = visualSize?.height ?? 0;
@@ -201,7 +226,7 @@ function PostureScene({state}: {state: DashboardState}): React.JSX.Element {
           ) : (
             <Image source={PORTAL_IMAGE} style={StyleSheet.absoluteFill} resizeMode="contain" />
           )}
-          <SensorOverlay frameIndex={frameIndex} boxW={boxW} boxH={boxH} />
+          <SensorOverlay frameIndex={frameIndex} boxW={boxW} boxH={boxH} highlightNode={highlightNode} />
           {CALIBRATE ? (
             <Pressable style={StyleSheet.absoluteFill} onPress={onCalibrateTap}>
               <Text style={styles.calibrateBadge}>CAL · frame {frameIndex}</Text>
@@ -271,6 +296,30 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     marginTop: 6,
     maxWidth: 300,
+  },
+  actionChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: theme.radius.pill,
+    backgroundColor: '#FCEAE0',
+    borderWidth: 1,
+    borderColor: 'rgba(251,75,0,0.35)',
+  },
+  actionDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.colors.primary,
+    marginRight: 6,
+  },
+  actionChipText: {
+    color: theme.colors.primary,
+    fontSize: 11,
+    fontWeight: theme.font.weightBold,
   },
   metrics: {
     flexDirection: 'row',

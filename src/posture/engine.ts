@@ -20,6 +20,7 @@ import {
   PostureName,
   PostureSignals,
 } from './types';
+import {actionForPosture, parseActionTag} from './actionTag';
 
 /** 与 PRD 阈值一致：胸椎后凸>15°=驼背；颈前倾>20°；腰椎侧倾<-10°。 */
 export const THRESHOLDS = {
@@ -158,6 +159,7 @@ export function createPostureEngine(): PostureEngine {
     advice: '',
     inferenceSource: 'RULE_FALLBACK',
     streaming: false,
+    action: null,
   };
   const listeners = new Set<(s: DashboardState) => void>();
   const emit = () => listeners.forEach(cb => cb(state));
@@ -184,9 +186,21 @@ export function createPostureEngine(): PostureEngine {
       const postureChanged = posture !== state.posture || state.advice === '';
       if (postureChanged) {
         const feedback = ruleFallback(signalsFrom(next));
-        state = {...next, advice: feedback.advice, inferenceSource: 'RULE_FALLBACK', streaming: false};
+        state = {
+          ...next,
+          advice: feedback.advice,
+          inferenceSource: 'RULE_FALLBACK',
+          streaming: false,
+          action: actionForPosture(posture),
+        };
       } else {
-        state = {...next, advice: state.advice, inferenceSource: state.inferenceSource, streaming: state.streaming};
+        state = {
+          ...next,
+          advice: state.advice,
+          inferenceSource: state.inferenceSource,
+          streaming: state.streaming,
+          action: state.action,
+        };
       }
       emit();
     },
@@ -199,11 +213,20 @@ export function createPostureEngine(): PostureEngine {
         advice: feedback.advice,
         inferenceSource: 'RULE_FALLBACK',
         streaming: false,
+        action: null,
       };
       emit();
     },
     setModelAdvice(advice: string, opts: {streaming: boolean}) {
-      state = {...state, advice, inferenceSource: 'MODEL', streaming: opts.streaming};
+      // 解析尾部 [动作:xxx]：正文给用户看，动作驱动点位高亮；流式未出标签时保留按姿态推导的动作
+      const {text, action} = parseActionTag(advice);
+      state = {
+        ...state,
+        advice: text,
+        action: action ?? state.action,
+        inferenceSource: 'MODEL',
+        streaming: opts.streaming,
+      };
       emit();
     },
     subscribe(cb) {

@@ -31,6 +31,7 @@ const INITIAL: DashboardState = {
   advice: '',
   inferenceSource: 'RULE_FALLBACK',
   streaming: false,
+  action: null,
 };
 
 type Mode = 'loading' | 'sensor' | 'mock';
