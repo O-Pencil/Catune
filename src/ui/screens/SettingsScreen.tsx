@@ -1,6 +1,6 @@
 /**
  * @file SettingsScreen.tsx
- * @description 设置屏：模型管理、模型基准测试、数据源、F7 演示台、关于。
+ * @description 设置屏：模型管理（含设备指标折叠）、模型基准测试、数据源、F7 演示台、关于。
  */
 import React, {useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';

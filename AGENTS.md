@@ -67,6 +67,17 @@ Catune/
 │   ├── engine.ts                 #   规则状态机 + 打分 + 建议查表 + 禁词 + ruleFallback
 │   ├── sensorSource.ts           #   expo-sensors DeviceMotion 手机 IMU 数据源（iPhone 已通）
 │   └── mock.ts                   #   10Hz 模拟数据源 + F7 场景锁定
+├── src/mnn/                      # ★ 端侧模型管理（TS，iOS/Android 通用）
+│   ├── modelCatalog.ts           #   模型清单（0.5B / 1.7B 定义、标签、下载地址）
+│   ├── modelDownloadService.ts   #   全局下载服务（续传 / 暂停 / 进度）
+│   ├── modelStorage.ts           #   模型文件存储工具
+│   ├── deviceProfile.ts          #   设备探测 + 分级 + 模型推荐（RAM/SME2/存储）
+│   └── inferStreamClient.ts      #   端侧推理流式客户端
+├── src/ui/                       # RN UI 组件（TS，iOS/Android 通用）
+│   ├── AppShell.tsx              #   App 外壳（Tab 导航）
+│   ├── screens/                  #   页面组件（Desk / Plant / Settings）
+│   ├── components/               #   通用组件
+│   └── theme/                    #   Haptic 设计系统
 ├── android/                      # Android 原生（引导 RN + 端侧 AI 支线）
 │   ├── build.gradle              # 根 build 脚本
 │   ├── settings.gradle           # 包含 :app 子工程
@@ -124,9 +135,9 @@ com/catune/
 | `createMockSource` | `src/posture/mock.ts` | 10Hz 模拟数据源；F7 锁定场景（修了原 Kotlin「设置被随机流覆盖」的 bug） |
 | `createSensorSource` | `src/posture/sensorSource.ts` | 通过 `expo-sensors` 读取 DeviceMotion；iPhone 已可用，单手机 IMU 映射 3 路演示角度 |
 | `App` | `App.tsx` | RN 仪表盘：订阅 engine，渲染分数/角度/状态/建议 + F7 Mock Console |
-| `CatuneApp` / `MainActivity` / `CatunePackage` | `android/.../` | 引导 RN，并注册 `CatuneMnn` 调试模块 |
+| `deviceProfile` / `recommendModel` | `src/mnn/deviceProfile.ts` | **设备自适应**：探测 RAM/SME2/存储，分级（入门/主流/高性能），推荐 0.5B 或 1.7B |
+| `modelDownloadService` | `src/mnn/modelDownloadService.ts` | 全局模型下载服务：续传 / 暂停 / 进度回调；进程重启自动恢复 |
 | `MnnPerceptionEngine` | `android/.../inference/mnn/MnnPerceptionEngine.kt` | 端侧 MNN Kotlin/JNI 桥（`analyze`/`inferText` + 指标）。**已恢复·未接线**，`-PenableMnn` 才编 native |
-| `InferenceExecutor` | `android/.../inference/mnn/InferenceExecutor.kt` | 单线程 `eyes-mnn-infer` 串行化模型加载/推理 |
 | `MnnDebugModule` | `android/.../rn/MnnDebugModule.kt` | RN 原生调试入口 `CatuneMnn.getStatus()` / `inferText()`；用于 Settings Debug 卡片 |
 
 > C++ 层（`cpp/eyes_mnn_bridge.cpp` → `eyes_llm_session.cpp` → libMNN）含 SME2/NEON 检测与 ttft/tps 指标，iOS 可复用同一份 C++；接入见 [docs/端侧模型对接计划.md](docs/端侧模型对接计划.md)。
