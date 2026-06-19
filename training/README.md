@@ -19,6 +19,11 @@
 
 5 条硬规则：①≤30字 ②温和有温度 ③指向具体动作 ④不诊断/不承诺/不卖货 ⑤结尾动作标签。
 
+## ⚠ 推理对齐（不对齐微调白练，见 docs/模型与记忆个性化设计.md §7）
+- **prompt 同源**：App 端 `src/posture/coachPrompt.ts` 的 `COACH_INSTRUCTION` + 信号行格式，与本目录 `gen_dataset.py`/`seed_gold.jsonl` 的 instruction/input **逐字一致**。改一处必须同步另一处。
+- **记忆前缀**：`gen_dataset.py` 已混入约 1/3 带 `已知用户：…。` 前缀的样本（与推理时注入同格式）。
+- **改了数据/格式后必须重跑**：`python3 training/gen_dataset.py` 重新生成 train/val，再训练。
+
 ## 流程（在本地 GPU 机器执行）
 
 ```bash

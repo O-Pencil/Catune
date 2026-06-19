@@ -10,30 +10,13 @@
  */
 import {PostureEngine} from './engine';
 import {DashboardState, PostureName} from './types';
+import {buildCoachPrompt} from './coachPrompt';
 import {MemoryService} from './memory/service';
 import {isModelAvailable, streamInfer} from '../mnn/inferStreamClient';
 
 const MIN_INTERVAL_MS = 12000; // 两次模型调用最小间隔（生成慢，避免堆积）
 const HOLD_REPEAT_MS = 120000; // 同一异常姿态久持 → 每 2 分钟再鼓励一次
 const ABNORMAL: PostureName[] = ['SLUMPED', 'TECH_NECK', 'LEFT_LEAN'];
-
-const POSTURE_DESC: Record<PostureName, string> = {
-  SLUMPED: '含胸驼背',
-  TECH_NECK: '头部前倾',
-  LEFT_LEAN: '身体侧偏',
-  NORMAL: '坐姿端正',
-  OFFLINE: '未连接',
-};
-
-function buildPrompt(s: DashboardState, memoryPrefix: string): string {
-  return [
-    '你是温柔贴心的坐姿教练。',
-    memoryPrefix, // '已知用户：…。' 或空串（个性化前缀）
-    `用户现在${POSTURE_DESC[s.posture]}（颈${s.neckPitch.toFixed(0)}° 胸${s.thorPitch.toFixed(0)}° 腰${s.lumbarRoll.toFixed(0)}°）。`,
-    '用一句有温度、口语化、不超过30字的中文提醒他调整坐姿，可带一点鼓励或调侃；',
-    '不要医疗诊断、不要夸张承诺；结尾用 [动作:xxx] 标注一个建议动作。只输出这一句，不要解释。',
-  ].join('');
-}
 
 export type AdviceOrchestrator = {start: () => void; stop: () => void};
 
@@ -60,7 +43,7 @@ export function createAdviceOrchestrator(engine: PostureEngine, memory?: MemoryS
     let acc = '';
     // 个性化前缀：按当前姿态 + 风格相关记忆，注入极简一段（无合适记忆则空串）
     const memoryPrefix = memory ? memory.inject([s.posture, 'tone'], {maxItems: 3, maxChars: 60}) : '';
-    cancel = streamInfer(buildPrompt(s, memoryPrefix), {
+    cancel = streamInfer(buildCoachPrompt(s, memoryPrefix), {
       onToken: chunk => {
         acc += chunk;
         engine.setModelAdvice(acc.trim(), {streaming: true});

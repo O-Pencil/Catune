@@ -69,6 +69,19 @@ POSTURES = {
 LONG_HINTS = ["", "", "已经保持挺久了，", "坐了好一会儿，"]
 BREAK_SUFFIX = "顺手起身走两步吧～ [动作:起身活动]"
 
+# 记忆前缀池（与 App memory.inject 输出同格式「已知用户：…。」）。
+# 约 1/3 样本会带前缀，让微调模型学会"参考已知用户"而不被前缀干扰（B，见 docs §7）。
+MEM_PREFIXES = [
+    "已知用户：偏好鼓励式提醒。",
+    "已知用户：偏好直接简短的提醒。",
+    "已知用户：希望少打扰、必要时再提醒。",
+    "已知用户：颈部容易不适、头前倾。",
+    "已知用户：肩背容易含胸驼背。",
+    "已知用户：偏好鼓励式提醒；颈部容易不适、头前倾。",
+    "已知用户：颈部回缩对他有效。",
+]
+MEM_PREFIX_PROB = 0.34
+
 
 def make_example(rng: random.Random):
     key = rng.choice(list(POSTURES.keys()))
@@ -88,6 +101,10 @@ def make_example(rng: random.Random):
     else:
         phr = rng.choice(p["phr"])
         out = f"{lead}，{phr}～ [动作:{p['tag']}]"
+    # B：约 1/3 样本带记忆前缀（与推理时 buildCoachPrompt 注入同格式），output 不变
+    # → 教模型把前缀当上下文、不被它带偏。深层语气条件化留复赛。
+    if rng.random() < MEM_PREFIX_PROB:
+        src = f"{rng.choice(MEM_PREFIXES)}\n{src}"
     return {"instruction": INSTRUCTION, "input": src, "output": out}
 
 
