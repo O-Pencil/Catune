@@ -1,0 +1,24 @@
+Saved working directory and index state WIP on main: 06f708e feat(rn): 新增 i18n 国际化系统、UI 组件增强与引擎优化
+From https://github.com/O-Pencil/Posture-AI
+ * branch            main       -> FETCH_HEAD
+   808040d..9b3ce88  main       -> origin/main
+Rebasing (1/1)Auto-merging src/posture/adviceOrchestrator.ts
+CONFLICT (content): Merge conflict in src/posture/adviceOrchestrator.ts
+Auto-merging src/posture/engine.ts
+CONFLICT (content): Merge conflict in src/posture/engine.ts
+Auto-merging src/posture/reminder.ts
+CONFLICT (content): Merge conflict in src/posture/reminder.ts
+Auto-merging src/ui/AppShell.tsx
+CONFLICT (content): Merge conflict in src/ui/AppShell.tsx
+Auto-merging src/ui/screens/DeskScreen.tsx
+Auto-merging src/ui/screens/OnboardingScreen.tsx
+CONFLICT (content): Merge conflict in src/ui/screens/OnboardingScreen.tsx
+error: could not apply 06f708e... feat(rn): 新增 i18n 国际化系统、UI 组件增强与引擎优化
+hint: Resolve all conflicts manually, mark them as resolved with
+hint: "git add/rm <conflicted_files>", then run "git rebase --continue".
+hint: You can instead skip this commit: run "git rebase --skip".
+hint: To abort and get back to the state before "git rebase", run "git rebase --abort".
+Could not apply 06f708e... feat(rn): 新增 i18n 国际化系统、UI 组件增强与引擎优化
+
+
+Command exited with code 1

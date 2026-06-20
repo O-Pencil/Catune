@@ -1,0 +1,1 @@
+46:          logEvent('flow', `⚡ 震动提醒（${POSTURE_LABELS[s.posture]}）`);

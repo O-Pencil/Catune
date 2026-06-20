@@ -4,7 +4,7 @@
  *   （准备 → 保持/放松 × reps → 完成），倒计时环 + 步骤提示 + 开始/暂停。三端共用。
  *
  * [WHO] 导出 `TrainingScreen`
- * [FROM] 依赖 `react`、`react-native`、`react-native-svg`、`../../posture/exercises`、`../../posture/types`、`../theme`
+ * [FROM] 依赖 `react`、`react-native`、`react-native-svg`、`../../posture/exercises`、`../../posture/types`、`../theme`、`../i18n`
  * [TO] 被 AppShell 在 trainingAction!=null 时作为顶层 overlay 渲染
  * [HERE] src/ui/screens/TrainingScreen.tsx · 跟练引导页
  */
@@ -12,11 +12,12 @@ import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import Svg, {Circle} from 'react-native-svg';
 
-import {exerciseFor} from '../../posture/exercises';
+import {getExercise} from '../../posture/exercises';
 import {PostureAction} from '../../posture/types';
-import {ACTION_META} from '../../posture/actionTag';
+import {getActionMeta} from '../../posture/actionTag';
 import {MemoryService} from '../../posture/memory/service';
 import {theme} from '../theme';
+import {useLocale, useT} from '../i18n';
 
 type Phase = 'ready' | 'hold' | 'rest' | 'done';
 const READY_SEC = 3;
@@ -24,13 +25,6 @@ const RING = 120;
 const STROKE = 10;
 const R = (RING - STROKE) / 2;
 const CIRC = 2 * Math.PI * R;
-
-const PHASE_LABEL: Record<Phase, string> = {
-  ready: '准备',
-  hold: '保持',
-  rest: '放松',
-  done: '完成',
-};
 
 export function TrainingScreen({
   action,
@@ -41,33 +35,27 @@ export function TrainingScreen({
   onClose: () => void;
   memory?: MemoryService;
 }): React.JSX.Element | null {
-  const exercise = useMemo(() => exerciseFor(action), [action]);
+  const {locale} = useLocale();
+  const t = useT();
+  const exercise = useMemo(() => getExercise(action, locale), [action, locale]);
   const [phase, setPhase] = useState<Phase>('ready');
   const [rep, setRep] = useState(1);
   const [secLeft, setSecLeft] = useState(READY_SEC);
   const [running, setRunning] = useState(true);
   const [rated, setRated] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const actionLabel = getActionMeta(action, locale).label;
 
   const rateExercise = (good: boolean) => {
     if (memory) {
-      if (good) {
-        memory.remember({
-          type: 'lesson',
-          text: `${ACTION_META[action].label}对他有效`,
-          tags: [action],
-          importance: 0.6,
-          source: 'feedback',
-        });
-      } else {
-        memory.remember({
-          type: 'preference',
-          text: `${ACTION_META[action].label}效果一般，换个动作`,
-          tags: [action],
-          importance: 0.4,
-          source: 'feedback',
-        });
-      }
+      const key = good ? 'training.memory.good' : 'training.memory.bad';
+      memory.remember({
+        type: good ? 'lesson' : 'preference',
+        text: t(key, {label: actionLabel}),
+        tags: [action],
+        importance: good ? 0.6 : 0.4,
+        source: 'feedback',
+      });
     }
     setRated(true);
   };
@@ -154,7 +142,7 @@ export function TrainingScreen({
         <Pressable hitSlop={10} onPress={onClose} style={styles.closeBtn}>
           <Text style={styles.closeText}>✕</Text>
         </Pressable>
-        <Text style={styles.kicker}>跟练 · {exercise.title}</Text>
+        <Text style={styles.kicker}>{t('training.kicker')}</Text>
         <View style={styles.closeBtn} />
       </View>
 
@@ -182,7 +170,7 @@ export function TrainingScreen({
           ) : (
             <>
               <Text style={styles.bigSec}>{secLeft}</Text>
-              <Text style={styles.phaseLabel}>{PHASE_LABEL[phase]}</Text>
+              <Text style={styles.phaseLabel}>{t(`training.phase.${phase}`)}</Text>
             </>
           )}
         </View>
@@ -190,10 +178,10 @@ export function TrainingScreen({
 
       {!isDone ? (
         <Text style={styles.repText}>
-          第 {rep} / {exercise.reps} 组
+          {t('training.repText', {rep, total: exercise.reps})}
         </Text>
       ) : (
-        <Text style={styles.repText}>真棒，完成啦，辛苦啦喵～ 🎉</Text>
+        <Text style={styles.repText}>{t('training.doneText')}</Text>
       )}
 
       <View style={styles.steps}>
@@ -207,10 +195,10 @@ export function TrainingScreen({
 
       {isDone && memory ? (
         rated ? (
-          <Text style={styles.fbThanks}>已记住，会据此调整推荐 ✓</Text>
+          <Text style={styles.fbThanks}>{t('training.rateThanks')}</Text>
         ) : (
           <View style={styles.fbRow}>
-            <Text style={styles.fbQ}>这个动作有用吗？</Text>
+            <Text style={styles.fbQ}>{t('training.rateQ')}</Text>
             <Pressable hitSlop={8} onPress={() => rateExercise(true)}>
               <Text style={styles.fbEmoji}>👍</Text>
             </Pressable>
@@ -225,19 +213,19 @@ export function TrainingScreen({
         {isDone ? (
           <>
             <Pressable style={[styles.btn, styles.btnGhost]} onPress={restart}>
-              <Text style={styles.btnGhostText}>再来一组</Text>
+              <Text style={styles.btnGhostText}>{t('training.restart')}</Text>
             </Pressable>
             <Pressable style={[styles.btn, styles.btnPrimary]} onPress={onClose}>
-              <Text style={styles.btnPrimaryText}>完成</Text>
+              <Text style={styles.btnPrimaryText}>{t('common.finish')}</Text>
             </Pressable>
           </>
         ) : (
           <>
             <Pressable style={[styles.btn, styles.btnGhost]} onPress={restart}>
-              <Text style={styles.btnGhostText}>重来</Text>
+              <Text style={styles.btnGhostText}>{t('training.retry')}</Text>
             </Pressable>
             <Pressable style={[styles.btn, styles.btnPrimary]} onPress={() => setRunning(r => !r)}>
-              <Text style={styles.btnPrimaryText}>{running ? '暂停' : '继续'}</Text>
+              <Text style={styles.btnPrimaryText}>{running ? t('common.pause') : t('common.resume')}</Text>
             </Pressable>
           </>
         )}

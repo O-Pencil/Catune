@@ -10,7 +10,7 @@
  *   帧密度足够（≤1°/帧）+ CatFlipbook 帧号缓动 → 视觉与视频无异。无帧时自动回退 portal.png。
  *
  * [WHO] 导出 `DeskScreen`
- * [FROM] 依赖 `react`、`react-native`、`react-native-svg`、`../../posture/types`、`../theme`、`../components/CatFlipbook`、`../assets/leanFrames`、`../../../public/portal.png`
+ * [FROM] 依赖 `react`、`react-native`、`react-native-svg`、`../../posture/types`、`../theme`、`../components/CatFlipbook`、`../assets/leanFrames`、`../../../public/portal.png`、`../i18n`
  * [TO] 被 `AppShell` 在 desk tab 渲染
  * [HERE] src/ui/screens/DeskScreen.tsx · Desk 首页布局原型的 RNW 迁移版
  */
@@ -19,17 +19,10 @@ import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import Svg, {Circle, Path} from 'react-native-svg';
 
 import {DashboardState, PostureAction, PostureName, SpineNode} from '../../posture/types';
-import {ACTION_META} from '../../posture/actionTag';
-import {exerciseFor} from '../../posture/exercises';
+import {getActionMeta} from '../../posture/actionTag';
+import {getExercise} from '../../posture/exercises';
 import {MemoryService} from '../../posture/memory/service';
-
-const FEEDBACK_LABEL: Record<PostureName, string> = {
-  TECH_NECK: '头前倾',
-  SLUMPED: '驼背',
-  LEFT_LEAN: '侧倾',
-  NORMAL: '正常',
-  OFFLINE: '离线',
-};
+import {useLocale, useT} from '../i18n';
 import {theme} from '../theme';
 import {CatFlipbook} from '../components/CatFlipbook';
 import {CatSprite} from '../components/CatSprite';
@@ -50,9 +43,9 @@ const SCENE_BOTTOM_GAP = 10;
 
 type Pixel = {x: number; y: number};
 
-function greeting(): string {
+function greetingKey(): 'desk.greeting.morning' | 'desk.greeting.afternoon' | 'desk.greeting.evening' {
   const h = new Date().getHours();
-  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  return h < 12 ? 'desk.greeting.morning' : h < 18 ? 'desk.greeting.afternoon' : 'desk.greeting.evening';
 }
 
 function formatDeg(value: number): string {
@@ -68,6 +61,7 @@ function spineCurvePath(c7: Pixel, t12: Pixel, l5: Pixel): string {
 
 function DeskHeader({
   state,
+  locale,
   onOpenTraining,
   onOpenAssess,
   showFeedback,
@@ -75,42 +69,43 @@ function DeskHeader({
   onFeedback,
 }: {
   state: DashboardState;
+  locale: 'en' | 'zh';
   onOpenTraining?: (action: PostureAction) => void;
   onOpenAssess?: () => void;
   showFeedback?: boolean;
   justRated?: boolean;
   onFeedback?: (good: boolean) => void;
 }): React.JSX.Element {
-  const feedback =
-    state.advice ||
-    'Your sitting posture is very standard, please keep it up, you have been sitting still for 3h 28min already!';
+  const t = useT();
+  const feedback = state.advice || t('desk.feedbackDefault');
   // 仅当动作有配套例程时才把 chip 做成可点（HOLD/保持 无例程，不展示）
-  const trainable = state.action != null && state.action !== 'HOLD' && exerciseFor(state.action) != null;
+  const trainable = state.action != null && state.action !== 'HOLD' && getExercise(state.action, locale) != null;
+  const actionMeta = state.action ? getActionMeta(state.action, locale) : null;
 
   return (
     <View style={styles.header}>
       {onOpenAssess ? (
         <Pressable style={styles.assessEntry} onPress={onOpenAssess}>
-          <Text style={styles.assessEntryText}>✦ AI 评估</Text>
+          <Text style={styles.assessEntryText}>{t('desk.assessEntry')}</Text>
         </Pressable>
       ) : null}
       <Text style={styles.kicker}>CATUNE</Text>
       <Text style={styles.greeting}>
-        {greeting()}, <Text style={styles.highlight}>Xiao Yu</Text>
+        {t(greetingKey())}, <Text style={styles.highlight}>Xiao Yu</Text>
       </Text>
       <Text style={styles.feedback} numberOfLines={3}>
         {state.streaming ? `${feedback} ▍` : feedback}
       </Text>
-      {trainable && state.action ? (
+      {trainable && state.action && actionMeta ? (
         <Pressable style={styles.actionChip} onPress={() => onOpenTraining?.(state.action as PostureAction)}>
           <View style={styles.actionDot} />
-          <Text style={styles.actionChipText}>去跟练 · {ACTION_META[state.action].label}</Text>
+          <Text style={styles.actionChipText}>{t('desk.trainChip', {label: actionMeta.label})}</Text>
           <Text style={styles.actionChevron}>›</Text>
         </Pressable>
       ) : null}
       {showFeedback ? (
         <View style={styles.feedbackRow}>
-          <Text style={styles.feedbackQ}>这条提醒怎么样？</Text>
+          <Text style={styles.feedbackQ}>{t('desk.feedback.rateGood')}</Text>
           <Pressable hitSlop={8} style={styles.fbBtn} onPress={() => onFeedback?.(true)}>
             <Text style={styles.fbEmoji}>👍</Text>
           </Pressable>
@@ -119,17 +114,18 @@ function DeskHeader({
           </Pressable>
         </View>
       ) : justRated ? (
-        <Text style={styles.feedbackThanks}>已记住 ✓</Text>
+        <Text style={styles.feedbackThanks}>{t('desk.feedback.remembered')}</Text>
       ) : null}
     </View>
   );
 }
 
 function MetricStrip({state}: {state: DashboardState}): React.JSX.Element {
+  const t = useT();
   const metrics = [
-    {label: 'C7 Neck', value: state.neckPitch},
-    {label: 'T12 Thor.', value: state.thorPitch},
-    {label: 'L5 Lumbar', value: state.lumbarRoll},
+    {label: t('desk.metric.neck'), value: state.neckPitch},
+    {label: t('desk.metric.thor'), value: state.thorPitch},
+    {label: t('desk.metric.lumbar'), value: state.lumbarRoll},
   ];
 
   return (
@@ -200,6 +196,8 @@ function SensorOverlay({
 type RenderMode = 'sprite' | 'frames';
 
 function PostureScene({state}: {state: DashboardState}): React.JSX.Element {
+  const {locale} = useLocale();
+  const t = useT();
   const hasAtlas = LEAN_ATLAS.source != null && LEAN_ATLAS.count > 1;
   const hasFrames = LEAN_FRAMES.length > 1;
   const [visualSize, setVisualSize] = useState<{width: number; height: number} | null>(null);
@@ -210,7 +208,7 @@ function PostureScene({state}: {state: DashboardState}): React.JSX.Element {
   // demo：固定雪碧图（效果优于逐帧），隐藏切换避免现场误触回退到卡顿的关键帧模式
   const showModeToggle = false;
   // 建议动作 → 高亮对应脊柱节点（把"模型说的动作"指到猫身上）
-  const highlightNode: SpineNode | null = state.action ? ACTION_META[state.action].node : null;
+  const highlightNode: SpineNode | null = state.action ? getActionMeta(state.action, locale).node : null;
   const boxStyle = useMemo(() => [styles.sceneVisual, visualSize ?? undefined], [visualSize]);
   const boxW = visualSize?.width ?? 0;
   const boxH = visualSize?.height ?? 0;
@@ -290,7 +288,7 @@ function PostureScene({state}: {state: DashboardState}): React.JSX.Element {
           <SensorOverlay frameIndex={frameIndex} boxW={boxW} boxH={boxH} highlightNode={highlightNode} />
           {CALIBRATE ? (
             <Pressable style={StyleSheet.absoluteFill} onPress={onCalibrateTap}>
-              <Text style={styles.calibrateBadge}>CAL · frame {frameIndex}</Text>
+              <Text style={styles.calibrateBadge}>{t('desk.calibrateBadge', {n: frameIndex})}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -300,12 +298,16 @@ function PostureScene({state}: {state: DashboardState}): React.JSX.Element {
             <Pressable
               style={[styles.modeSeg, renderMode === 'sprite' && styles.modeSegActive]}
               onPress={() => setRenderMode('sprite')}>
-              <Text style={[styles.modeSegText, renderMode === 'sprite' && styles.modeSegTextActive]}>雪碧图</Text>
+              <Text style={[styles.modeSegText, renderMode === 'sprite' && styles.modeSegTextActive]}>
+                {t('desk.renderMode.sprite')}
+              </Text>
             </Pressable>
             <Pressable
               style={[styles.modeSeg, renderMode === 'frames' && styles.modeSegActive]}
               onPress={() => setRenderMode('frames')}>
-              <Text style={[styles.modeSegText, renderMode === 'frames' && styles.modeSegTextActive]}>关键帧</Text>
+              <Text style={[styles.modeSegText, renderMode === 'frames' && styles.modeSegTextActive]}>
+                {t('desk.renderMode.frames')}
+              </Text>
             </Pressable>
           </View>
         ) : null}
@@ -326,6 +328,8 @@ export function DeskScreen({
   onOpenAssess?: () => void;
   memory?: MemoryService;
 }): React.JSX.Element {
+  const {locale} = useLocale();
+  const t = useT();
   const [ratedAdvice, setRatedAdvice] = useState<string | null>(null);
   const abnormal = state.posture === 'SLUMPED' || state.posture === 'TECH_NECK' || state.posture === 'LEFT_LEAN';
   const showFeedback = !!memory && !!state.advice && abnormal && !state.streaming && state.advice !== ratedAdvice;
@@ -338,7 +342,7 @@ export function DeskScreen({
     if (good) {
       memory.remember({
         type: 'lesson',
-        text: `${FEEDBACK_LABEL[state.posture]}时的提醒对他有效`,
+        text: t('desk.memory.goodPrefix', {posture: t(`desk.feedback.${state.posture.toLowerCase()}` as `desk.feedback.${PostureName}`)}),
         tags: [state.posture],
         importance: 0.6,
         source: 'feedback',
@@ -346,7 +350,7 @@ export function DeskScreen({
     } else {
       memory.remember({
         type: 'preference',
-        text: '上一条提醒不太对味，换种说法',
+        text: t('desk.memory.bad'),
         tags: ['tone'],
         importance: 0.45,
         source: 'feedback',
@@ -359,6 +363,7 @@ export function DeskScreen({
     <View style={styles.root}>
       <DeskHeader
         state={state}
+        locale={locale}
         onOpenTraining={onOpenTraining}
         onOpenAssess={onOpenAssess}
         showFeedback={showFeedback}

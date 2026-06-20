@@ -9,8 +9,9 @@
  * [TO] 被 App.tsx 创建；onboarding/反馈钩子调 remember/completeOnboarding；adviceOrchestrator 调 inject；Settings 管理卡调 list/forget/clearAll
  * [HERE] src/posture/memory/service.ts · 语义记忆服务
  */
+import type {Locale} from '../../ui/i18n';
 import {MemoryItem, MemoryType, RememberInput} from './types';
-import {loadItems, loadOnboarded, saveItems, saveOnboarded} from './store';
+import {loadItems, loadLocale, loadOnboarded, saveItems, saveLocale, saveOnboarded} from './store';
 import {isExpired, score} from './scoring';
 
 const MAX_ITEMS = 60;
@@ -21,7 +22,7 @@ const INJECT_MIN_SCORE = 0.28;
 export type InjectOptions = {maxItems?: number; maxChars?: number};
 
 export type MemoryService = {
-  /** 初次从磁盘加载完成（items + onboarding 标记）。 */
+  /** 初次从磁盘加载完成（items + onboarding + locale）。 */
   ready: Promise<void>;
   remember: (input: RememberInput) => MemoryItem;
   retrieve: (tags: string[], k: number) => MemoryItem[];
@@ -34,6 +35,10 @@ export type MemoryService = {
   isOnboarded: () => boolean;
   /** 完成问卷：批量写入记忆并标记 onboarded。 */
   completeOnboarding: (inputs: RememberInput[]) => void;
+  /** 当前 locale（同步读取；ready 之后才有值）。 */
+  locale: () => Locale;
+  /** 切换 locale 并持久化。 */
+  setLocale: (l: Locale) => void;
 };
 
 /** 去掉手机号/邮箱等 PII，并截到 ≤40 字。 */
@@ -50,6 +55,7 @@ const dedupeKey = (type: MemoryType, text: string) => `${type}::${text}`;
 export function createMemoryService(): MemoryService {
   let items: MemoryItem[] = [];
   let onboarded = false;
+  let localeValue: Locale = 'en';
   let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
   const persist = () => {
@@ -59,10 +65,11 @@ export function createMemoryService(): MemoryService {
     saveTimer = setTimeout(() => saveItems(items), SAVE_DEBOUNCE_MS);
   };
 
-  const ready = Promise.all([loadItems(), loadOnboarded()]).then(([loaded, ob]) => {
+  const ready = Promise.all([loadItems(), loadOnboarded(), loadLocale()]).then(([loaded, ob, l]) => {
     const now = Date.now();
     items = loaded.filter(i => !isExpired(i, now));
     onboarded = ob;
+    localeValue = l;
   });
 
   const remember = (input: RememberInput): MemoryItem => {
@@ -164,6 +171,13 @@ export function createMemoryService(): MemoryService {
       inputs.forEach(remember);
       onboarded = true;
       saveOnboarded(true);
+    },
+    locale() {
+      return localeValue;
+    },
+    setLocale(l) {
+      localeValue = l;
+      saveLocale(l);
     },
   };
 }

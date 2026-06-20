@@ -27,6 +27,7 @@ import {
 } from '../../mnn/deviceProfile';
 import {theme} from '../theme';
 import {Card} from '../primitives/Card';
+import {useLocale, useT} from '../i18n';
 
 type Props = {
   onModelsChanged?: () => void;
@@ -75,6 +76,19 @@ function ModelOptionCard({
   disabled,
   onPress,
 }: ModelOptionProps): React.JSX.Element {
+  const t = useT();
+  const statusLabel =
+    installed === 'ready'
+      ? t('model.card.installed')
+      : installed === 'partial'
+        ? t('model.card.partial')
+        : t('model.card.missing');
+  const statusStyle =
+    installed === 'ready'
+      ? optionStyles.statusPillReady
+      : installed === 'partial'
+        ? optionStyles.statusPillWarn
+        : optionStyles.statusPillMuted;
   return (
     <Pressable
       style={[
@@ -86,7 +100,7 @@ function ModelOptionCard({
       onPress={onPress}>
       {isRecommended ? (
         <View style={optionStyles.recBadge}>
-          <Text style={optionStyles.recBadgeText}>✓ 为你推荐</Text>
+          <Text style={optionStyles.recBadgeText}>{t('model.card.recBadge')}</Text>
         </View>
       ) : null}
 
@@ -97,19 +111,9 @@ function ModelOptionCard({
         {model.sizeHint}
       </Text>
 
-      {installed === 'ready' ? (
-        <View style={[optionStyles.statusPill, optionStyles.statusPillReady]}>
-          <Text style={optionStyles.statusPillText}>已安装</Text>
-        </View>
-      ) : installed === 'partial' ? (
-        <View style={[optionStyles.statusPill, optionStyles.statusPillWarn]}>
-          <Text style={optionStyles.statusPillText}>未完整</Text>
-        </View>
-      ) : (
-        <View style={[optionStyles.statusPill, optionStyles.statusPillMuted]}>
-          <Text style={optionStyles.statusPillText}>未下载</Text>
-        </View>
-      )}
+      <View style={[optionStyles.statusPill, statusStyle]}>
+        <Text style={optionStyles.statusPillText}>{statusLabel}</Text>
+      </View>
 
       {isRecommended && recommendedReason ? (
         <Text style={optionStyles.reason} numberOfLines={2}>
@@ -180,12 +184,14 @@ function formatGB(bytes: number): string {
 }
 
 function DeviceMetricsSection({recommendation, loading, freeDiskBytes}: DeviceMetricsProps): React.JSX.Element {
+  const {locale} = useLocale();
+  const t = useT();
   const [expanded, setExpanded] = useState(false);
 
   if (loading) {
     return (
       <View style={metricsStyles.wrap}>
-        <Text style={metricsStyles.placeholder}>设备指标加载中…</Text>
+        <Text style={metricsStyles.placeholder}>{t('model.card.devicesLoading')}</Text>
       </View>
     );
   }
@@ -199,20 +205,25 @@ function DeviceMetricsSection({recommendation, loading, freeDiskBytes}: DeviceMe
   const badge = TIER_BADGE[tier];
 
   // 1 行摘要（折叠态展示）
-  const summary = `${getTierLabel(tier)} · ${formatGB(freeDiskBytes)} 可用`;
+  const summary = t('model.card.tierDisk', {
+    tier: getTierLabel(tier, locale),
+    disk: formatGB(freeDiskBytes),
+  });
 
   return (
     <View style={metricsStyles.wrap}>
       <Pressable style={metricsStyles.header} onPress={() => setExpanded(v => !v)}>
         <View style={metricsStyles.headerLeft}>
           <View style={[metricsStyles.tierBadge, {backgroundColor: badge.bg}]}>
-            <Text style={[metricsStyles.tierBadgeText, {color: badge.fg}]}>{getTierLabel(tier)}</Text>
+            <Text style={[metricsStyles.tierBadgeText, {color: badge.fg}]}>{getTierLabel(tier, locale)}</Text>
           </View>
           <Text style={metricsStyles.summary} numberOfLines={1}>
             {summary}
           </Text>
         </View>
-        <Text style={metricsStyles.toggle}>{expanded ? '▴ 收起' : '▾ 完整指标'}</Text>
+        <Text style={metricsStyles.toggle}>
+          {expanded ? t('model.card.toggleCollapse') : t('model.card.toggleExpand')}
+        </Text>
       </Pressable>
 
       {expanded ? (
@@ -254,6 +265,7 @@ const metricsStyles = StyleSheet.create({
 // ─── 主组件 ──────────────────────────────────────────────────────────────────
 
 export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
+  const t = useT();
   const docDir: string | null = FileSystem.documentDirectory ?? null;
   const supported = Boolean(docDir);
 
@@ -350,8 +362,8 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
   const selectedButNotRecommended = useMemo(() => {
     if (!recommendation) return null;
     if (recommendation.model.id === selectedId) return null;
-    return `💡 ${recommendation.model.label} 是为你推荐的`;
-  }, [recommendation, selectedId]);
+    return t('model.card.swapHint', {name: recommendation.model.label});
+  }, [recommendation, selectedId, t]);
 
   // 模型选项卡的"已安装"状态
   const installedMap = useMemo(() => {
@@ -369,7 +381,7 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
       if (!model) return;
       const state = await getModelInstallState(docDir, model);
       if (state !== 'ready') {
-        setError('模型文件不完整，请重新下载或继续下载。');
+        setError(t('model.card.incomplete'));
         return;
       }
       await writeActiveModelId(docDir, modelId);
@@ -378,7 +390,7 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
       await refresh();
       onModelsChanged?.();
     },
-    [docDir, onModelsChanged, refresh],
+    [docDir, onModelsChanged, refresh, t],
   );
 
   const runDownload = async (replaceExisting: boolean) => {
@@ -394,10 +406,14 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
 
   const onPressDownload = () => {
     if (installState === 'ready') {
-      Alert.alert('更换模型', `将重新下载并覆盖 ${selectedModel.label} 的本地文件。`, [
-        {text: '取消', style: 'cancel'},
-        {text: '继续', style: 'destructive', onPress: () => runDownload(true)},
-      ]);
+      Alert.alert(
+        t('model.card.replace'),
+        t('model.card.confirmReplace', {name: selectedModel.label}),
+        [
+          {text: t('common.cancel'), style: 'cancel'},
+          {text: t('model.card.continue'), style: 'destructive', onPress: () => runDownload(true)},
+        ],
+      );
       return;
     }
     runDownload(false);
@@ -405,12 +421,12 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
 
   const onPressDelete = () => {
     Alert.alert(
-      '删除模型',
-      `确定删除 ${selectedModel.label}？将释放 ${selectedModel.sizeHint} 左右空间。`,
+      t('model.action.delete'),
+      t('model.card.confirmDelete', {name: selectedModel.label, size: selectedModel.sizeHint}),
       [
-        {text: '取消', style: 'cancel'},
+        {text: t('common.cancel'), style: 'cancel'},
         {
-          text: '删除',
+          text: t('model.card.confirmDeleteAction'),
           style: 'destructive',
           onPress: async () => {
             if (!docDir) return;
@@ -434,11 +450,11 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
   };
 
   const primaryLabel = (() => {
-    if (isDownloading) return '下载中…';
-    if (hasPendingDownload && installState !== 'ready') return '继续下载';
-    if (installState === 'ready') return isActive ? '更换模型' : '设为此模型';
-    if (installState === 'partial') return '继续下载';
-    return '下载模型';
+    if (isDownloading) return t('model.card.status.downloading').split('\n')[0] ?? t('model.status.downloading');
+    if (hasPendingDownload && installState !== 'ready') return t('model.card.resumeDownload');
+    if (installState === 'ready') return isActive ? t('model.card.replace') : t('model.card.activateThis');
+    if (installState === 'partial') return t('model.card.resumeDownload');
+    return t('model.card.download');
   })();
 
   const onPressPrimary = () => {
@@ -451,20 +467,24 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
   };
 
   const onCancelDownload = () => {
-    Alert.alert('取消下载', '将停止下载并删除未完成的模型文件。', [
-      {text: '继续下载', style: 'cancel'},
-      {
-        text: '取消并删除',
-        style: 'destructive',
-        onPress: async () => {
-          await cancelModelDownloadAndCleanup();
-          setHasPendingDownload(false);
-          setInstallState('missing');
-          await refresh();
-          onModelsChanged?.();
+    Alert.alert(
+      t('model.card.cancelDownload'),
+      t('model.card.cancelDownloadBody'),
+      [
+        {text: t('model.card.resumeDownload'), style: 'cancel'},
+        {
+          text: t('model.card.cancelAndDelete'),
+          style: 'destructive',
+          onPress: async () => {
+            await cancelModelDownloadAndCleanup();
+            setHasPendingDownload(false);
+            setInstallState('missing');
+            await refresh();
+            onModelsChanged?.();
+          },
         },
-      },
-    ]);
+      ],
+    );
   };
 
   const statusLine = (() => {
@@ -472,18 +492,18 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
       const pct = (downloadJob.progress * 100).toFixed(0);
       const speed = formatSpeed(downloadJob.speedBps);
       const file = downloadJob.currentFile || '…';
-      return `下载中 · ${pct}% · ${speed}\n${file}`;
+      return t('model.card.status.downloading', {pct, speed, file});
     }
-    if (installState === 'ready' && isActive) return '✓ 已安装 · 当前使用';
-    if (installState === 'ready') return '✓ 已安装（未选用）';
-    if (installState === 'partial' || hasPendingDownload) return '⚠ 未完整（可继续下载）';
-    return '未下载';
+    if (installState === 'ready' && isActive) return t('model.card.status.activeReady');
+    if (installState === 'ready') return t('model.card.status.ready');
+    if (installState === 'partial' || hasPendingDownload) return t('model.card.status.partial');
+    return t('model.card.status.missing');
   })();
 
   return (
     <Card style={styles.card}>
       <View style={styles.titleRow}>
-        <Text style={styles.cardTitle}>模型管理</Text>
+        <Text style={styles.cardTitle}>{t('model.card.title')}</Text>
         {recommendation ? (
           <Text style={styles.titleHint} numberOfLines={1}>
             {recommendation.reason}
@@ -492,7 +512,7 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
       </View>
 
       {!supported ? (
-        <Text style={styles.hint}>下载仅手机端（iOS/Android）支持；Web 端不可用。</Text>
+        <Text style={styles.hint}>{t('model.card.hint.web')}</Text>
       ) : (
         <View>
           {/* 模型选项（卡片化 + 推荐内嵌） */}
@@ -543,7 +563,7 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
           <View style={styles.rowGap}>
             {isDownloading ? (
               <Pressable style={[styles.btn, styles.btnDanger, styles.btnFlex]} onPress={onCancelDownload}>
-                <Text style={styles.btnDangerText}>取消下载</Text>
+                <Text style={styles.btnDangerText}>{t('model.card.cancelDownload')}</Text>
               </Pressable>
             ) : (
               <>
@@ -552,7 +572,7 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
                 </Pressable>
                 {(installState === 'ready' || installState === 'partial' || hasPendingDownload) ? (
                   <Pressable style={[styles.btn, styles.btnDanger]} onPress={onPressDelete}>
-                    <Text style={styles.btnDangerText}>删除</Text>
+                    <Text style={styles.btnDangerText}>{t('model.action.delete')}</Text>
                   </Pressable>
                 ) : null}
               </>
@@ -562,12 +582,12 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
           {/* 已安装列表 */}
           {installed.length > 0 ? (
             <View style={styles.installedBlock}>
-              <Text style={styles.sectionLabel}>本机已安装</Text>
+              <Text style={styles.sectionLabel}>{t('model.card.installedTitle')}</Text>
               {installed.map(item => (
                 <Text key={item.model.id} style={styles.installedRow}>
                   {item.model.label}
-                  {item.state === 'partial' ? '（不完整）' : ''}
-                  {activeId === item.model.id && item.state === 'ready' ? ' · 使用中' : ''}
+                  {item.state === 'partial' ? t('model.card.installedPartial') : ''}
+                  {activeId === item.model.id && item.state === 'ready' ? t('model.card.installedActive') : ''}
                   {' · '}
                   {formatBytes(item.dirSizeBytes)}
                 </Text>
@@ -575,7 +595,7 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
             </View>
           ) : null}
 
-          <Text style={styles.hint}>须 arm64 原生 APK（Expo Go 不可用）；下载完成后到「模型基准测试」验证。</Text>
+          <Text style={styles.hint}>{t('model.card.hint.arm')}</Text>
 
           {/* 设备指标（折叠，放最下面） */}
           <DeviceMetricsSection

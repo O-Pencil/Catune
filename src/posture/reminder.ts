@@ -5,16 +5,16 @@
  *   web(RNW) 上 Vibration 多为 no-op，已 try/catch。
  *
  * [WHO] 导出 `Reminder`、`createReminder(engine, opts?)`
- * [FROM] 依赖 `react-native`(Vibration)、./engine(PostureEngine)、./types(PostureName)
+ * [FROM] 依赖 `react-native`(Vibration)、./engine(PostureEngine)、./types(PostureName)、./utils(ABNORMAL_POSTURES)
  * [TO] 被 App.tsx 启动
  * [HERE] src/posture/reminder.ts · 异常坐姿震动提醒
  */
 import {Vibration} from 'react-native';
 import {PostureEngine} from './engine';
-import {POSTURE_LABELS, PostureName} from './types';
+import {PostureName, getPostureLabel} from './types';
+import {ABNORMAL_POSTURES} from './utils';
 import {logEvent} from '../debug/logBus';
 
-const ABNORMAL: PostureName[] = ['SLUMPED', 'TECH_NECK', 'LEFT_LEAN'];
 /** 两次震动最小间隔，避免姿态抖动反复触发。 */
 const COOLDOWN_MS = 8000;
 /** 温和双段震动（Android 按 pattern；iOS 忽略 pattern 走固定时长）。 */
@@ -37,13 +37,13 @@ export function createReminder(engine: PostureEngine, opts: {cooldownMs?: number
         if (s.posture === last) {
           return;
         }
-        const wasAbnormal = last != null && ABNORMAL.includes(last);
-        const isAbnormal = ABNORMAL.includes(s.posture);
+        const wasAbnormal = last != null && ABNORMAL_POSTURES.includes(last);
+        const isAbnormal = ABNORMAL_POSTURES.includes(s.posture);
         last = s.posture;
         // 仅「非异常 → 异常」的入态那一下震动，且过冷却
         if (isAbnormal && !wasAbnormal && Date.now() - lastBuzzTs >= cooldownMs) {
           lastBuzzTs = Date.now();
-          logEvent('flow', `⚡ 震动提醒（${POSTURE_LABELS[s.posture]}）`);
+          logEvent('flow', `⚡ 震动提醒（${getPostureLabel(s.posture)}）`);
           try {
             Vibration.vibrate(PATTERN);
           } catch {

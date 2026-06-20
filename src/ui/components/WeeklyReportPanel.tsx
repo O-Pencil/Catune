@@ -6,15 +6,28 @@ import React, {useMemo} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {buildWeeklyReport, WeekDay} from '../../posture/dailyReport';
 import {theme} from '../theme';
+import {useLocale, useT} from '../i18n';
+
+const LABEL_TO_KEY: Record<string, string> = {
+  Sun: 'report.weekday.sun',
+  Mon: 'report.weekday.mon',
+  Tue: 'report.weekday.tue',
+  Wed: 'report.weekday.wed',
+  Thu: 'report.weekday.thu',
+  Fri: 'report.weekday.fri',
+  Sat: 'report.weekday.sat',
+};
 
 export function WeeklyReportPanel(): React.JSX.Element {
-  const report = useMemo(() => buildWeeklyReport(), []);
+  const {locale} = useLocale();
+  const t = useT();
+  const report = useMemo(() => buildWeeklyReport(locale), [locale]);
 
   if (!report.hasData) {
     return (
       <View style={styles.empty}>
-        <Text style={styles.emptyTitle}>本周暂无数据</Text>
-        <Text style={styles.emptyHint}>积累几天看趋势</Text>
+        <Text style={styles.emptyTitle}>{t('report.weekly.emptyTitle')}</Text>
+        <Text style={styles.emptyHint}>{t('report.weekly.emptyHint')}</Text>
       </View>
     );
   }
@@ -26,33 +39,37 @@ export function WeeklyReportPanel(): React.JSX.Element {
     <View style={styles.root}>
       <View style={styles.barsRow}>
         {week.map(d => (
-          <Bar key={d.date} day={d} maxPoints={maxPoints} />
+          <Bar key={d.date} day={d} maxPoints={maxPoints} t={t} />
         ))}
       </View>
 
       <View style={styles.summaryRow}>
         <View style={styles.summaryCell}>
           <Text style={styles.summaryValue}>{report.recordedDays}</Text>
-          <Text style={styles.summaryLabel}>记录天数</Text>
+          <Text style={styles.summaryLabel}>{t('report.weekly.recordedDays')}</Text>
         </View>
         <View style={styles.summaryCell}>
           <Text style={styles.summaryValue}>{report.weekPoints}</Text>
-          <Text style={styles.summaryLabel}>本周总分</Text>
+          <Text style={styles.summaryLabel}>{t('report.weekly.weekPoints')}</Text>
         </View>
       </View>
 
       <View style={styles.aiBlock}>
-        <Text style={styles.aiLabel}>AI 周总结</Text>
+        <Text style={styles.aiLabel}>{t('report.weekly.aiLabel')}</Text>
         <Text style={styles.aiText}>{report.aiSummary}</Text>
       </View>
     </View>
   );
 }
 
-function Bar({day, maxPoints}: {day: WeekDay; maxPoints: number}): React.JSX.Element {
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
+function Bar({day, maxPoints, t}: {day: WeekDay; maxPoints: number; t: T}): React.JSX.Element {
   const points = day.snapshot?.points ?? 0;
   const heightPct = maxPoints > 0 ? Math.max(0.04, points / maxPoints) : 0.04;
   const recorded = day.snapshot !== null;
+  const labelKey = LABEL_TO_KEY[day.label];
+  const localizedLabel = labelKey ? t(labelKey) : day.label;
   return (
     <View style={styles.barCol}>
       <View style={styles.barTrack}>
@@ -67,7 +84,7 @@ function Bar({day, maxPoints}: {day: WeekDay; maxPoints: number}): React.JSX.Ele
       <Text style={styles.barValue} numberOfLines={1}>
         {recorded ? points : '—'}
       </Text>
-      <Text style={[styles.barLabel, isWeekend(day) && styles.barLabelWeekend]}>{day.label}</Text>
+      <Text style={[styles.barLabel, isWeekend(day) && styles.barLabelWeekend]}>{localizedLabel}</Text>
     </View>
   );
 }

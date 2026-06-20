@@ -1,0 +1,7 @@
+45:  const TABS: Tab[] = useMemo(
+46-    () => [
+47-      {value: 'desk', label: t('shell.tab.desk'), Icon: GaugeIcon},
+48-      {value: 'plant', label: t('shell.tab.plant'), Icon: FanIcon},
+49-      {value: 'settings', label: t('shell.tab.settings'), Icon: SettingsIcon},
+50-    ],
+51-    [t],

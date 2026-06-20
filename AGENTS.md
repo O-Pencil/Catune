@@ -66,13 +66,23 @@ Catune/
 │   ├── types.ts                  #   数据契约
 │   ├── engine.ts                 #   规则状态机 + 打分 + 建议查表 + 禁词 + ruleFallback
 │   ├── sensorSource.ts           #   expo-sensors DeviceMotion 手机 IMU 数据源（iPhone 已通）
-│   └── mock.ts                   #   10Hz 模拟数据源 + F7 场景锁定
+│   ├── mock.ts                   #   10Hz 模拟数据源 + F7 场景锁定
+│   └── utils.ts                  #   共享工具函数（clamp / pad / ABNORMAL_POSTURES）
 ├── src/mnn/                      # ★ 端侧模型管理（TS，iOS/Android 通用）
 │   ├── modelCatalog.ts           #   模型清单（0.5B / 1.7B 定义、标签、下载地址）
 │   ├── modelDownloadService.ts   #   全局下载服务（续传 / 暂停 / 进度）
 │   ├── modelStorage.ts           #   模型文件存储工具
 │   ├── deviceProfile.ts          #   设备探测 + 分级 + 模型推荐（RAM/SME2/存储）
 │   └── inferStreamClient.ts      #   端侧推理流式客户端
+├── src/assess/                    # ★ 体态视觉评估（TS，含云端/端侧两套客户端）
+│   ├── types.ts                  #   评估数据契约（AssessBackend / AssessConfig）
+│   ├── config.ts                 #   评估配置持久化
+│   ├── preset.ts                 #   3 套预置评估结果（降级兜底）
+│   ├── parse.ts                  #   云端 VL 输出解析
+│   ├── cloudClient.ts            #   云端 Qwen-VL 评估客户端
+│   ├── localVlClient.ts          #   端侧 VL 评估客户端（原生桥）
+│   ├── service.ts                #   评估编排（选择后端 → 调用 → 解析 → 兜底）
+│   └── readiness.ts              #   评估就绪检查（Key / 依赖 / 设备）
 ├── src/ui/                       # RN UI 组件（TS，iOS/Android 通用）
 │   ├── AppShell.tsx              #   App 外壳（Tab 导航）
 │   ├── screens/                  #   页面组件（Desk / Plant / Settings）
@@ -110,8 +120,8 @@ Catune/
 
 ```
 com/catune/
-├── CatuneApp.kt                  # Application：仅初始化 RN/SoLoader（无业务逻辑）
-├── MainActivity.kt               # RN 宿主（getMainComponentName="Catune"）
+├── MainApplication.kt             # Application：仅初始化 RN/SoLoader（无业务逻辑）
+├── MainActivity.kt               # RN 宿主（getMainComponentName="main"，Expo 默认）
 ├── rn/
 │   ├── CatunePackage.kt          # 注册 CatuneMnn 调试模块
 │   └── MnnDebugModule.kt         # RN 调试模块：getStatus / inferText

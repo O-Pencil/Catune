@@ -12,6 +12,7 @@ import {
   type DownloadJobSnapshot,
 } from '../../mnn/modelDownloadService';
 import {theme} from '../theme';
+import {useT} from '../i18n';
 
 type Props = {
   onOpenSettings?: () => void;
@@ -27,6 +28,7 @@ function trimFileName(name: string, maxLen: number): string {
 }
 
 export function ModelDownloadBanner({onOpenSettings}: Props): React.JSX.Element | null {
+  const t = useT();
   const {width} = useWindowDimensions();
   const compact = width < 390;
   const [job, setJob] = useState<DownloadJobSnapshot>(() => getDownloadSnapshot());
@@ -49,10 +51,14 @@ export function ModelDownloadBanner({onOpenSettings}: Props): React.JSX.Element 
   const fileLabel = job.currentFile ? trimFileName(job.currentFile, compact ? 18 : 28) : '…';
 
   const onCancel = () => {
-    Alert.alert('取消下载', '将停止下载并删除未完成的模型文件。', [
-      {text: '继续', style: 'cancel'},
-      {text: '取消并删除', style: 'destructive', onPress: () => cancelModelDownloadAndCleanup()},
-    ]);
+    Alert.alert(
+      t('model.downloadBanner.cancelAlert.title'),
+      t('model.downloadBanner.cancelAlert.message'),
+      [
+        {text: t('model.downloadBanner.cancelAlert.continue'), style: 'cancel'},
+        {text: t('model.downloadBanner.cancelAlert.confirm'), style: 'destructive', onPress: () => cancelModelDownloadAndCleanup()},
+      ],
+    );
   };
 
   return (
@@ -60,7 +66,7 @@ export function ModelDownloadBanner({onOpenSettings}: Props): React.JSX.Element 
       <Pressable style={styles.main} onPress={onOpenSettings}>
         <View style={styles.topRow}>
           <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
-            {compact ? '下载中' : `下载中 · ${label}`}
+            {compact ? t('model.downloadBanner.compact') : t('model.downloadBanner.full', {label})}
           </Text>
           <Text style={styles.stats} numberOfLines={1}>
             {pct} · {speed}
@@ -76,7 +82,7 @@ export function ModelDownloadBanner({onOpenSettings}: Props): React.JSX.Element 
         </View>
       </Pressable>
       <Pressable style={styles.cancelBtn} onPress={onCancel} hitSlop={8}>
-        <Text style={styles.cancelText}>取消</Text>
+        <Text style={styles.cancelText}>{t('model.downloadBanner.cancelBtn')}</Text>
       </Pressable>
     </View>
   );

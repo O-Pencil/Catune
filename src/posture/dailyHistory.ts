@@ -10,6 +10,7 @@
  * [HERE] src/posture/dailyHistory.ts · 每日快照
  */
 import * as FileSystem from 'expo-file-system/legacy';
+import {pad} from './utils';
 
 /** 单日快照（聚合数据）。 */
 export type DailySnapshot = {
@@ -39,10 +40,6 @@ function getFileUri(): string | null {
   const dir = FileSystem.documentDirectory;
   if (!dir) return null;
   return dir + HISTORY_FILE;
-}
-
-function pad(n: number): string {
-  return n < 10 ? `0${n}` : String(n);
 }
 
 /** 'YYYY-MM-DD' 本地时区日期。 */

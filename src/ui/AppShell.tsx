@@ -7,7 +7,7 @@
  * [TO] 被 /App.tsx 渲染；数据/控制由 App 透传
  * [HERE] src/ui/AppShell.tsx · 应用外壳（Tab 导航）
  */
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {SafeAreaView, StyleSheet} from 'react-native';
 import {StatusBar} from 'expo-status-bar';
 
@@ -27,13 +27,7 @@ import {DashboardState, PostureAction} from '../posture/types';
 import {GrowthState} from '../posture/growth';
 import {MemoryService} from '../posture/memory/service';
 import {resumePendingDownloadIfNeeded} from '../mnn/modelDownloadService';
-
-const TABS: Tab[] = [
-  {value: 'desk', label: 'Desk', Icon: GaugeIcon},
-  {value: 'plant', label: 'Plant', Icon: FanIcon},
-  {value: 'monitor', label: 'Monitor', Icon: MonitorIcon},
-  {value: 'settings', label: 'Settings', Icon: SettingsIcon},
-];
+import {useT} from './i18n';
 
 type Props = {
   state: DashboardState;
@@ -47,6 +41,16 @@ type Props = {
 };
 
 export function AppShell({state, growth, memory, mode, deskSubtitle, onUseSensor, onUseMock, onScenario}: Props): React.JSX.Element {
+  const t = useT();
+  const TABS: Tab[] = useMemo(
+    () => [
+      {value: 'desk', label: t('shell.tab.desk'), Icon: GaugeIcon},
+      {value: 'plant', label: t('shell.tab.plant'), Icon: FanIcon},
+      {value: 'monitor', label: t('shell.tab.monitor'), Icon: MonitorIcon},
+      {value: 'settings', label: t('shell.tab.settings'), Icon: SettingsIcon},
+    ],
+    [t],
+  );
   const [tab, setTab] = useState('desk');
   // 跟练页：由 Desk 建议动作 chip 点击弹出的全屏聚焦 overlay（不占 tab）
   const [trainingAction, setTrainingAction] = useState<PostureAction | null>(null);

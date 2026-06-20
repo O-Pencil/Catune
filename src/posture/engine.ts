@@ -3,8 +3,8 @@
  * @description 跨平台姿态引擎（TS）：3 节点规则状态机（颈/胸/腰）+ 0-100 打分 + 本地查表文案 + 禁词检查 + 规则兜底。
  *   从 Kotlin 侧迁移，iOS/Android 通用，无原生依赖。
  *
- * [WHO] 导出 `createPostureEngine()`、`ruleFallback()`、`THRESHOLDS`、`BANNED_WORDS`、`sanitize()`
- * [FROM] 依赖 ./types
+ * [WHO] 导出 `createPostureEngine()`、`ruleFallback()`、`THRESHOLDS`、`sanitize()`、`getBannedWords()`
+ * [FROM] 依赖 ./types、./actionTag、../ui/i18n(tr, getDict)
  * [TO] 被 mock.ts/sensorSource.ts 写入、adviceOrchestrator 推模型文案、Dashboard/App 订阅
  * [HERE] src/posture/engine.ts · 姿态规则引擎（TS）
  *
@@ -12,15 +12,16 @@
  * 纪律（PRD §5.10）：分类/打分用规则（可靠底线）；端侧模型只补「文案生成」；文案一律过禁词。
  * 建议文案「粘性」：规则文案只在姿态类别变化时重算；模型文案经 setModelAdvice 异步替换，不被 10Hz 帧覆盖。
  */
+import {getDict, tr, type Locale} from '../ui/i18n';
+import {actionForPosture, parseActionTag} from './actionTag';
 import {
   DashboardState,
   KinematicsState,
-  POSTURE_LABELS,
   PostureFeedback,
   PostureName,
   PostureSignals,
+  getPostureLabel,
 } from './types';
-import {actionForPosture, parseActionTag} from './actionTag';
 import {logEvent} from '../debug/logBus';
 
 let lastSensorLogTs = 0;
@@ -34,44 +35,48 @@ export const THRESHOLDS = {
 
 // ---------------- 安全链：本地查表文案 + 禁词 ----------------
 
-const SAFE_FALLBACK = '注意调整坐姿，让脊柱回到自然中立位，必要时起身活动一下喵～';
-
-/** 禁词：诊断 / 治疗 / 承诺 / 营销（对齐技术实现文档 §7.2）。 */
-export const BANNED_WORDS = [
-  '确诊', '诊断为', '患有', '综合征',
-  '治疗', '治愈', '药物', '手术', '注射', '贴片',
-  '保证', '一定', '100%', '彻底', '永远',
-  '限时', '优惠', '推荐购买', '扫码',
-];
-
-const ACTION_TEXT: Record<string, string> = {
-  neck_retraction: '头部有些前倾，试着收下巴、让耳朵回到肩膀正上方，做几次颈部回缩喵～',
-  thoracic_extension: '上背有点含胸驼背，挺一下胸椎、打开肩膀，做几次胸椎伸展喵～',
-  scapular_retraction: '身体向一侧偏，把重心摆正、肩胛骨向后向下收一收喵～',
+/** locale 感知的禁词（诊断 / 治疗 / 承诺 / 营销）。model 输出也按 locale 检查。 */
+const BANNED_WORDS: Record<Locale, string[]> = {
+  en: [
+    'diagnosed', 'diagnosis', 'patient with', 'syndrome',
+    'treatment', 'cure', 'medication', 'surgery', 'injection', 'patch',
+    'guarantee', 'guaranteed', 'definitely', '100%', 'completely', 'forever',
+    'limited time', 'discount', 'buy now', 'scan code',
+  ],
+  zh: [
+    '确诊', '诊断为', '患有', '综合征',
+    '治疗', '治愈', '药物', '手术', '注射', '贴片',
+    '保证', '一定', '100%', '彻底', '永远',
+    '限时', '优惠', '推荐购买', '扫码',
+  ],
 };
 
-const NORMAL_TEXT = '坐姿不错，保持脊柱自然中立，继续加油喵～';
+export function getBannedWords(locale: Locale): string[] {
+  return BANNED_WORDS[locale] ?? BANNED_WORDS.en;
+}
 
-function isSafe(text: string): boolean {
-  return !BANNED_WORDS.some(w => text.includes(w));
+function isSafe(text: string, locale: Locale): boolean {
+  return !getBannedWords(locale).some(w => text.includes(w));
 }
 
 /** 命中禁词则整体替换为中性兜底文案。 */
-export function sanitize(text: string): string {
-  return isSafe(text) ? text : SAFE_FALLBACK;
+export function sanitize(text: string, locale: Locale = 'en'): string {
+  return isSafe(text, locale) ? text : tr(locale, 'advice.fallback');
 }
 
-function adviceFor(actionId: string | null, severityLevel: number, posture: PostureName): string {
+function adviceFor(actionId: string | null, severityLevel: number, posture: PostureName, locale: Locale): string {
   let base: string;
-  if (actionId && ACTION_TEXT[actionId]) {
-    base = ACTION_TEXT[actionId];
+  if (actionId) {
+    const key = `advice.action.${actionId}`;
+    const v = tr(locale, key);
+    base = v === key ? tr(locale, 'advice.fallback') : v;
   } else if (posture === 'NORMAL') {
-    base = NORMAL_TEXT;
+    base = tr(locale, 'advice.normal');
   } else {
-    base = SAFE_FALLBACK;
+    base = tr(locale, 'advice.fallback');
   }
-  const text = severityLevel >= 3 ? `${base} 久坐挺久啦，起来走两步喵～` : base;
-  return sanitize(text);
+  const text = severityLevel >= 3 ? `${base} ${tr(locale, 'advice.severitySuffix')}` : base;
+  return sanitize(text, locale);
 }
 
 // ---------------- 3 节点分类（规则） ----------------
@@ -111,14 +116,14 @@ function severityOf(posture: PostureName, s: PostureSignals): number {
 }
 
 /** 纯规则兜底：复用阈值，离线 100% 可用。 */
-export function ruleFallback(signals: PostureSignals): PostureFeedback {
+export function ruleFallback(signals: PostureSignals, locale: Locale = 'en'): PostureFeedback {
   const {posture, actionId} = classifyAndAction(
     signals.neckPitchDeg,
     signals.thorPitchDeg,
     signals.lumbarRollDeg,
   );
   const severity = severityOf(posture, signals);
-  return {advice: adviceFor(actionId, severity, posture), source: 'RULE_FALLBACK'};
+  return {advice: adviceFor(actionId, severity, posture, locale), source: 'RULE_FALLBACK'};
 }
 
 // ---------------- 状态机（原 KinematicsHub） ----------------
@@ -141,14 +146,23 @@ export type PostureEngine = {
   setOffline: () => void;
   /** 端侧模型异步推送建议文案（流式：streaming=true，结束：false）。 */
   setModelAdvice: (advice: string, opts: {streaming: boolean}) => void;
+  /** 切换 locale：重渲 postureLabel + 规则文案（仅在姿态变化时会触发新一轮）。 */
+  setLocale: (locale: Locale) => void;
   subscribe: (cb: (s: DashboardState) => void) => () => void;
+};
+
+export type EngineOptions = {
+  /** 当前 locale getter：engine 在生成 advice / postureLabel 时按 locale 查表。 */
+  getLocale?: () => Locale;
 };
 
 /**
  * 单例式状态枢纽（等价 Kotlin 的 KinematicsHub StateFlow）。
  * update 每帧算分类/分数；建议文案「粘性」：规则只在姿态变化时重算，模型文案由 setModelAdvice 异步替换。
  */
-export function createPostureEngine(): PostureEngine {
+export function createPostureEngine(opts: EngineOptions = {}): PostureEngine {
+  const getLocale = opts.getLocale ?? ((): Locale => 'en');
+
   let totalSamples = 0;
   let healthySamples = 0;
   let state: DashboardState = {
@@ -156,7 +170,7 @@ export function createPostureEngine(): PostureEngine {
     thorPitch: 0,
     lumbarRoll: 0,
     posture: 'NORMAL',
-    postureLabel: POSTURE_LABELS.NORMAL,
+    postureLabel: getPostureLabel('NORMAL', getLocale()),
     score: 100,
     abnormalDurationMinutes: 0,
     advice: '',
@@ -170,6 +184,7 @@ export function createPostureEngine(): PostureEngine {
   return {
     getState: () => state,
     update(neckPitch: number, thorPitch: number, lumbarRoll: number) {
+      const locale = getLocale();
       const {posture} = classifyAndAction(neckPitch, thorPitch, lumbarRoll);
       // 演示日志：传感器输入（10Hz → 节流 1Hz）
       const nowTs = Date.now();
@@ -187,7 +202,7 @@ export function createPostureEngine(): PostureEngine {
         thorPitch,
         lumbarRoll,
         posture,
-        postureLabel: POSTURE_LABELS[posture],
+        postureLabel: getPostureLabel(posture, locale),
         score,
         abnormalDurationMinutes: posture !== 'NORMAL' ? 1 : 0,
       };
@@ -195,9 +210,9 @@ export function createPostureEngine(): PostureEngine {
       const postureChanged = posture !== state.posture || state.advice === '';
       if (postureChanged) {
         if (posture !== state.posture) {
-          logEvent('flow', `姿态 → ${POSTURE_LABELS[posture]}（不驼背分 ${score}）`);
+          logEvent('flow', `姿态 → ${getPostureLabel(posture, locale)}（不驼背分 ${score}）`);
         }
-        const feedback = ruleFallback(signalsFrom(next));
+        const feedback = ruleFallback(signalsFrom(next), locale);
         state = {
           ...next,
           advice: feedback.advice,
@@ -217,11 +232,12 @@ export function createPostureEngine(): PostureEngine {
       emit();
     },
     setOffline() {
-      const feedback = ruleFallback(signalsFrom({...state, posture: 'OFFLINE'}));
+      const locale = getLocale();
+      const feedback = ruleFallback(signalsFrom({...state, posture: 'OFFLINE'}), locale);
       state = {
         ...state,
         posture: 'OFFLINE',
-        postureLabel: POSTURE_LABELS.OFFLINE,
+        postureLabel: getPostureLabel('OFFLINE', locale),
         advice: feedback.advice,
         inferenceSource: 'RULE_FALLBACK',
         streaming: false,
@@ -234,10 +250,26 @@ export function createPostureEngine(): PostureEngine {
       const {text, action} = parseActionTag(advice);
       state = {
         ...state,
-        advice: text,
+        advice: sanitize(text, getLocale()),
         action: action ?? state.action,
         inferenceSource: 'MODEL',
         streaming: opts.streaming,
+      };
+      emit();
+    },
+    setLocale(_locale: Locale) {
+      // 强制按当前 locale 重渲 postureLabel，并重算规则文案（若有）
+      const locale = getLocale();
+      const newPostureLabel = getPostureLabel(state.posture, locale);
+      // 若当前 advice 是规则生成的，按 locale 重出
+      const isRule = state.inferenceSource === 'RULE_FALLBACK';
+      const newAdvice = isRule
+        ? ruleFallback(signalsFrom(state), locale).advice
+        : state.advice;
+      state = {
+        ...state,
+        postureLabel: newPostureLabel,
+        advice: newAdvice,
       };
       emit();
     },
@@ -248,3 +280,12 @@ export function createPostureEngine(): PostureEngine {
     },
   };
 }
+
+/** 已废弃的常量占位（避免导入报错）。真正的兜底文案走 i18n。 */
+export const SAFE_FALLBACK = '';
+
+// Re-export for callers that want a typed `Locale` import.
+export type {Locale} from '../ui/i18n';
+
+// getDict re-export for assess/service that wants to enumerate keys.
+export {getDict};

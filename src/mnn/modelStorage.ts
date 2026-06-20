@@ -1,4 +1,14 @@
-import * as FileSystem from 'expo-file-system/legacy';
+/**
+ * @file modelStorage.ts
+ * @description 模型文件存储工具：读写活跃模型 ID、下载状态、已安装模型信息、模型文件删除与大小查询。
+ *
+ * [WHO] 导出 `ModelInstallState`、`DownloadState`、`InstalledModelInfo`、`readActiveModelId`、
+ *   `writeActiveModelId`、`readDownloadState`、`writeDownloadState`、`modelDir`、`fileSizeBytes`、
+ *   `formatBytes`、`deleteModelFiles`、`getInstalledModels`
+ * [FROM] 依赖 `expo-file-system`、`./modelCatalog`
+ * [TO] 被 `modelDownloadService`、`ModelDownloadCard` 引用
+ * [HERE] src/mnn/modelStorage.ts · 模型文件存储与状态管理
+ */
 import {
   ACTIVE_MODEL_FILE,
   DEFAULT_MODEL_ID,

@@ -12,6 +12,7 @@ import { Platform, NativeModules } from 'react-native';
 import * as Device from 'expo-device';
 import * as FileSystem from 'expo-file-system/legacy';
 import { MODEL_CATALOG, MnnModelDef } from './modelCatalog';
+import { tr } from '../ui/i18n';
 
 // ─── 类型定义 ────────────────────────────────────────────────────────────────
 
@@ -270,29 +271,39 @@ export function recommendModel(profile: DeviceProfile): ModelRecommendation {
 }
 
 /**
- * 获取设备档位的中文标签（UI 展示用）。
+ * 获取设备档位的本地化标签（UI 展示用）。默认 en。
  */
-export function getTierLabel(tier: DeviceTier): string {
-  switch (tier) {
-    case 'entry':
-      return '入门';
-    case 'mainstream':
-      return '主流';
-    case 'high':
-      return '高性能';
-  }
+export function getTierLabel(tier: DeviceTier, locale: 'en' | 'zh' = 'en'): string {
+  const map: Record<DeviceTier, string> = {
+    entry: 'tier.entry',
+    mainstream: 'tier.mainstream',
+    high: 'tier.high',
+  };
+  return tr(locale, map[tier]);
 }
 
 /**
- * 获取设备档位的简短描述（UI 展示用）。
+ * 获取设备档位的简短描述（UI 展示用）。默认 en。
  */
-export function getTierDescription(tier: DeviceTier): string {
+export function getTierDescription(tier: DeviceTier, locale: 'en' | 'zh' = 'en'): string {
+  // 描述类暂时保留在 deviceProfile 内部作为 fallback；UI 端可以基于 getTierLabel 自行拼接。
+  // 这里只给 zh 默认（向后兼容），其它 locale 走 fallback。
+  if (locale === 'zh') {
+    switch (tier) {
+      case 'entry':
+        return '轻量模型，稳定优先';
+      case 'mainstream':
+        return '平衡性能与体验';
+      case 'high':
+        return '大模型 + 硬件加速';
+    }
+  }
   switch (tier) {
     case 'entry':
-      return '轻量模型，稳定优先';
+      return 'Light model, stability first';
     case 'mainstream':
-      return '平衡性能与体验';
+      return 'Balance of performance and experience';
     case 'high':
-      return '大模型 + 硬件加速';
+      return 'Large model + hardware acceleration';
   }
 }

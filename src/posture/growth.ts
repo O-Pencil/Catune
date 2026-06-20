@@ -5,13 +5,15 @@
  *   异常「入态」按状态转移扣分并记一条日志（不会每帧刷屏）。OFFLINE 不计分只忽略。
  *
  * [WHO] 导出 `createGrowthTracker(engine, opts?)`、`GrowthState`、`GrowthEvent`、`GrowthTracker`、`STAGE_NAMES`、`STAGE_THRESHOLDS`
- * [FROM] 依赖 ./engine(PostureEngine 类型)、./types(PostureName)
+ * [FROM] 依赖 ./engine(PostureEngine 类型)、./types(PostureName)、../ui/i18n(tr, Locale)
  * [TO] 被 App.tsx 启动并订阅，结果传给 src/ui/screens/PlantScreen
  * [HERE] src/posture/growth.ts · 植物成长累加器（真实数据 → 积分/阶段/日志）
  */
+import {tr, type Locale} from '../ui/i18n';
 import type {PostureEngine} from './engine';
 import {PostureName} from './types';
 import {rolloverIfNewDay, upsertTodaySnapshot} from './dailyHistory';
+import {pad} from './utils';
 
 /** 5 个成长阶段（与 PlantScreen 一致）。 */
 export const STAGE_NAMES = ['Seed', 'Sprout', 'Sapling', 'Bud', 'Fruit'] as const;
@@ -46,17 +48,19 @@ export type GrowthOptions = {
   goodAwardIntervalMs?: number;
   /** 心跳间隔（默认 5s，越小良好计时越精细）。 */
   tickMs?: number;
+  /** 当前 locale getter：用于 event.action 文案 / stageName。 */
+  getLocale?: () => Locale;
 };
 
 const INITIAL_POINTS = 50;
 const GOOD_AWARD_POINTS = 5;
 const LOG_CAP = 12;
 
-/** 异常入态扣分 + 日志文案。 */
-const PENALTY: Partial<Record<PostureName, {delta: number; action: string}>> = {
-  SLUMPED: {delta: -5, action: 'Slouching detected'},
-  TECH_NECK: {delta: -4, action: 'Forward head posture'},
-  LEFT_LEAN: {delta: -3, action: 'Leaning to one side'},
+/** 异常入态扣分 + 日志文案 i18n key。 */
+const PENALTY: Partial<Record<PostureName, {delta: number; key: string}>> = {
+  SLUMPED: {delta: -5, key: 'plant.event.slumping'},
+  TECH_NECK: {delta: -4, key: 'plant.event.forwardHead'},
+  LEFT_LEAN: {delta: -3, key: 'plant.event.leaning'},
 };
 
 function clampPoints(p: number): number {
@@ -73,18 +77,21 @@ function stageOf(points: number): number {
   return stage;
 }
 
-function pad(n: number): string {
-  return n < 10 ? `0${n}` : String(n);
-}
-
 function nowLabel(): string {
   const d = new Date();
   return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+function stageNameAt(stage: number, locale: Locale): string {
+  const key = `plant.stageNames.${STAGE_NAMES[stage]?.toLowerCase() ?? 'seed'}`;
+  const v = tr(locale, key);
+  return v === key ? STAGE_NAMES[stage] : v;
+}
+
 export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions = {}): GrowthTracker {
   const goodAwardIntervalMs = opts.goodAwardIntervalMs ?? 60_000;
   const tickMs = opts.tickMs ?? 5_000;
+  const getLocale = opts.getLocale ?? ((): Locale => 'en');
 
   let points = INITIAL_POINTS;
   let log: GrowthEvent[] = [];
@@ -102,7 +109,7 @@ export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions =
   const snapshot = (): GrowthState => ({
     points,
     stage: stageOf(points),
-    stageName: STAGE_NAMES[stageOf(points)],
+    stageName: stageNameAt(stageOf(points), getLocale()),
     log,
   });
   const emit = () => {
@@ -136,7 +143,7 @@ export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions =
       goodAccumMs = 0; // 中断良好连击
       const pen = PENALTY[posture];
       if (pen) {
-        pushEvent(pen.delta, pen.action);
+        pushEvent(pen.delta, tr(getLocale(), pen.key));
       }
     }
   };
@@ -150,7 +157,7 @@ export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions =
     if (goodAccumMs >= goodAwardIntervalMs) {
       goodAccumMs -= goodAwardIntervalMs;
       const minutes = Math.max(1, Math.round(totalGoodMs / 60_000));
-      pushEvent(GOOD_AWARD_POINTS, `Good posture ${minutes} min`);
+      pushEvent(GOOD_AWARD_POINTS, tr(getLocale(), 'plant.event.goodPosture', {min: minutes}));
     }
   };
 

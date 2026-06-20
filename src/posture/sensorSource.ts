@@ -12,6 +12,7 @@
  */
 import {DeviceMotion} from 'expo-sensors';
 import type {PostureEngine} from './engine';
+import {clamp} from './utils';
 
 const RAD2DEG = 180 / Math.PI;
 
@@ -20,10 +21,6 @@ export type SensorSource = {
   start: () => Promise<boolean>;
   stop: () => void;
 };
-
-function clamp(v: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, v));
-}
 
 /** 把前后俯仰/左右翻滚（度）写入引擎的 3 节点。 */
 function feed(engine: PostureEngine, pitchDeg: number, rollDeg: number): void {

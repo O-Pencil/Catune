@@ -1,5 +1,13 @@
 /**
- * 端侧 MNN 模型清单。须与 android MnnModelPaths.DEFAULT_MODEL_ID 默认项一致。
+ * @file modelCatalog.ts
+ * @description 端侧 MNN 模型清单。须与 android MnnModelPaths.DEFAULT_MODEL_ID 默认项一致。
+ *
+ * [WHO] 导出 `MnnModelDef`、`MNN_MODELS_ROOT`、`ACTIVE_MODEL_FILE`、`DOWNLOAD_STATE_FILE`、
+ *   `DEFAULT_MODEL_ID`、`MODEL_CATALOG`、`getDefaultModel`、`getModelById`
+ * [FROM] 无外部依赖
+ * [TO] 被 `modelStorage`、`modelDownloadService`、`deviceProfile`、`ModelDownloadCard`、
+ *   `ModelDownloadBanner`、`assess/readiness` 引用
+ * [HERE] src/mnn/modelCatalog.ts · 端侧模型清单与元数据
  */
 export type MnnModelDef = {
   id: string;

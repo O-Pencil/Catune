@@ -10,6 +10,7 @@
  */
 import {PostureEngine} from './engine';
 import {PostureName} from './types';
+import {clamp} from './utils';
 
 export type MockScenario = 'NORMAL' | 'SLUMPED' | 'TECH_NECK' | 'LEFT_LEAN' | 'OFFLINE';
 
@@ -22,11 +23,6 @@ const SCENARIO_ANGLES: Record<Exclude<MockScenario, 'OFFLINE'>, [number, number,
   TECH_NECK: [35, 8, 5], // neck 35 > 20 → 头前倾
   LEFT_LEAN: [5, 5, -15], // lumbar -15 < -10 → 侧倾
 };
-
-/** 把角度限制在姿态引擎支持的范围内。 */
-function clamp(v: number, lo: number, hi: number): number {
-  return Math.min(hi, Math.max(lo, v));
-}
 
 export type MockSource = {
   start: () => void;

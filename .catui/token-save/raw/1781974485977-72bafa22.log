@@ -1,0 +1,6 @@
+src/ui/i18n/en.ts:  'shell.tab.desk': 'DESK',
+src/ui/i18n/en.ts:  'shell.tab.plant': 'PLANT',
+src/ui/i18n/en.ts:  'shell.tab.settings': 'SETTINGS',
+src/ui/i18n/zh.ts:  'shell.tab.desk': '桌面',
+src/ui/i18n/zh.ts:  'shell.tab.plant': '植物',
+src/ui/i18n/zh.ts:  'shell.tab.settings': '设置',

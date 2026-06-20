@@ -10,6 +10,7 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {GrowthState} from '../../posture/growth';
 import {Card} from '../primitives/Card';
 import {theme} from '../theme';
+import {useT} from '../i18n';
 import {DailyReportPanel} from './DailyReportPanel';
 import {WeeklyReportPanel} from './WeeklyReportPanel';
 
@@ -20,17 +21,19 @@ type Props = {
 type PrimaryTab = 'events' | 'summary';
 type SummaryTab = 'daily' | 'weekly';
 
-const PRIMARY_OPTIONS: {value: PrimaryTab; label: string}[] = [
-  {value: 'events', label: '事件'},
-  {value: 'summary', label: '汇总'},
-];
-
-const SUMMARY_OPTIONS: {value: SummaryTab; label: string}[] = [
-  {value: 'daily', label: '日报'},
-  {value: 'weekly', label: '周报'},
-];
+type TabOption<V extends string> = {value: V; label: string};
 
 export function LoopTabs({growth}: Props): React.JSX.Element {
+  const t = useT();
+  const PRIMARY_OPTIONS: TabOption<PrimaryTab>[] = [
+    {value: 'events', label: t('loopTabs.events')},
+    {value: 'summary', label: t('loopTabs.summary')},
+  ];
+  const SUMMARY_OPTIONS: TabOption<SummaryTab>[] = [
+    {value: 'daily', label: t('loopTabs.daily')},
+    {value: 'weekly', label: t('loopTabs.weekly')},
+  ];
+
   const [primary, setPrimary] = useState<PrimaryTab>('events');
   const [summary, setSummary] = useState<SummaryTab>('daily');
 
@@ -41,8 +44,15 @@ export function LoopTabs({growth}: Props): React.JSX.Element {
 
   const renderPrimary = useCallback(() => {
     if (primary === 'events') return <EventsView growth={growth} />;
-    return <SummaryView growth={growth} summary={summary} onSummaryChange={setSummary} />;
-  }, [primary, summary, growth]);
+    return (
+      <SummaryView
+        growth={growth}
+        summary={summary}
+        onSummaryChange={setSummary}
+        options={SUMMARY_OPTIONS}
+      />
+    );
+  }, [primary, summary, growth, SUMMARY_OPTIONS]);
 
   return (
     <Card style={styles.card}>
@@ -74,15 +84,17 @@ function SummaryView({
   growth,
   summary,
   onSummaryChange,
+  options,
 }: {
   growth: GrowthState;
   summary: SummaryTab;
   onSummaryChange: (s: SummaryTab) => void;
+  options: TabOption<SummaryTab>[];
 }): React.JSX.Element {
   return (
     <View>
       <View style={styles.summaryRow}>
-        {SUMMARY_OPTIONS.map(opt => {
+        {options.map(opt => {
           const active = opt.value === summary;
           return (
             <Pressable
@@ -103,12 +115,13 @@ function SummaryView({
 }
 
 function EventsView({growth}: {growth: GrowthState}): React.JSX.Element {
+  const t = useT();
   const log = growth.log;
   if (log.length === 0) {
     return (
       <View style={styles.empty}>
-        <Text style={styles.emptyTitle}>还没有今日数据</Text>
-        <Text style={styles.emptyHint}>保持坐姿即可累积积分；异常坐姿会在此记录。</Text>
+        <Text style={styles.emptyTitle}>{t('plant.eventsEmpty.title')}</Text>
+        <Text style={styles.emptyHint}>{t('plant.eventsEmpty.hint')}</Text>
       </View>
     );
   }

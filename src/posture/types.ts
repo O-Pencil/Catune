@@ -2,22 +2,25 @@
  * @file types.ts
  * @description 姿态引擎的跨平台 TS 类型定义（iOS/Android 通用）。从 Kotlin 侧 KinematicsHub/PostureInference 迁移而来。
  *
- * [WHO] 导出 `PostureName` / `POSTURE_LABELS` / `InferenceSource` / `PostureSignals` / `KinematicsState` / `PostureFeedback` / `DashboardState`
+ * [WHO] 导出 `PostureName` / `getPostureLabel` / `InferenceSource` / `PostureSignals` / `KinematicsState` / `PostureFeedback` / `DashboardState`
  * [FROM] 无依赖（纯类型）
  * [TO] 被 src/posture/engine.ts、src/posture/mock.ts、App.tsx 消费
  * [HERE] src/posture/types.ts · 姿态数据契约（TS）
  */
+import {tr} from '../ui/i18n';
 
 /** 姿态枚举（与原 Kotlin KinematicsHub.Posture 对齐）。 */
 export type PostureName = 'NORMAL' | 'SLUMPED' | 'TECH_NECK' | 'LEFT_LEAN' | 'OFFLINE';
 
-export const POSTURE_LABELS: Record<PostureName, string> = {
-  NORMAL: 'Normal',
-  SLUMPED: 'Slumped (Hunchback)',
-  TECH_NECK: 'Tech Neck',
-  LEFT_LEAN: 'Leaning Left',
-  OFFLINE: 'Disconnected',
-};
+/**
+ * locale 感知的姿态名：i18n key 走 `posture.{NAME}`，查不到回退英文名（驼峰）。
+ * 注意：state.postureLabel 在 engine 内部按当前 locale 渲染，UI 一般直接读 state 不用再翻。
+ */
+export function getPostureLabel(name: PostureName, locale: 'en' | 'zh' = 'en'): string {
+  const k = `posture.${name}`;
+  const v = tr(locale, k);
+  return v === k ? name : v;
+}
 
 /** 文案来源：端侧模型 / 规则兜底。 */
 export type InferenceSource = 'MODEL' | 'RULE_FALLBACK';

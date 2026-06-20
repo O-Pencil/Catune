@@ -4,7 +4,7 @@
  *   数据由 src/posture/growth.ts 的成长累加器驱动（真实坐姿 → 积分/阶段/日志），阶段条为只读进度指示。
  *
  * [WHO] 导出 `PlantScreen`
- * [FROM] 依赖 `react`、`react-native`、`react-native-svg`、`../theme`、`../primitives/Card`、`../icons`(SunIcon)、`../../posture/growth`(GrowthState)
+ * [FROM] 依赖 `react`、`react-native`、`react-native-svg`、`../theme`、`../primitives/Card`、`../icons`(SunIcon)、`../../posture/growth`(GrowthState)、`../i18n`
  * [TO] 被 `AppShell` 在 plant tab 渲染（接收 growth 真实数据）
  * [HERE] src/ui/screens/PlantScreen.tsx · 植物养成屏
  */
@@ -16,6 +16,7 @@ import {Card} from '../primitives/Card';
 import {SunIcon} from '../icons';
 import {GrowthState, STAGE_NAMES} from '../../posture/growth';
 import {LoopTabs} from '../components/LoopTabs';
+import {useT} from '../i18n';
 
 const STAGES = STAGE_NAMES.map((name, id) => ({id, name}));
 
@@ -97,19 +98,20 @@ function PlantSvg({stage}: {stage: number}): React.JSX.Element {
 }
 
 export function PlantScreen({growth}: {growth: GrowthState}): React.JSX.Element {
+  const t = useT();
   const stage = growth.stage;
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Posture Plant</Text>
+      <Text style={styles.title}>{t('plant.title')}</Text>
 
       <Card style={styles.plantCard}>
         <View style={styles.plantHeader}>
           <View>
-            <Text style={styles.kicker}>PLANT</Text>
-            <Text style={styles.cardTitle}>Today's Plant</Text>
+            <Text style={styles.kicker}>{t('plant.kicker')}</Text>
+            <Text style={styles.cardTitle}>{t('plant.today')}</Text>
           </View>
           <View style={{alignItems: 'flex-end'}}>
-            <Text style={styles.dim}>Current Stage</Text>
+            <Text style={styles.dim}>{t('plant.stage')}</Text>
             <Text style={styles.stageText}>
               {stage} · {growth.stageName}
             </Text>
@@ -128,10 +130,11 @@ export function PlantScreen({growth}: {growth: GrowthState}): React.JSX.Element 
         <View style={styles.selector}>
           {STAGES.map(st => {
             const active = st.id === stage;
+            const stageName = t(`plant.stageNames.${st.name.toLowerCase()}` as 'plant.stageNames.seed');
             return (
               <View key={st.id} style={[styles.stageBtn, active && styles.stageBtnActive]}>
                 <Text style={[styles.stageNum, active && styles.stageActiveText]}>{st.id}</Text>
-                <Text style={[styles.stageName, active && styles.stageActiveText]}>{st.name}</Text>
+                <Text style={[styles.stageName, active && styles.stageActiveText]}>{stageName}</Text>
               </View>
             );
           })}

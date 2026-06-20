@@ -6,6 +6,7 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {NativeModules, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import {colors, theme} from '../theme';
 import {Card} from '../primitives/Card';
+import {useT} from '../i18n';
 
 type Metrics = {
   ttftMs?: number;
@@ -48,6 +49,8 @@ type CatuneMnnModule = {
 
 type MetricScope = 'idle' | 'infer' | 'bench';
 
+type T = (key: string, vars?: Record<string, string | number>) => string;
+
 const CatuneMnn = NativeModules.CatuneMnn as CatuneMnnModule | undefined;
 const DEFAULT_PROMPT = '请用一句不超过30字、有温度的中文提醒我坐直，语气温和，不要医疗诊断。';
 
@@ -68,35 +71,37 @@ const PREVIEW_STATUS: Status = {
 type BenchmarkPanelProps = {refreshKey?: number};
 
 const bad = '#C20A0A';
-const yesNo = (v?: boolean) => (v === undefined ? '—' : v ? '是' : '否');
 
 /** 毫秒：小值保留 1 位小数，避免 TTFT 被四舍五入成 0。 */
-function formatDurationMs(ms?: number | null): string {
+function formatDurationMs(ms: number | null | undefined, t: T): string {
   if (ms == null || Number.isNaN(ms)) {
     return '—';
   }
   if (ms > 0 && ms < 1) {
-    return '<1 ms';
+    return t('benchmark.duration.short');
   }
   if (ms < 100) {
-    return `${ms.toFixed(1)} ms`;
+    return t('benchmark.duration.fmt', {ms: ms.toFixed(1)});
   }
-  return `${Math.round(ms)} ms`;
+  return t('benchmark.duration.fmt', {ms: Math.round(ms)});
 }
 
-function formatTps(tps?: number | null): string {
+function formatTps(tps: number | null | undefined, t: T): string {
   if (tps == null || Number.isNaN(tps)) {
     return '—';
   }
-  return `${tps.toFixed(2)} tok/s`;
+  return t('benchmark.tps.fmt', {n: tps.toFixed(2)});
 }
 
-function formatRunDetail(run: BenchRun): string {
+function formatRunDetail(run: BenchRun, t: T): string {
   const m = run.metrics;
-  const total = formatDurationMs(run.inferenceMs);
-  const prefill = formatDurationMs(m?.prefillMs);
-  const decode = formatDurationMs(m?.decodeMs);
-  return `${formatTps(m?.decodeTps)} · ${m?.tokensGenerated ?? '—'} tok · 总 ${total}（prefill ${prefill} / decode ${decode}）`;
+  return t('benchmark.run.fmt', {
+    tps: formatTps(m?.decodeTps, t),
+    tokens: m?.tokensGenerated ?? '—',
+    total: formatDurationMs(run.inferenceMs, t),
+    prefill: formatDurationMs(m?.prefillMs, t),
+    decode: formatDurationMs(m?.decodeMs, t),
+  });
 }
 
 const styles = StyleSheet.create({
@@ -221,6 +226,7 @@ function InfoRow({label, value}: {label: string; value: string}): React.JSX.Elem
 }
 
 export function BenchmarkPanel({refreshKey = 0}: BenchmarkPanelProps): React.JSX.Element {
+  const t = useT();
   const nativeReady = Boolean(CatuneMnn);
   const previewMode = !nativeReady;
 
@@ -233,6 +239,11 @@ export function BenchmarkPanel({refreshKey = 0}: BenchmarkPanelProps): React.JSX
   const [metricScope, setMetricScope] = useState<MetricScope>('idle');
   const [busy, setBusy] = useState<'' | 'status' | 'infer' | 'bench'>('');
   const [error, setError] = useState<string | null>(null);
+
+  const yesNo = useCallback(
+    (v?: boolean) => (v === undefined ? '—' : v ? t('common.yes') : t('common.no')),
+    [t],
+  );
 
   const refresh = useCallback(async () => {
     if (!CatuneMnn) {
@@ -314,106 +325,110 @@ export function BenchmarkPanel({refreshKey = 0}: BenchmarkPanelProps): React.JSX
   const timedRunCount = (bench?.runs ?? []).filter(r => r.label === 'timed').length;
   const metricSectionTitle =
     metricScope === 'bench' && lastBenchTimed?.run != null
-      ? `推理指标（基准末轮 #${lastBenchTimed.run} timed）`
+      ? t('benchmark.section.benchTitle', {n: lastBenchTimed.run})
       : metricScope === 'infer'
-        ? '推理指标（单次推理）'
-        : '推理指标';
+        ? t('benchmark.section.inferTitle')
+        : t('benchmark.section.defaultTitle');
 
   const metricSectionHint =
     metricScope === 'bench'
-      ? `Decode TPS 为 decode 阶段速度；下方「平均 Decode TPS」仅统计 #2+#${lastBenchTimed?.run ?? '?'} 两轮 timed（不含 warmup）。`
+      ? t('benchmark.section.benchHint', {n: lastBenchTimed?.run ?? '?'})
       : metricScope === 'infer'
-        ? '以下为 wall-clock 总耗时与 MNN 上报的 prefill/decode 拆分。'
+        ? t('benchmark.section.inferHint')
         : null;
 
   return (
     <Card style={styles.card}>
-      <Text style={styles.cardTitle}>模型基准测试</Text>
-      <Text style={styles.subtitle}>用于检测当前端侧模型的加载状态、推理输出与性能指标。</Text>
+      <Text style={styles.cardTitle}>{t('benchmark.title')}</Text>
+      <Text style={styles.subtitle}>{t('benchmark.subtitle')}</Text>
 
       {previewMode ? (
         <View style={styles.previewBanner}>
-          <Text style={styles.previewBannerText}>Expo Go 预览模式：可查看布局；推理/输出需安装 arm64 原生 APK。</Text>
+          <Text style={styles.previewBannerText}>{t('benchmark.banner')}</Text>
         </View>
       ) : null}
 
       <View style={styles.body}>
-        <Text style={styles.sectionLabel}>Prompt 输入</Text>
+        <Text style={styles.sectionLabel}>{t('benchmark.promptLabel')}</Text>
         <TextInput
           style={[styles.promptInput, previewMode && styles.inputPreview]}
           value={prompt}
           onChangeText={setPrompt}
           multiline
-          placeholder="输入要发给端侧模型的 Prompt"
+          placeholder={t('benchmark.promptPlaceholder')}
           placeholderTextColor={colors.textMuted}
           editable={busy === ''}
         />
 
         <View style={styles.btnRow}>
           <Pressable style={[styles.btn, actionsDisabled && styles.btnDisabled]} disabled={actionsDisabled} onPress={refresh}>
-            <Text style={styles.btnText}>{busy === 'status' ? '…' : '刷新'}</Text>
+            <Text style={styles.btnText}>{busy === 'status' ? t('benchmark.busy.status') : t('benchmark.action.refresh')}</Text>
           </Pressable>
           <Pressable
             style={[styles.btn, styles.btnPrimary, (actionsDisabled || !trimmedPrompt) && styles.btnDisabled]}
             disabled={actionsDisabled || !trimmedPrompt}
             onPress={runInfer}>
-            <Text style={[styles.btnText, styles.btnTextPrimary]}>{busy === 'infer' ? '推理中…' : '单次推理'}</Text>
+            <Text style={[styles.btnText, styles.btnTextPrimary]}>{busy === 'infer' ? t('benchmark.busy.infer') : t('benchmark.action.infer')}</Text>
           </Pressable>
           <Pressable
             style={[styles.btn, styles.btnPrimary, (actionsDisabled || !trimmedPrompt) && styles.btnDisabled]}
             disabled={actionsDisabled || !trimmedPrompt}
             onPress={runBench}>
-            <Text style={[styles.btnText, styles.btnTextPrimary]}>{busy === 'bench' ? '跑分中…' : '基准 x2'}</Text>
+            <Text style={[styles.btnText, styles.btnTextPrimary]}>{busy === 'bench' ? t('benchmark.busy.bench') : t('benchmark.action.bench')}</Text>
           </Pressable>
         </View>
 
-        <Text style={styles.sectionLabel}>模型输出</Text>
+        <Text style={styles.sectionLabel}>{t('benchmark.outputLabel')}</Text>
         <View style={[styles.ioBox, previewMode && styles.ioBoxPreview]}>
           <Text style={output ? styles.outputText : styles.outputPlaceholder}>
             {previewMode
-              ? '（Expo Go 预览）安装原生 APK 并下载模型后，推理结果将显示在此'
-              : output || '点击「单次推理」或「基准 x2」后在此显示端侧模型原始输出'}
+              ? t('benchmark.bannerOutput')
+              : output || t('benchmark.bannerCta')}
           </Text>
         </View>
 
         <Text style={styles.sectionLabel}>{metricSectionTitle}</Text>
         {metricSectionHint ? <Text style={styles.sectionHint}>{metricSectionHint}</Text> : null}
         <View style={styles.metricGrid}>
-          <MetricTile label="TTFT" value={formatDurationMs(metrics?.ttftMs)} />
-          <MetricTile label="Prefill" value={formatDurationMs(metrics?.prefillMs)} />
-          <MetricTile label="Decode" value={formatDurationMs(metrics?.decodeMs)} />
-          <MetricTile label="总耗时" value={formatDurationMs(inferenceMs)} />
-          <MetricTile label="Decode TPS" value={formatTps(metrics?.decodeTps)} />
-          <MetricTile label="Tokens" value={metrics?.tokensGenerated != null ? String(metrics.tokensGenerated) : '—'} />
-          <MetricTile label="Backend" value={backend} />
-          <MetricTile label="模型已加载" value={yesNo(status?.modelLoaded)} />
+          <MetricTile label={t('benchmark.metric.ttft')} value={formatDurationMs(metrics?.ttftMs, t)} />
+          <MetricTile label={t('benchmark.metric.prefill')} value={formatDurationMs(metrics?.prefillMs, t)} />
+          <MetricTile label={t('benchmark.metric.decode')} value={formatDurationMs(metrics?.decodeMs, t)} />
+          <MetricTile label={t('benchmark.metric.total')} value={formatDurationMs(inferenceMs, t)} />
+          <MetricTile label={t('benchmark.metric.tps')} value={formatTps(metrics?.decodeTps, t)} />
+          <MetricTile label={t('benchmark.metric.tokens')} value={metrics?.tokensGenerated != null ? String(metrics.tokensGenerated) : '—'} />
+          <MetricTile label={t('benchmark.metric.backend')} value={backend} />
+          <MetricTile label={t('benchmark.metric.modelLoaded')} value={yesNo(status?.modelLoaded)} />
         </View>
 
         {metricScope === 'bench' && bench?.summary?.avgDecodeTps != null ? (
           <>
-            <Text style={styles.sectionLabel}>基准汇总</Text>
+            <Text style={styles.sectionLabel}>{t('benchmark.summary.title')}</Text>
             <InfoRow
-              label={`平均 Decode TPS（${timedRunCount} 轮 timed）`}
-              value={formatTps(bench.summary.avgDecodeTps)}
+              label={t('benchmark.summary.avgTps', {n: timedRunCount})}
+              value={formatTps(bench.summary.avgDecodeTps, t)}
             />
-            <InfoRow label="统计口径" value="不含 #1 warmup；TPS 仅 decode 阶段，非 tokens÷总耗时" />
+            <InfoRow label={t('benchmark.summary.scope')} value={t('benchmark.summary.scopeHint')} />
           </>
         ) : null}
 
         {bench?.runs?.length ? (
           <>
-            <Text style={styles.sectionLabel}>基准轮次明细</Text>
+            <Text style={styles.sectionLabel}>{t('benchmark.runs.title')}</Text>
             {bench.runs.map((run, index) => (
-              <InfoRow key={index} label={`#${run.run} ${run.label ?? ''}`} value={formatRunDetail(run)} />
+              <InfoRow
+                key={index}
+                label={t('benchmark.run.labelFmt', {n: run.run ?? '?', label: run.label ?? ''})}
+                value={formatRunDetail(run, t)}
+              />
             ))}
           </>
         ) : null}
 
-        <Text style={styles.sectionLabel}>设备 / 模型</Text>
-        <InfoRow label="当前模型" value={status?.activeModelId ?? '—'} />
-        <InfoRow label="本地路径" value={status?.modelDir ?? '—'} />
-        <InfoRow label="hw sme2 / lib sme2" value={`${yesNo(cpu?.sme2Hw)} / ${yesNo(cpu?.libSme2)}`} />
-        <InfoRow label="SME2 判定" value={cpu?.readiness ?? '—'} />
+        <Text style={styles.sectionLabel}>{t('benchmark.info.title')}</Text>
+        <InfoRow label={t('benchmark.info.activeModel')} value={status?.activeModelId ?? '—'} />
+        <InfoRow label={t('benchmark.info.modelDir')} value={status?.modelDir ?? '—'} />
+        <InfoRow label={t('benchmark.info.sme2')} value={`${yesNo(cpu?.sme2Hw)} / ${yesNo(cpu?.libSme2)}`} />
+        <InfoRow label={t('benchmark.info.readiness')} value={cpu?.readiness ?? '—'} />
         {status?.loadError ? <Text style={styles.errorText}>{status.loadError}</Text> : null}
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </View>

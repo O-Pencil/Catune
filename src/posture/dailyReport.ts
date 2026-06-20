@@ -6,10 +6,11 @@
  *   - 全部真实数据，无假数据；缺数据时返回 hasData=false 让 UI 显示无数据态。
  *
  * [WHO] 导出 `buildDailyReport` / `buildWeeklyReport` / `DailyReport` / `WeeklyReport`
- * [FROM] 依赖 ./growth(GrowthState)、./dailyHistory(DailyHistory/getWeekSnapshots/loadDailyHistory)
+ * [FROM] 依赖 ./growth(GrowthState)、./dailyHistory(DailyHistory/getWeekSnapshots/loadDailyHistory)、../ui/i18n
  * [TO] 被 src/ui/components/DailyReportPanel / WeeklyReportPanel 消费
  * [HERE] src/posture/dailyReport.ts · 日报/周报聚合
  */
+import {tr, type Locale} from '../ui/i18n';
 import {GrowthState} from './growth';
 import {
   DailyHistory,
@@ -51,7 +52,7 @@ export type {WeekDay} from './dailyHistory';
  * 日报：今日分 + 异常次数 + 不驼背时长 + Streak + AI 评论。
  * 数据源：growth（今日实时）+ dailyHistory（昨日及更早 → 计算 Streak）。
  */
-export function buildDailyReport(growth: GrowthState): DailyReport {
+export function buildDailyReport(growth: GrowthState, locale: Locale = 'en'): DailyReport {
   const history = getCachedHistory();
   const today = todayKey();
 
@@ -72,7 +73,7 @@ export function buildDailyReport(growth: GrowthState): DailyReport {
   const streakDays = computeStreak(history, today);
 
   // AI 评论：规则兜底，根据异常事件时段分布生成
-  const aiComment = generateDailyComment(todayLog, growth);
+  const aiComment = generateDailyComment(todayLog, locale);
 
   return {
     hasData: growth.log.length > 0,
@@ -113,10 +114,10 @@ function hasAnyLogToday(_history: DailyHistory): boolean {
 
 function generateDailyComment(
   todayLog: {delta: number; action: string; time: string}[],
-  _growth: GrowthState,
+  locale: Locale,
 ): string {
   if (todayLog.length === 0) {
-    return '继续保持';
+    return tr(locale, 'report.daily.continue');
   }
 
   // 找"异常入态"事件的高发时段
@@ -133,17 +134,17 @@ function generateDailyComment(
   const goodCount = todayLog.filter(e => e.delta > 0).length;
 
   if (totalAbnormal === 0) {
-    if (goodCount >= 4) return '今天状态很好，继续保持';
-    return '今天表现平稳';
+    if (goodCount >= 4) return tr(locale, 'report.daily.great');
+    return tr(locale, 'report.daily.steady');
   }
 
   // 找高发小时
   const peakHour = Object.entries(abnormalByHour).sort((a, b) => b[1] - a[1])[0]?.[0];
   if (peakHour !== undefined) {
     const h = parseInt(peakHour, 10);
-    return `下午 ${h} 点易 Tech Neck，建议加 5 分钟跟练`;
+    return tr(locale, 'report.daily.peakTechNeck', {h});
   }
-  return '注意坐姿，建议每小时起身 1 次';
+  return tr(locale, 'report.daily.breakHint');
 }
 
 // ─── 周报 ──────────────────────────────────────────────────────────────────
@@ -152,7 +153,7 @@ function generateDailyComment(
  * 周报：最近 7 天每日积分 + AI 周总结。
  * 数据源：dailyHistory。
  */
-export function buildWeeklyReport(): WeeklyReport {
+export function buildWeeklyReport(locale: Locale = 'en'): WeeklyReport {
   const history = getCachedHistory();
   const week = getWeekSnapshots(history);
   const recordedDays = week.filter(d => d.snapshot !== null).length;
@@ -163,22 +164,22 @@ export function buildWeeklyReport(): WeeklyReport {
     week,
     recordedDays,
     weekPoints,
-    aiSummary: generateWeeklySummary(week),
+    aiSummary: generateWeeklySummary(week, locale),
   };
 }
 
-function generateWeeklySummary(week: WeekDay[]): string {
+function generateWeeklySummary(week: WeekDay[], locale: Locale): string {
   const recorded = week.filter(d => d.snapshot !== null);
   if (recorded.length === 0) {
-    return '本周暂无数据';
+    return tr(locale, 'report.weekly.none');
   }
   const totalAbnormal = recorded.reduce((sum, d) => sum + (d.snapshot?.abnormalCount ?? 0), 0);
   const totalGood = recorded.reduce((sum, d) => sum + (d.snapshot?.goodCount ?? 0), 0);
   if (totalAbnormal === 0 && totalGood > 0) {
-    return '本周异常为 0，表现稳定';
+    return tr(locale, 'report.weekly.zeroAbnormal');
   }
   if (totalGood > totalAbnormal * 2) {
-    return `本周良好 ${totalGood} 次，异常 ${totalAbnormal} 次，继续保持`;
+    return tr(locale, 'report.weekly.goodMore', {good: totalGood, bad: totalAbnormal});
   }
-  return `本周良好 ${totalGood} 次，异常 ${totalAbnormal} 次，注意姿势`;
+  return tr(locale, 'report.weekly.badMore', {good: totalGood, bad: totalAbnormal});
 }

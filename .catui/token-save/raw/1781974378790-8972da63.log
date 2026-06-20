@@ -1,0 +1,77 @@
+=== src/posture/adviceOrchestrator.ts ===
+14-import {MemoryService} from './memory/service';
+15-import {isModelAvailable, streamInfer} from '../mnn/inferStreamClient';
+16:<<<<<<< HEAD
+17-import {logEvent} from '../debug/logBus';
+18-=======
+19-import {ABNORMAL_POSTURES} from './utils';
+20->>>>>>> 06f708e (feat(rn): 新增 i18n 国际化系统、UI 组件增强与引擎优化)
+21-
+22-const MIN_INTERVAL_MS = 12000; // 两次模型调用最小间隔（生成慢，避免堆积）
+23-const HOLD_REPEAT_MS = 120000; // 同一异常姿态久持 → 每 2 分钟再鼓励一次
+24-
+
+=== src/posture/engine.ts ===
+23-  getPostureLabel,
+24-} from './types';
+25:<<<<<<< HEAD
+26-import {actionForPosture, parseActionTag} from './actionTag';
+27-import {logEvent} from '../debug/logBus';
+28-
+29-let lastSensorLogTs = 0;
+30-=======
+31->>>>>>> 06f708e (feat(rn): 新增 i18n 国际化系统、UI 组件增强与引擎优化)
+32-
+33-/** 与 PRD 阈值一致：胸椎后凸>15°=驼背；颈前倾>20°；腰椎侧倾<-10°。 */
+--
+214-      const postureChanged = posture !== state.posture || state.advice === '';
+215-      if (postureChanged) {
+216:<<<<<<< HEAD
+217-        if (posture !== state.posture) {
+218-          logEvent('flow', `姿态 → ${POSTURE_LABELS[posture]}（不驼背分 ${score}）`);
+219-        }
+220-        const feedback = ruleFallback(signalsFrom(next));
+221-=======
+222-        const feedback = ruleFallback(signalsFrom(next), locale);
+223->>>>>>> 06f708e (feat(rn): 新增 i18n 国际化系统、UI 组件增强与引擎优化)
+224-        state = {
+
+=== src/posture/reminder.ts ===
+12-import {Vibration} from 'react-native';
+13-import {PostureEngine} from './engine';
+14:<<<<<<< HEAD
+15-import {POSTURE_LABELS, PostureName} from './types';
+16-import {logEvent} from '../debug/logBus';
+17-=======
+18-import {PostureName} from './types';
+19-import {ABNORMAL_POSTURES} from './utils';
+20->>>>>>> 06f708e (feat(rn): 新增 i18n 国际化系统、UI 组件增强与引擎优化)
+21-
+22-/** 两次震动最小间隔，避免姿态抖动反复触发。 */
+
+=== src/ui/AppShell.tsx ===
+28-import {MemoryService} from '../posture/memory/service';
+29-import {resumePendingDownloadIfNeeded} from '../mnn/modelDownloadService';
+30:<<<<<<< HEAD
+31-
+32-const TABS: Tab[] = [
+33-  {value: 'desk', label: 'Desk', Icon: GaugeIcon},
+34-  {value: 'plant', label: 'Plant', Icon: FanIcon},
+35-  {value: 'monitor', label: 'Monitor', Icon: MonitorIcon},
+36-  {value: 'settings', label: 'Settings', Icon: SettingsIcon},
+37-];
+38-=======
+
+=== src/ui/screens/OnboardingScreen.tsx ===
+71-  return (
+72-    <View style={styles.root}>
+73:<<<<<<< HEAD
+74-      <ScrollView contentContainerStyle={styles.body} style={styles.scroll}>
+75-        <Text style={styles.kicker}>CATUNE</Text>
+76-        <Text style={styles.title}>认识一下你</Text>
+77-        <Text style={styles.subtitle}>几个小问题，让教练更懂你。答案只存在本机，可随时在设置里清空。</Text>
+78-=======
+79-      <ScrollView contentContainerStyle={styles.body}>
+80-        <Text style={styles.kicker}>{t('onboarding.kicker')}</Text>
+81-        <Text style={styles.title}>{t('onboarding.title')}</Text>
+

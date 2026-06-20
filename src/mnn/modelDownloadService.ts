@@ -1,6 +1,13 @@
 /**
- * 全局模型下载服务：与 UI 组件生命周期解耦，切 Tab / App 退后台时下载仍可继续。
- * 进程被系统杀死后，下次打开 App 会根据 .download_state.json 自动续传。
+ * @file modelDownloadService.ts
+ * @description 全局模型下载服务：与 UI 组件生命周期解耦，切 Tab / App 退后台时下载仍可继续。
+ *   进程被系统杀死后，下次打开 App 会根据 .download_state.json 自动续传。
+ *
+ * [WHO] 导出 `DownloadJobStatus`、`DownloadJobSnapshot`、`formatSpeed`、`subscribeModelDownload`、
+ *   `getDownloadSnapshot`、`startDownload`、`cancelDownload`、`deleteModel`
+ * [FROM] 依赖 `react-native`（NativeModules）、`expo-file-system`、`./modelCatalog`、`./modelStorage`
+ * [TO] 被 `AppShell`、`ModelDownloadCard`、`ModelDownloadBanner` 引用
+ * [HERE] src/mnn/modelDownloadService.ts · 全局模型下载服务（断点续传 / 暂停 / 进度）
  */
 import {NativeModules} from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';

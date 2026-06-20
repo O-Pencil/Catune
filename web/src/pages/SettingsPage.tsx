@@ -160,26 +160,6 @@ function ModelSection() {
   )
 }
 
-function McpSection() {
-  return (
-    <div>
-      <div className="text-[10px] font-mono text-[#9B9590] font-bold tracking-wider mb-3">MCP</div>
-      <div className="skeuo-card p-4 flex items-center justify-between cursor-pointer hover:bg-[#fafafa] transition-colors">
-        <div>
-          <div className="text-sm font-medium text-[#141414]">MCP Service</div>
-          <div className="text-[10px] text-[#9B9590] mt-0.5">Token / Port / Clients</div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-[#AFA8A0] font-mono">Stopped</span>
-          <svg className="text-[#9B9590]" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M9 18l6-6-6-6" />
-          </svg>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function NotificationSection() {
   const [vibration, setVibration] = useState(true)
   const [systemNotify, setSystemNotify] = useState(true)
@@ -216,22 +196,46 @@ function NotificationSection() {
 }
 
 function AboutSection() {
+  const info = [
+    { label: "Version", value: "1.0.0" },
+    { label: "Model", value: "Qwen2.5-0.5B" },
+    { label: "Framework", value: "MNN + SME2" },
+  ]
   return (
     <div>
       <div className="text-[10px] font-mono text-[#9B9590] font-bold tracking-wider mb-3">ABOUT</div>
       <div className="skeuo-card p-4">
-        <div className="text-center">
-          <div className="size-16 mx-auto rounded-2xl bg-[#fb4b00] flex items-center justify-center mb-3">
-            <span className="text-white font-bold text-2xl font-mono">P</span>
-          </div>
+        <div className="flex items-center gap-3 mb-4">
           <div
-            className="text-lg font-bold text-[#141414]"
-            style={{ fontFamily: "'Fredoka', sans-serif" }}
+            className="size-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+            style={{
+              background: "rgba(251, 75, 0, 0.1)",
+              boxShadow: "inset 0 0 0 1px rgba(251, 75, 0, 0.2)",
+            }}
           >
-            Catune
+            <span className="text-[#fb4b00] font-bold text-lg font-mono">C</span>
           </div>
-          <div className="text-[10px] text-[#9B9590] font-mono mt-1">v0.1.0 · On-device Posture Detection</div>
+          <div>
+            <div
+              className="text-base font-bold text-[#141414]"
+              style={{ fontFamily: "'Fredoka', sans-serif" }}
+            >
+              Catune
+            </div>
+            <div className="text-[10px] text-[#9B9590] font-mono">No-slouch posture companion</div>
+          </div>
         </div>
+        <div className="divide-y divide-[rgba(0,0,0,0.04)]">
+          {info.map((row) => (
+            <div key={row.label} className="px-1 py-2.5 flex items-center justify-between">
+              <span className="text-[11px] text-[#9B9590]">{row.label}</span>
+              <span className="text-[11px] font-semibold text-[#141414]">{row.value}</span>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10px] text-[#9B9590] mt-3 px-1">
+          Wellness aid, not medical diagnosis. Sensor data stays on device.
+        </p>
       </div>
     </div>
   )
@@ -252,7 +256,6 @@ export function SettingsPage() {
 
       <DeviceSection />
       <ModelSection />
-      <McpSection />
       <NotificationSection />
       <AboutSection />
     </div>

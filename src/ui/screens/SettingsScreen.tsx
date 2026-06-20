@@ -1,6 +1,13 @@
 /**
  * @file SettingsScreen.tsx
  * @description 设置屏：模型管理（含设备指标折叠）、模型基准测试、数据源、F7 演示台、关于。
+ *
+ * [WHO] 导出 `SettingsScreen`、`DataMode`
+ * [FROM] 依赖 `react`、`react-native`、`../theme`、`../primitives/Card`、`../components/ModelDownloadCard`、
+ *   `./BenchmarkScreen`、`../../posture/mock`、`../../posture/types`、`../../posture/memory/service`、
+ *   `../../assess/config`、`../../assess/types`、`../../assess/readiness`
+ * [TO] 被 `AppShell` 在 settings tab 渲染
+ * [HERE] src/ui/screens/SettingsScreen.tsx · 设置页布局
  */
 import React, {useCallback, useEffect, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
@@ -15,6 +22,7 @@ import {MemoryItem, MemoryType} from '../../posture/memory/types';
 import {loadAssessConfig, saveAssessConfig} from '../../assess/config';
 import {AssessBackend, AssessConfig, DEFAULT_ASSESS_CONFIG} from '../../assess/types';
 import {AssessReadiness, checkAssessReadiness} from '../../assess/readiness';
+import {Locale, useLocale, useT} from '../i18n';
 
 export type DataMode = 'loading' | 'sensor' | 'mock';
 
@@ -27,24 +35,24 @@ type Props = {
   onScenario: (s: MockScenario) => void;
 };
 
-const TYPE_LABEL: Record<MemoryType, string> = {
-  preference: '偏好',
-  struggle: '易不适',
-  lesson: '有效',
-  pattern: '习惯',
-  decision: '目标',
-  knowledge: '环境',
-  entity: '称呼',
+const MEMORY_TAG_KEY: Record<MemoryType, string> = {
+  preference: 'memory.tag.preference',
+  struggle: 'memory.tag.struggle',
+  lesson: 'memory.tag.lesson',
+  pattern: 'memory.tag.pattern',
+  decision: 'memory.tag.decision',
+  knowledge: 'memory.tag.knowledge',
+  entity: 'memory.tag.entity',
 };
 
-// 口语化标签（不暴露云端/端侧/VL）。手机本地优先展示。
-const ASSESS_BACKENDS: Array<{key: AssessBackend; label: string}> = [
-  {key: 'local', label: '手机本地'},
-  {key: 'cloud', label: '联网评估'},
-  {key: 'preset', label: '示例'},
-];
+const ASSESS_BACKEND_KEY: Record<AssessBackend, string> = {
+  local: 'settings.assess.local',
+  cloud: 'settings.assess.cloud',
+  preset: 'settings.assess.example',
+};
 
 function AssessConfigCard(): React.JSX.Element {
+  const t = useT();
   const [cfg, setCfg] = useState<AssessConfig>(DEFAULT_ASSESS_CONFIG);
   const [saved, setSaved] = useState(false);
   const [readiness, setReadiness] = useState<AssessReadiness | null>(null);
@@ -68,40 +76,45 @@ function AssessConfigCard(): React.JSX.Element {
 
   return (
     <Card style={styles.card}>
-      <Text style={styles.cardTitle}>AI 体态评估</Text>
+      <Text style={styles.cardTitle}>{t('settings.assess.title')}</Text>
       {readiness ? (
         <Text style={styles.assessRec}>
-          推荐「{readiness.recommend === 'local' ? '手机本地' : '联网评估'}」 · {readiness.recommendReason}
+          {t('settings.assess.recommend', {
+            backend: t(ASSESS_BACKEND_KEY[readiness.recommend]),
+            reason: t(readiness.recommendKey),
+          })}
         </Text>
       ) : null}
       <View style={styles.rowGap}>
-        {ASSESS_BACKENDS.map(b => (
-          <Pill key={b.key} active={cfg.backend === b.key} label={b.label} onPress={() => setBackend(b.key)} />
+        {(Object.keys(ASSESS_BACKEND_KEY) as AssessBackend[]).map(b => (
+          <Pill key={b} active={cfg.backend === b} label={t(ASSESS_BACKEND_KEY[b])} onPress={() => setBackend(b)} />
         ))}
       </View>
 
       {cfg.backend === 'local' && readiness ? (
         <Text style={[styles.hint, readiness.ready ? styles.assessOk : undefined]}>
-          {readiness.ready ? '「手机本地」已就绪 ✓' : `「手机本地」${readiness.hint ?? '需要先下载评估专用模型'}`}
+          {readiness.ready
+            ? t('settings.assess.localReady')
+            : t('settings.assess.localNotReady', {hint: readiness.hintKey ? t(readiness.hintKey) : t('settings.assess.localNeedModel')})}
         </Text>
       ) : null}
 
       {cfg.backend === 'cloud' ? (
         <View style={styles.cloudForm}>
-          <Text style={styles.hint}>「联网评估」需要填一次服务信息（一般由团队提前配好）。</Text>
+          <Text style={styles.hint}>{t('assess.cloudHint')}</Text>
           <TextInput
             style={styles.input}
             value={cfg.cloud.baseURL}
-            onChangeText={t => setCloud({baseURL: t})}
-            placeholder="服务地址（baseURL）"
+            onChangeText={text => setCloud({baseURL: text})}
+            placeholder={t('settings.assess.input.baseURL')}
             placeholderTextColor={theme.colors.textMuted}
             autoCapitalize="none"
           />
           <TextInput
             style={styles.input}
             value={cfg.cloud.apiKey}
-            onChangeText={t => setCloud({apiKey: t})}
-            placeholder="服务密钥"
+            onChangeText={text => setCloud({apiKey: text})}
+            placeholder={t('settings.assess.input.apiKey')}
             placeholderTextColor={theme.colors.textMuted}
             autoCapitalize="none"
             secureTextEntry
@@ -109,8 +122,8 @@ function AssessConfigCard(): React.JSX.Element {
           <TextInput
             style={styles.input}
             value={cfg.cloud.model}
-            onChangeText={t => setCloud({model: t})}
-            placeholder="评估模型名称（如 qwen-vl-max）"
+            onChangeText={text => setCloud({model: text})}
+            placeholder={t('settings.assess.input.model')}
             placeholderTextColor={theme.colors.textMuted}
             autoCapitalize="none"
           />
@@ -123,14 +136,35 @@ function AssessConfigCard(): React.JSX.Element {
           saveAssessConfig(cfg);
           setSaved(true);
         }}>
-        <Text style={styles.saveBtnText}>{saved ? '已保存 ✓' : '保存'}</Text>
+        <Text style={styles.saveBtnText}>{saved ? t('common.save') + ' ✓' : t('common.save')}</Text>
       </Pressable>
-      <Text style={styles.hint}>信息只存在手机本机、不会上传。临时用不了时会先给示例结果。</Text>
+      <Text style={styles.hint}>{t('settings.assess.privacy')}</Text>
+    </Card>
+  );
+}
+
+function LanguageCard(): React.JSX.Element {
+  const {locale, setLocale} = useLocale();
+  const t = useT();
+  const options: Array<{key: Locale; label: string}> = [
+    {key: 'en', label: t('settings.locale.en')},
+    {key: 'zh', label: t('settings.locale.zh')},
+  ];
+  return (
+    <Card style={styles.card}>
+      <Text style={styles.cardTitle}>{t('settings.locale.title')}</Text>
+      <View style={styles.rowGap}>
+        {options.map(o => (
+          <Pill key={o.key} active={locale === o.key} label={o.label} onPress={() => setLocale(o.key)} />
+        ))}
+      </View>
+      <Text style={styles.hint}>{t('settings.locale.label')}</Text>
     </Card>
   );
 }
 
 function MemoryCard({memory}: {memory?: MemoryService}): React.JSX.Element | null {
+  const t = useT();
   const [items, setItems] = useState<MemoryItem[]>([]);
   const refresh = useCallback(() => setItems(memory ? memory.list() : []), [memory]);
 
@@ -147,7 +181,7 @@ function MemoryCard({memory}: {memory?: MemoryService}): React.JSX.Element | nul
   return (
     <Card style={styles.card}>
       <View style={styles.memHeader}>
-        <Text style={styles.cardTitle}>教练记忆</Text>
+        <Text style={styles.cardTitle}>{t('settings.memory.title')}</Text>
         {items.length > 0 ? (
           <Pressable
             hitSlop={8}
@@ -155,16 +189,16 @@ function MemoryCard({memory}: {memory?: MemoryService}): React.JSX.Element | nul
               memory.clearAll();
               refresh();
             }}>
-            <Text style={styles.memClear}>清空</Text>
+            <Text style={styles.memClear}>{t('settings.memory.clear')}</Text>
           </Pressable>
         ) : null}
       </View>
       {items.length === 0 ? (
-        <Text style={styles.hint}>教练还没记住什么。聊几句、给建议点赞，它会越来越懂你。仅存本机。</Text>
+        <Text style={styles.hint}>{t('settings.memory.empty')}</Text>
       ) : (
         items.map(it => (
           <View key={it.id} style={styles.memRow}>
-            <Text style={styles.memTag}>{TYPE_LABEL[it.type]}</Text>
+            <Text style={styles.memTag}>{t(MEMORY_TAG_KEY[it.type])}</Text>
             <Text style={styles.memText} numberOfLines={2}>
               {it.text}
             </Text>
@@ -187,9 +221,19 @@ const styles = StyleSheet.create({
   root: {flex: 1, backgroundColor: theme.colors.surface},
   container: {padding: theme.spacing.lg, paddingTop: 8, paddingBottom: 120},
   title: {color: theme.colors.textPrimary, fontSize: theme.font.sizeXl, fontWeight: theme.font.weightHeavy, marginBottom: 16},
+  sectionLabel: {
+    color: theme.colors.textMuted,
+    fontSize: theme.font.sizeXs,
+    fontWeight: theme.font.weightBold,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginTop: 20,
+    marginBottom: 8,
+    paddingLeft: 2,
+  },
   card: {marginBottom: theme.spacing.md},
   cardTitle: {color: theme.colors.textPrimary, fontSize: theme.font.sizeMd, fontWeight: theme.font.weightBold, marginBottom: 12},
-  rowGap: {flexDirection: 'row', gap: theme.spacing.sm},
+  rowGap: {flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm},
   wrapRow: {flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm},
   hint: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: 10, lineHeight: 18},
   pill: {
@@ -247,6 +291,16 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
   saveBtnText: {color: '#FFFFFF', fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
+  aboutRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  aboutLabel: {color: theme.colors.textMuted, fontSize: theme.font.sizeSm},
+  aboutValue: {color: theme.colors.textPrimary, fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
 });
 
 function Pill({active, label, onPress}: {active: boolean; label: string; onPress: () => void}): React.JSX.Element {
@@ -258,49 +312,70 @@ function Pill({active, label, onPress}: {active: boolean; label: string; onPress
 }
 
 export function SettingsScreen({state, mode, memory, onUseSensor, onUseMock, onScenario}: Props): React.JSX.Element {
+  const t = useT();
   const [mnnRefreshKey, setMnnRefreshKey] = useState(0);
 
   return (
     <ScrollView style={styles.root} contentContainerStyle={styles.container}>
-      <Text style={styles.title}>设置</Text>
+      <Text style={styles.title}>{t('settings.title')}</Text>
 
+      {/* — 核心：模型与推理 — */}
+      <Text style={styles.sectionLabel}>{t('settings.group.core')}</Text>
       <ModelDownloadCard onModelsChanged={() => setMnnRefreshKey(k => k + 1)} />
-
       <BenchmarkPanel refreshKey={mnnRefreshKey} />
 
-      <AssessConfigCard />
-
+      {/* — 数据源 — */}
+      <Text style={styles.sectionLabel}>{t('settings.group.dataSource')}</Text>
       <Card style={styles.card}>
-        <Text style={styles.cardTitle}>数据源</Text>
+        <Text style={styles.cardTitle}>{t('settings.data.title')}</Text>
         <View style={styles.rowGap}>
-          <Pill active={mode === 'sensor'} label="手机传感器" onPress={onUseSensor} />
-          <Pill active={mode === 'mock'} label="模拟" onPress={onUseMock} />
+          <Pill active={mode === 'sensor'} label={t('settings.data.sensor')} onPress={onUseSensor} />
+          <Pill active={mode === 'mock'} label={t('settings.data.mock')} onPress={onUseMock} />
         </View>
         <Text style={styles.hint}>
-          {mode === 'sensor' ? '正在用手机 IMU（前后/左右倾斜手机）。' : mode === 'mock' ? '正在用本地模拟流。' : '检测传感器中…'}
+          {mode === 'sensor' ? t('settings.data.activeSensor') : mode === 'mock' ? t('settings.data.activeMock') : t('settings.data.loading')}
         </Text>
       </Card>
 
       <Card style={styles.card}>
-        <Text style={styles.cardTitle}>F7 演示台</Text>
+        <Text style={styles.cardTitle}>{t('settings.mock.title')}</Text>
         <View style={styles.wrapRow}>
           {SCENARIOS.map((s: MockScenario) => (
             <Pill
               key={s}
               active={mode === 'mock' && state.posture === s}
-              label={s.replace('_', ' ')}
+              label={t(`mock.${s}` as 'mock.NORMAL')}
               onPress={() => onScenario(s)}
             />
           ))}
         </View>
-        <Text style={styles.hint}>一键切换演示姿态（自动切到模拟数据源）。</Text>
+        <Text style={styles.hint}>{t('settings.mock.hint')}</Text>
       </Card>
 
+      {/* — 智能 — */}
+      <Text style={styles.sectionLabel}>{t('settings.group.intelligence')}</Text>
+      <AssessConfigCard />
       <MemoryCard memory={memory} />
 
+      {/* — 通用 — */}
+      <Text style={styles.sectionLabel}>{t('settings.group.general')}</Text>
+      <LanguageCard />
+
       <Card style={styles.card}>
-        <Text style={styles.cardTitle}>关于</Text>
-        <Text style={styles.hint}>Catune · 不驼背坐姿助手。健康管理辅助，非医疗诊断。</Text>
+        <Text style={styles.cardTitle}>{t('settings.about.title')}</Text>
+        <View style={styles.aboutRow}>
+          <Text style={styles.aboutLabel}>{t('settings.about.version')}</Text>
+          <Text style={styles.aboutValue}>1.0.0</Text>
+        </View>
+        <View style={styles.aboutRow}>
+          <Text style={styles.aboutLabel}>{t('settings.about.model')}</Text>
+          <Text style={styles.aboutValue}>Qwen2.5-0.5B</Text>
+        </View>
+        <View style={styles.aboutRow}>
+          <Text style={styles.aboutLabel}>{t('settings.about.framework')}</Text>
+          <Text style={styles.aboutValue}>MNN + SME2</Text>
+        </View>
+        <Text style={[styles.hint, {marginTop: 12}]}>{t('settings.about.body')}</Text>
       </Card>
     </ScrollView>
   );

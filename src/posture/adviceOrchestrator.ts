@@ -4,7 +4,7 @@
  *   仪表盘永远走规则瞬时显示，绝不等模型；模型只替换建议文案。失败保留规则文案。
  *
  * [WHO] 导出 `createAdviceOrchestrator(engine): {start, stop}`
- * [FROM] 依赖 ./engine、./types、../mnn/inferStreamClient
+ * [FROM] 依赖 ./engine、./types、./coachPrompt、./memory/service、./utils、../mnn/inferStreamClient
  * [TO] 被 App.tsx 启动（不碰 UI）
  * [HERE] src/posture/adviceOrchestrator.ts · 模型建议异步编排
  */
@@ -14,10 +14,10 @@ import {buildCoachPrompt} from './coachPrompt';
 import {MemoryService} from './memory/service';
 import {isModelAvailable, streamInfer} from '../mnn/inferStreamClient';
 import {logEvent} from '../debug/logBus';
+import {ABNORMAL_POSTURES} from './utils';
 
 const MIN_INTERVAL_MS = 12000; // 两次模型调用最小间隔（生成慢，避免堆积）
 const HOLD_REPEAT_MS = 120000; // 同一异常姿态久持 → 每 2 分钟再鼓励一次
-const ABNORMAL: PostureName[] = ['SLUMPED', 'TECH_NECK', 'LEFT_LEAN'];
 
 export type AdviceOrchestrator = {start: () => void; stop: () => void};
 
@@ -33,7 +33,7 @@ export function createAdviceOrchestrator(engine: PostureEngine, memory?: MemoryS
     if (inFlight || !isModelAvailable()) {
       return;
     }
-    if (!ABNORMAL.includes(s.posture)) {
+    if (!ABNORMAL_POSTURES.includes(s.posture)) {
       return; // 只在异常姿态时让模型生成提醒；正常态用规则鼓励即可
     }
     if (Date.now() - lastTriggerTs < MIN_INTERVAL_MS) {
@@ -85,7 +85,7 @@ export function createAdviceOrchestrator(engine: PostureEngine, memory?: MemoryS
       // 久持同一异常姿态 → 周期再触发（再鼓励一次）
       tick = setInterval(() => {
         const s = engine.getState();
-        if (ABNORMAL.includes(s.posture) && Date.now() - lastTriggerTs >= HOLD_REPEAT_MS) {
+        if (ABNORMAL_POSTURES.includes(s.posture) && Date.now() - lastTriggerTs >= HOLD_REPEAT_MS) {
           trigger(s);
         }
       }, 15000);

@@ -4,7 +4,7 @@
  *   后端无关，失败自动回退预置；输出已过禁词链。详见 docs/模型与记忆个性化设计.md。
  *
  * [WHO] 导出 `AssessScreen`
- * [FROM] 依赖 `react`、`react-native`、`expo-image-picker`、`../../assess/service`、`../../assess/types`、`../theme`
+ * [FROM] 依赖 `react`、`react-native`、`expo-image-picker`、`../../assess/service`、`../../assess/types`、`../theme`、`../i18n`
  * [TO] 被 AppShell 在 assessOpen 时渲染
  * [HERE] src/ui/screens/AssessScreen.tsx · AI 体态评估页
  */
@@ -17,15 +17,16 @@ import {loadAssessConfig} from '../../assess/config';
 import {AssessReadiness, checkAssessReadiness} from '../../assess/readiness';
 import {AssessmentResult, Severity} from '../../assess/types';
 import {theme} from '../theme';
+import {useLocale, useT} from '../i18n';
 
 type Phase = 'idle' | 'loading' | 'done';
 
 const SEV_COLOR: Record<Severity, string> = {ok: '#3A9E1F', mild: '#E08A00', warn: '#C20A0A'};
-// 给普通用户看：只区分「真评估」与「示例」，不暴露云端/本地
-const SOURCE_LABEL = {local: 'AI 实测', cloud: 'AI 实测', preset: '示例'} as const;
 
 export function AssessScreen({onClose, onGoSettings}: {onClose: () => void; onGoSettings?: () => void}): React.JSX.Element {
-  const service = useMemo(() => createAssessService(), []);
+  const {locale} = useLocale();
+  const t = useT();
+  const service = useMemo(() => createAssessService(locale), [locale]);
   const [phase, setPhase] = useState<Phase>('idle');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [result, setResult] = useState<AssessmentResult | null>(null);
@@ -34,6 +35,13 @@ export function AssessScreen({onClose, onGoSettings}: {onClose: () => void; onGo
   useEffect(() => {
     loadAssessConfig().then(checkAssessReadiness).then(setReadiness).catch(() => setReadiness(null));
   }, []);
+
+  const sourceLabel = (src: AssessmentResult['source']) => {
+    if (src === 'preset') {
+      return t('assess.done.example');
+    }
+    return t('assess.sourceLabel.ai');
+  };
 
   const run = async (fromCamera: boolean) => {
     try {
@@ -68,36 +76,36 @@ export function AssessScreen({onClose, onGoSettings}: {onClose: () => void; onGo
         <Pressable hitSlop={10} onPress={onClose} style={styles.closeBtn}>
           <Text style={styles.closeText}>✕</Text>
         </Pressable>
-        <Text style={styles.kicker}>AI 体态评估</Text>
+        <Text style={styles.kicker}>{t('assess.kicker')}</Text>
         <View style={styles.closeBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.body}>
         {phase === 'idle' ? (
           <>
-            <Text style={styles.intro}>拍一张或选一张侧身坐姿照片，AI 帮你看看体态、给点小建议。仅供参考，非医疗诊断。</Text>
+            <Text style={styles.intro}>{t('assess.intro')}</Text>
 
             {readiness && !readiness.ready ? (
               // 未就绪：口语化短引导 + 跳设置（不暴露技术细节）
               <View style={styles.guard}>
-                <Text style={styles.guardTitle}>还没开启 AI 体态评估</Text>
-                <Text style={styles.guardHint}>在设置里开启一次，就能拍照看体态啦。</Text>
+                <Text style={styles.guardTitle}>{t('assess.guard.title')}</Text>
+                <Text style={styles.guardHint}>{t('assess.guard.hint')}</Text>
                 <View style={styles.pickRow}>
                   <Pressable style={[styles.btn, styles.btnPrimary]} onPress={onGoSettings}>
-                    <Text style={styles.btnPrimaryText}>去设置开启 ›</Text>
+                    <Text style={styles.btnPrimaryText}>{t('assess.guard.cta')}</Text>
                   </Pressable>
                   <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => run(false)}>
-                    <Text style={styles.btnGhostText}>先看示例</Text>
+                    <Text style={styles.btnGhostText}>{t('assess.guard.preview')}</Text>
                   </Pressable>
                 </View>
               </View>
             ) : (
               <View style={styles.pickRow}>
                 <Pressable style={[styles.btn, styles.btnPrimary]} onPress={() => run(true)}>
-                  <Text style={styles.btnPrimaryText}>拍照</Text>
+                  <Text style={styles.btnPrimaryText}>{t('assess.button.takePhoto')}</Text>
                 </Pressable>
                 <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => run(false)}>
-                  <Text style={styles.btnGhostText}>从相册选</Text>
+                  <Text style={styles.btnGhostText}>{t('assess.button.pick')}</Text>
                 </Pressable>
               </View>
             )}
@@ -108,7 +116,7 @@ export function AssessScreen({onClose, onGoSettings}: {onClose: () => void; onGo
           <View style={styles.loading}>
             {imageUri ? <Image source={{uri: imageUri}} style={styles.preview} resizeMode="cover" /> : null}
             <ActivityIndicator color={theme.colors.primary} style={{marginTop: 20}} />
-            <Text style={styles.loadingText}>评估中…</Text>
+            <Text style={styles.loadingText}>{t('assess.loading.hint')}</Text>
           </View>
         ) : null}
 
@@ -117,14 +125,14 @@ export function AssessScreen({onClose, onGoSettings}: {onClose: () => void; onGo
             <View style={styles.resultHead}>
               {imageUri ? <Image source={{uri: imageUri}} style={styles.thumb} resizeMode="cover" /> : null}
               <View style={{flex: 1}}>
-                <Text style={styles.sourceTag}>{SOURCE_LABEL[result.source]}</Text>
+                <Text style={styles.sourceTag}>{sourceLabel(result.source)}</Text>
                 <Text style={styles.summary}>{result.summary}</Text>
               </View>
             </View>
 
-            <Text style={styles.section}>体态观察</Text>
+            <Text style={styles.section}>{t('assess.observation')}</Text>
             {result.observations.length === 0 ? (
-              <Text style={styles.intro}>未解析出结构化观察，已给出总结与建议。</Text>
+              <Text style={styles.intro}>{t('assess.noObservations')}</Text>
             ) : (
               result.observations.map((o, i) => (
                 <View key={i} style={styles.obsRow}>
@@ -134,7 +142,7 @@ export function AssessScreen({onClose, onGoSettings}: {onClose: () => void; onGo
               ))
             )}
 
-            <Text style={styles.section}>建议</Text>
+            <Text style={styles.section}>{t('assess.suggestion')}</Text>
             {result.suggestions.map((s, i) => (
               <View key={i} style={styles.sugRow}>
                 <Text style={styles.sugDot}>·</Text>
@@ -150,10 +158,10 @@ export function AssessScreen({onClose, onGoSettings}: {onClose: () => void; onGo
                   setResult(null);
                   setImageUri(null);
                 }}>
-                <Text style={styles.btnGhostText}>重新评估</Text>
+                <Text style={styles.btnGhostText}>{t('assess.button.retake')}</Text>
               </Pressable>
               <Pressable style={[styles.btn, styles.btnPrimary]} onPress={onClose}>
-                <Text style={styles.btnPrimaryText}>完成</Text>
+                <Text style={styles.btnPrimaryText}>{t('common.finish')}</Text>
               </Pressable>
             </View>
           </>
@@ -181,8 +189,6 @@ const styles = StyleSheet.create({
   },
   guardTitle: {color: theme.colors.textPrimary, fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
   guardHint: {color: theme.colors.textSecondary, fontSize: theme.font.sizeXs, marginTop: 6, lineHeight: 17},
-  guardRec: {color: theme.colors.primary, fontSize: theme.font.sizeXs, marginTop: 6, lineHeight: 17},
-  backendTag: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: 14, fontWeight: theme.font.weightBold},
   pickRow: {flexDirection: 'row', gap: 12, marginTop: 24},
   btn: {flex: 1, paddingVertical: 14, borderRadius: theme.radius.md, alignItems: 'center'},
   btnPrimary: {backgroundColor: theme.colors.primary},

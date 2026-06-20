@@ -7,19 +7,22 @@ import {StyleSheet, Text, View} from 'react-native';
 import {GrowthState} from '../../posture/growth';
 import {buildDailyReport} from '../../posture/dailyReport';
 import {theme} from '../theme';
+import {useLocale, useT} from '../i18n';
 
 type Props = {
   growth: GrowthState;
 };
 
 export function DailyReportPanel({growth}: Props): React.JSX.Element {
-  const report = useMemo(() => buildDailyReport(growth), [growth]);
+  const {locale} = useLocale();
+  const t = useT();
+  const report = useMemo(() => buildDailyReport(growth, locale), [growth, locale]);
 
   if (!report.hasData) {
     return (
       <View style={styles.empty}>
-        <Text style={styles.emptyTitle}>还没有今日数据</Text>
-        <Text style={styles.emptyHint}>保持坐姿即可记录</Text>
+        <Text style={styles.emptyTitle}>{t('report.daily.emptyTitle')}</Text>
+        <Text style={styles.emptyHint}>{t('report.daily.emptyHint')}</Text>
       </View>
     );
   }
@@ -28,26 +31,26 @@ export function DailyReportPanel({growth}: Props): React.JSX.Element {
     <View style={styles.root}>
       <View style={styles.scoreBlock}>
         <Text style={styles.scoreNum}>{report.points}</Text>
-        <Text style={styles.scoreLabel}>分</Text>
+        <Text style={styles.scoreLabel}>{t('report.daily.points')}</Text>
       </View>
 
       <View style={styles.statsRow}>
         <View style={styles.statCell}>
           <Text style={styles.statValue}>{report.goodMinutes}</Text>
-          <Text style={styles.statLabel}>不驼背（分钟）</Text>
+          <Text style={styles.statLabel}>{t('report.daily.goodMinutes')}</Text>
         </View>
         <View style={styles.statCell}>
           <Text style={styles.statValue}>{report.abnormalCount}</Text>
-          <Text style={styles.statLabel}>异常入态</Text>
+          <Text style={styles.statLabel}>{t('report.daily.abnormal')}</Text>
         </View>
         <View style={styles.statCell}>
           <Text style={styles.statValue}>{report.streakDays}</Text>
-          <Text style={styles.statLabel}>连续天数</Text>
+          <Text style={styles.statLabel}>{t('report.daily.streak')}</Text>
         </View>
       </View>
 
       <View style={styles.aiBlock}>
-        <Text style={styles.aiLabel}>AI 评论</Text>
+        <Text style={styles.aiLabel}>{t('report.daily.aiLabel')}</Text>
         <Text style={styles.aiText}>{report.aiComment}</Text>
       </View>
     </View>
