@@ -34,5 +34,11 @@ bash scripts/sme2-demo/run-sme2-demo.sh
 - qemu 需较新版本（8.x+）才完整支持 SME2；Ubuntu 24.04 的 `qemu-user` 一般够；过老可 `apt install` 新版或自编。
 - 推理在模拟 CPU 上**会慢**，建议短 prompt + 小 max tokens，只录"能跑出正确首句"即可。
 
-## 备选（更轻，但只证"特性存在"不证"MNN 走 SME2"）
-- 跑一个最小 SME2 测试程序（如 KleidiAI 自带 example / 一段 SME2 matmul）在 `qemu -cpu max` 下执行成功，配 `/proc/cpuinfo` 显示 `sme sme2`。适合当兜底镜头，但说服力不如上面 MNN+Qwen 全链路。
+## 兜底镜头（最小 SME2 程序，最稳）
+`sme2_min.c` + `run-sme2-min.sh`：只证"SME2 特性存在且 SME 指令可执行"，比 MNN 全链路稳得多。
+```bash
+bash scripts/sme2-demo/run-sme2-min.sh
+```
+它会：① 编译 `sme2_min.c`（带 `+sme2` march）② **原生跑**（容器=M2 原生 → `SME2: no`）③ **`qemu -cpu max` 跑**（模拟 → `SME2: yes` + `smstart/smstop executed OK`）。
+录制重点：同一程序 **A(原生) SME2:no → B(qemu) SME2:yes** 的对照 + 指令执行成功。
+> 说服力不如 MNN+Qwen 全链路（那个证"我们的推理真走 SME2"），但**几乎不会翻车**，适合保底/铺垫。
