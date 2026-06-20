@@ -86,6 +86,13 @@ web-build/
 # Local agent logs / token traces
 .nanopencil/
 
+# Catui local cache
+.catui/
+
+# Catui installed skills (managed by CLI, not project code)
+.agents/skills/
+skills-lock.json
+
 # MNN source (build locally; see android README)
 android/app/src/main/cpp/third_party/MNN/
 

@@ -1,5 +1,0 @@
-src/posture/adviceOrchestrator.ts
-src/posture/engine.ts
-src/posture/reminder.ts
-src/ui/AppShell.tsx
-src/ui/screens/OnboardingScreen.tsx
