@@ -8,11 +8,13 @@
  * [TO] 被 AppShell 在 assessOpen 时渲染
  * [HERE] src/ui/screens/AssessScreen.tsx · AI 体态评估页
  */
-import React, {useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
 import {createAssessService} from '../../assess/service';
+import {loadAssessConfig} from '../../assess/config';
+import {AssessReadiness, checkAssessReadiness} from '../../assess/readiness';
 import {AssessmentResult, Severity} from '../../assess/types';
 import {theme} from '../theme';
 
@@ -21,11 +23,16 @@ type Phase = 'idle' | 'loading' | 'done';
 const SEV_COLOR: Record<Severity, string> = {ok: '#3A9E1F', mild: '#E08A00', warn: '#C20A0A'};
 const SOURCE_LABEL = {local: '端侧 VL', cloud: '云端', preset: '预置'} as const;
 
-export function AssessScreen({onClose}: {onClose: () => void}): React.JSX.Element {
+export function AssessScreen({onClose, onGoSettings}: {onClose: () => void; onGoSettings?: () => void}): React.JSX.Element {
   const service = useMemo(() => createAssessService(), []);
   const [phase, setPhase] = useState<Phase>('idle');
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [result, setResult] = useState<AssessmentResult | null>(null);
+  const [readiness, setReadiness] = useState<AssessReadiness | null>(null);
+
+  useEffect(() => {
+    loadAssessConfig().then(checkAssessReadiness).then(setReadiness).catch(() => setReadiness(null));
+  }, []);
 
   const run = async (fromCamera: boolean) => {
     try {
@@ -67,15 +74,36 @@ export function AssessScreen({onClose}: {onClose: () => void}): React.JSX.Elemen
       <ScrollView contentContainerStyle={styles.body}>
         {phase === 'idle' ? (
           <>
-            <Text style={styles.intro}>拍一张或选一张侧身坐姿照片，AI 给你结构化的体态观察与建议。仅评估可见体态，非医疗诊断。</Text>
-            <View style={styles.pickRow}>
-              <Pressable style={[styles.btn, styles.btnPrimary]} onPress={() => run(true)}>
-                <Text style={styles.btnPrimaryText}>拍照</Text>
-              </Pressable>
-              <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => run(false)}>
-                <Text style={styles.btnGhostText}>从相册选</Text>
-              </Pressable>
-            </View>
+            <Text style={styles.intro}>拍/选侧身坐姿照片，AI 给结构化体态观察与建议。仅评估可见体态，非医疗诊断。</Text>
+
+            {readiness && !readiness.ready ? (
+              // 未配置可用模型：短引导 + 跳设置（默认会优先看到端侧 VL）
+              <View style={styles.guard}>
+                <Text style={styles.guardTitle}>还没有可用的评估模型</Text>
+                {readiness.hint ? <Text style={styles.guardHint}>{readiness.hint}</Text> : null}
+                <Text style={styles.guardRec}>建议：{readiness.recommendReason}</Text>
+                <View style={styles.pickRow}>
+                  <Pressable style={[styles.btn, styles.btnPrimary]} onPress={onGoSettings}>
+                    <Text style={styles.btnPrimaryText}>去设置配置 ›</Text>
+                  </Pressable>
+                  <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => run(false)}>
+                    <Text style={styles.btnGhostText}>先用预置体验</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : (
+              <>
+                {readiness ? <Text style={styles.backendTag}>评估后端：{SOURCE_LABEL[readiness.backend]}</Text> : null}
+                <View style={styles.pickRow}>
+                  <Pressable style={[styles.btn, styles.btnPrimary]} onPress={() => run(true)}>
+                    <Text style={styles.btnPrimaryText}>拍照</Text>
+                  </Pressable>
+                  <Pressable style={[styles.btn, styles.btnGhost]} onPress={() => run(false)}>
+                    <Text style={styles.btnGhostText}>从相册选</Text>
+                  </Pressable>
+                </View>
+              </>
+            )}
           </>
         ) : null}
 
@@ -146,6 +174,18 @@ const styles = StyleSheet.create({
   kicker: {color: theme.colors.textPrimary, fontSize: theme.font.sizeMd, fontWeight: theme.font.weightBold},
   body: {padding: 24, paddingBottom: 40},
   intro: {color: theme.colors.textMuted, fontSize: theme.font.sizeSm, lineHeight: 20, marginTop: 8},
+  guard: {
+    marginTop: 20,
+    padding: 14,
+    borderRadius: theme.radius.md,
+    backgroundColor: '#FCEAE0',
+    borderWidth: 1,
+    borderColor: 'rgba(251,75,0,0.3)',
+  },
+  guardTitle: {color: theme.colors.textPrimary, fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
+  guardHint: {color: theme.colors.textSecondary, fontSize: theme.font.sizeXs, marginTop: 6, lineHeight: 17},
+  guardRec: {color: theme.colors.primary, fontSize: theme.font.sizeXs, marginTop: 6, lineHeight: 17},
+  backendTag: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: 14, fontWeight: theme.font.weightBold},
   pickRow: {flexDirection: 'row', gap: 12, marginTop: 24},
   btn: {flex: 1, paddingVertical: 14, borderRadius: theme.radius.md, alignItems: 'center'},
   btnPrimary: {backgroundColor: theme.colors.primary},

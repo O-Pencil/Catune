@@ -14,6 +14,7 @@ import {MemoryService} from '../../posture/memory/service';
 import {MemoryItem, MemoryType} from '../../posture/memory/types';
 import {loadAssessConfig, saveAssessConfig} from '../../assess/config';
 import {AssessBackend, AssessConfig, DEFAULT_ASSESS_CONFIG} from '../../assess/types';
+import {AssessReadiness, checkAssessReadiness} from '../../assess/readiness';
 
 export type DataMode = 'loading' | 'sensor' | 'mock';
 
@@ -36,19 +37,25 @@ const TYPE_LABEL: Record<MemoryType, string> = {
   entity: '称呼',
 };
 
+// 端侧 VL 优先展示（用户从评估页跳来时先看到端侧）
 const ASSESS_BACKENDS: Array<{key: AssessBackend; label: string}> = [
-  {key: 'preset', label: '预置'},
-  {key: 'cloud', label: '云端'},
   {key: 'local', label: '端侧 VL'},
+  {key: 'cloud', label: '云端'},
+  {key: 'preset', label: '预置'},
 ];
 
 function AssessConfigCard(): React.JSX.Element {
   const [cfg, setCfg] = useState<AssessConfig>(DEFAULT_ASSESS_CONFIG);
   const [saved, setSaved] = useState(false);
+  const [readiness, setReadiness] = useState<AssessReadiness | null>(null);
 
   useEffect(() => {
     loadAssessConfig().then(setCfg);
   }, []);
+  // 后端/Key 变化时重算就绪与设备推荐
+  useEffect(() => {
+    checkAssessReadiness(cfg).then(setReadiness).catch(() => setReadiness(null));
+  }, [cfg]);
 
   const setBackend = (backend: AssessBackend) => {
     setCfg(c => ({...c, backend}));
@@ -62,11 +69,22 @@ function AssessConfigCard(): React.JSX.Element {
   return (
     <Card style={styles.card}>
       <Text style={styles.cardTitle}>评估模型</Text>
+      {readiness ? (
+        <Text style={styles.assessRec}>
+          推荐 {readiness.recommend === 'local' ? '端侧 VL' : '云端'} · {readiness.recommendReason}
+        </Text>
+      ) : null}
       <View style={styles.rowGap}>
         {ASSESS_BACKENDS.map(b => (
           <Pill key={b.key} active={cfg.backend === b.key} label={b.label} onPress={() => setBackend(b.key)} />
         ))}
       </View>
+
+      {cfg.backend === 'local' && readiness ? (
+        <Text style={[styles.hint, readiness.ready ? styles.assessOk : undefined]}>
+          {readiness.ready ? '端侧 VL 已就绪 ✓' : `端侧 VL 未就绪：${readiness.hint ?? '需带 MNN 的安卓构建 + 下载启用 VL 模型'}`}
+        </Text>
+      ) : null}
 
       {cfg.backend === 'cloud' ? (
         <View style={styles.cloudForm}>
@@ -96,10 +114,6 @@ function AssessConfigCard(): React.JSX.Element {
             autoCapitalize="none"
           />
         </View>
-      ) : null}
-
-      {cfg.backend === 'local' ? (
-        <Text style={styles.hint}>端侧 VL 需安装 VL 模型且原生支持 analyzeImage（步骤③）。未就绪时评估自动回退预置。</Text>
       ) : null}
 
       <Pressable
@@ -210,6 +224,8 @@ const styles = StyleSheet.create({
   },
   memText: {color: theme.colors.textSecondary, fontSize: theme.font.sizeSm, flex: 1, lineHeight: 18},
   memDelete: {color: theme.colors.textMuted, fontSize: 14, fontWeight: theme.font.weightBold},
+  assessRec: {color: theme.colors.primary, fontSize: theme.font.sizeXs, marginTop: 4, marginBottom: 10, lineHeight: 17},
+  assessOk: {color: '#3A9E1F'},
   cloudForm: {marginTop: 12, gap: 8},
   input: {
     borderWidth: 1,

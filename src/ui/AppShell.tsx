@@ -86,7 +86,15 @@ export function AppShell({state, growth, memory, mode, deskSubtitle, onUseSensor
       {trainingAction ? (
         <TrainingScreen action={trainingAction} memory={memory} onClose={() => setTrainingAction(null)} />
       ) : null}
-      {assessOpen ? <AssessScreen onClose={() => setAssessOpen(false)} /> : null}
+      {assessOpen ? (
+        <AssessScreen
+          onClose={() => setAssessOpen(false)}
+          onGoSettings={() => {
+            setAssessOpen(false);
+            setTab('settings');
+          }}
+        />
+      ) : null}
       {onboarded === false ? (
         <OnboardingScreen
           onComplete={inputs => {
