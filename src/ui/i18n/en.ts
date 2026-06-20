@@ -402,6 +402,10 @@ export const en: Dict = {
   'settings.about.body': 'Catune · Your no-slouch sitting companion. Wellness aid, not medical diagnosis.',
   'settings.about.model': 'Model',
   'settings.about.framework': 'Framework',
+  'settings.locale.title': 'Language',
+  'settings.locale.label': 'Switch the app language. Posture labels and advice will update.',
+  'settings.locale.en': 'English',
+  'settings.locale.zh': '中文',
   // memory type labels
   'memory.tag.preference': 'Pref',
   'memory.tag.struggle': 'Sore',
