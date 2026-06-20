@@ -82,7 +82,7 @@ export function AppShell({state, growth, memory, mode, deskSubtitle, onUseSensor
           onScenario={onScenario}
         />
       )}
-      <TabBar tabs={TABS} value={tab} onChange={setTab} />
+      {onboarded !== false ? <TabBar tabs={TABS} value={tab} onChange={setTab} /> : null}
       {trainingAction ? (
         <TrainingScreen action={trainingAction} memory={memory} onClose={() => setTrainingAction(null)} />
       ) : null}

@@ -59,7 +59,7 @@ export function OnboardingScreen({onComplete}: {onComplete: (inputs: RememberInp
 
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView contentContainerStyle={styles.body} style={styles.scroll}>
         <Text style={styles.kicker}>CATUNE</Text>
         <Text style={styles.title}>认识一下你</Text>
         <Text style={styles.subtitle}>几个小问题，让教练更懂你。答案只存在本机，可随时在设置里清空。</Text>
@@ -102,7 +102,13 @@ export function OnboardingScreen({onComplete}: {onComplete: (inputs: RememberInp
 }
 
 const styles = StyleSheet.create({
-  root: {...StyleSheet.absoluteFillObject, backgroundColor: theme.colors.surface},
+  root: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: theme.colors.surface,
+    zIndex: 10,
+    elevation: 10,
+  },
+  scroll: {flex: 1},
   body: {padding: 28, paddingTop: 64, paddingBottom: 24},
   kicker: {color: theme.colors.textMuted, fontSize: 10, fontWeight: theme.font.weightBold, letterSpacing: 1},
   title: {color: theme.colors.textPrimary, fontSize: theme.font.sizeXl, fontWeight: theme.font.weightHeavy, marginTop: 6},
