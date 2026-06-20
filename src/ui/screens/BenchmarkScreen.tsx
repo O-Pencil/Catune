@@ -106,7 +106,7 @@ function formatRunDetail(run: BenchRun, t: T): string {
 
 const styles = StyleSheet.create({
   card: {marginBottom: theme.spacing.md},
-  cardTitle: {color: theme.colors.textPrimary, fontSize: theme.font.sizeMd, fontWeight: theme.font.weightBold},
+  cardTitle: {color: theme.colors.textPrimary, fontSize: theme.font.sizeMd, fontFamily: theme.font.displayMedium},
   subtitle: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: 6, lineHeight: 17},
   previewBanner: {
     marginTop: 10,
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     color: theme.colors.textMuted,
     fontSize: theme.font.sizeXs,
-    fontWeight: theme.font.weightBold,
+    fontFamily: theme.font.displayMedium,
     marginTop: 14,
     marginBottom: 6,
   },

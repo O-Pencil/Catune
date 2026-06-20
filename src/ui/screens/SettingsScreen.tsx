@@ -221,7 +221,7 @@ function MemoryCard({memory}: {memory?: MemoryService}): React.JSX.Element | nul
 const styles = StyleSheet.create({
   root: {flex: 1, backgroundColor: theme.colors.surface},
   container: {padding: theme.spacing.lg, paddingTop: theme.spacing.lg, paddingBottom: 120},
-  title: {color: theme.colors.textPrimary, fontSize: theme.font.sizeXl, fontWeight: theme.font.weightHeavy, marginBottom: theme.spacing.lg},
+  title: {color: theme.colors.textPrimary, fontSize: theme.font.sizeXl, fontFamily: theme.font.displaySemiBold, marginBottom: theme.spacing.lg},
   sectionLabel: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -233,11 +233,11 @@ const styles = StyleSheet.create({
   sectionLabelText: {
     color: theme.colors.textMuted,
     fontSize: theme.font.sizeXs,
-    fontWeight: theme.font.weightBold,
+    fontFamily: theme.font.displayMedium,
     letterSpacing: 0.8,
   },
   card: {marginBottom: theme.spacing.md},
-  cardTitle: {color: theme.colors.textPrimary, fontSize: theme.font.sizeMd, fontWeight: theme.font.weightBold, marginBottom: 12},
+  cardTitle: {color: theme.colors.textPrimary, fontSize: theme.font.sizeMd, fontFamily: theme.font.displayMedium, marginBottom: 12},
   rowGap: {flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm},
   wrapRow: {flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm},
   hint: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: 10, lineHeight: 18},

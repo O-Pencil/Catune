@@ -406,13 +406,14 @@ const styles = StyleSheet.create({
   },
   kicker: {
     color: theme.colors.textMuted,
-    fontSize: 10,
-    fontWeight: theme.font.weightBold,
+    fontSize: 11,
+    fontFamily: theme.font.displayMedium,
     letterSpacing: 0.5,
   },
   greeting: {
     color: theme.colors.textPrimary,
     fontSize: theme.font.sizeSm,
+    fontFamily: theme.font.displayMedium,
     lineHeight: 20,
     marginTop: 6,
   },

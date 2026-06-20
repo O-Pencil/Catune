@@ -149,12 +149,12 @@ export function PlantScreen({growth}: {growth: GrowthState}): React.JSX.Element 
 const styles = StyleSheet.create({
   root: {flex: 1, backgroundColor: theme.colors.background},
   container: {padding: theme.spacing.lg, paddingTop: theme.spacing.xl, paddingBottom: 120, gap: theme.spacing.md},
-  title: {color: theme.colors.textPrimary, fontSize: theme.font.sizeXl, fontWeight: theme.font.weightBold, paddingHorizontal: 4, marginBottom: 8},
+  title: {color: theme.colors.textPrimary, fontSize: theme.font.sizeXl, fontFamily: theme.font.displaySemiBold, paddingHorizontal: 4, marginBottom: 8},
 
   plantCard: {gap: 16},
   plantHeader: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start'},
-  kicker: {color: theme.colors.textMuted, fontSize: 10, fontWeight: theme.font.weightBold, letterSpacing: 1},
-  cardTitle: {color: theme.colors.textPrimary, fontSize: theme.font.sizeLg, fontWeight: theme.font.weightBold, marginTop: 4},
+  kicker: {color: theme.colors.textMuted, fontSize: 11, fontFamily: theme.font.displayMedium, letterSpacing: 1},
+  cardTitle: {color: theme.colors.textPrimary, fontSize: theme.font.sizeLg, fontFamily: theme.font.displayMedium, marginTop: 4},
   dim: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs},
   stageText: {color: theme.colors.primary, fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold, marginTop: 2},
 

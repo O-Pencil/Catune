@@ -23,6 +23,11 @@ export const font = {
   sizeScore: 56,
   weightBold: '700' as const,
   weightHeavy: '800' as const,
+  // 圆润可爱标题字体（Fredoka）
+  display: 'Fredoka_400Regular' as const,
+  displayMedium: 'Fredoka_500Medium' as const,
+  displaySemiBold: 'Fredoka_600SemiBold' as const,
+  displayBold: 'Fredoka_700Bold' as const,
 };
 
 /** RN 阴影（iOS shadow* + Android elevation；RNW 会转 boxShadow）。 */

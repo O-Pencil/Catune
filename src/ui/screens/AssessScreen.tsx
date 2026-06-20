@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   topBar: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16},
   closeBtn: {width: 32, height: 32, alignItems: 'center', justifyContent: 'center'},
   closeText: {color: theme.colors.textSecondary, fontSize: 20, fontWeight: theme.font.weightBold},
-  kicker: {color: theme.colors.textPrimary, fontSize: theme.font.sizeMd, fontWeight: theme.font.weightBold},
+  kicker: {color: theme.colors.textPrimary, fontSize: theme.font.sizeMd, fontFamily: theme.font.displayMedium},
   body: {padding: 24, paddingBottom: 40},
   intro: {color: theme.colors.textMuted, fontSize: theme.font.sizeSm, lineHeight: 20, marginTop: 8},
   guard: {
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(251,75,0,0.3)',
   },
-  guardTitle: {color: theme.colors.textPrimary, fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
+  guardTitle: {color: theme.colors.textPrimary, fontSize: theme.font.sizeSm, fontFamily: theme.font.displayMedium},
   guardHint: {color: theme.colors.textSecondary, fontSize: theme.font.sizeXs, marginTop: 6, lineHeight: 17},
   pickRow: {flexDirection: 'row', gap: 12, marginTop: 24},
   btn: {flex: 1, paddingVertical: 14, borderRadius: theme.radius.md, alignItems: 'center'},

@@ -11,6 +11,8 @@
  * 端侧 Qwen+MNN 为安卓原生支线（docs/端侧模型对接计划.md）。
  */
 import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {ActivityIndicator, View} from 'react-native';
+import {useFonts, Fredoka_400Regular, Fredoka_500Medium, Fredoka_600SemiBold, Fredoka_700Bold} from '@expo-google-fonts/fredoka';
 
 import {AppShell} from './src/ui/AppShell';
 import {createPostureEngine} from './src/posture/engine';
@@ -40,6 +42,14 @@ const INITIAL: DashboardState = {
 type Mode = 'loading' | 'sensor' | 'mock';
 
 function App(): React.JSX.Element {
+  // 加载 Fredoka 字体（圆润可爱标题字体）
+  const [fontsLoaded] = useFonts({
+    Fredoka_400Regular,
+    Fredoka_500Medium,
+    Fredoka_600SemiBold,
+    Fredoka_700Bold,
+  });
+
   // locale state 独立于 useRef 容器，让 engine / growth 通过 getter 拿到当前值
   const [locale, setLocaleState] = useState<Locale>('en');
   const localeRef = useRef<Locale>(locale);
@@ -123,6 +133,15 @@ function App(): React.JSX.Element {
     setLocaleState(l);
     memoryRef.current.setLocale(l);
   };
+
+  // 字体加载中显示 loading
+  if (!fontsLoaded) {
+    return (
+      <View style={{flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F2F0EC'}}>
+        <ActivityIndicator size="small" color="#FB4B00" />
+      </View>
+    );
+  }
 
   return (
     <LocaleProvider locale={locale} onChange={handleLocaleChange}>
