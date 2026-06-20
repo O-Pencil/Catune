@@ -138,12 +138,11 @@ export function CatSprite({
 
   return (
     // clip 由父级 absoluteFill 给出尺寸（= 一个单元格 = 猫盒子）；overflow 隐藏裁出当前格
-    <View style={[styles.clip, style]} pointerEvents="none">
+    <View style={[styles.clip, style]} pointerEvents="none" renderToHardwareTextureAndroid>
       <Animated.Image
         source={atlas}
         fadeDuration={0}
         resizeMode="stretch"
-        renderToHardwareTextureAndroid
         style={{
           width: cols * w,
           height: rows * h,
