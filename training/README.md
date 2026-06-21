@@ -35,11 +35,14 @@ pip install llamafactory            # 或 git clone hiyouga/LLaMA-Factory 后 pi
 python3 training/gen_dataset.py --n 400
 #  → 产出 training/data/train.jsonl / val.jsonl
 
-# 2) LoRA 训练（单卡 8GB 足够，约几分钟~十几分钟）
-llamafactory-cli train training/configs/qwen0.5b_lora.yaml
+# 2) LoRA 训练（transformers+peft，无需 LLaMA-Factory；4 epoch）
+python3 training/train_sft.py --output_dir training/saves/qwen0.5b-catune-lora-v2
+#  → LoRA adapter 在 training/saves/qwen0.5b-catune-lora-v2/
 
-# 3) 合并 LoRA → 完整 HF 模型
-llamafactory-cli export training/configs/qwen0.5b_merge.yaml
+# 3) 合并 LoRA 回基座 → 完整 HF 模型（匹配 train_sft.py 的输出）
+python3 training/merge_lora.py \
+  --adapter training/saves/qwen0.5b-catune-lora-v2 \
+  --out training/saves/qwen0.5b-catune-merged
 #  → training/saves/qwen0.5b-catune-merged/
 
 # 4) 转 MNN（INT4），产出 App 需要的文件集
@@ -51,10 +54,15 @@ python3 MNN/transformers/llm/export/llmexport.py \
 #  产物须含：config.json llm_config.json llm.mnn llm.mnn.weight tokenizer.txt embeddings_bf16.bin
 #  （与 src/mnn/modelCatalog.ts 的 MNN_FILE_SET 对齐）
 
-# 5) 部署到 App 端侧验证
-#  - 把 5/6 个文件放到设备 filesDir/mnn_models/qwen2.5-0.5b-catune/ 并设为 .active
-#  - 或起一个新 catalog 项指向你的下载源
-#  - Settings → 模型基准测试 → 单次推理 / 基准 x2，核对：输出≤30字、含[动作:]、TPS
+# 5) 让端侧用上微调版（二选一）
+#  A. 快速（demo）：覆盖设备上活跃模型的文件 —— 把 .mnn 文件集替换进
+#     filesDir/mnn_models/qwen2.5-0.5b/（同 id 同路径，App 零改动直接用）
+#       adb push training/saves/qwen0.5b-catune-mnn/.  /sdcard/catune/   # 再用 app 内或脚本搬进 filesDir
+#     （filesDir 不能直接 adb push，需经 app 的下载/导入；最稳是下面 B）
+#  B. 正式：把 .mnn 文件集上传到你的 HF/对象存储，在 src/mnn/modelCatalog.ts 加一项
+#     { id:'qwen2.5-0.5b-catune', label:'Qwen2.5-0.5B·坐姿教练', files:MNN_FILE_SET,
+#       baseUrl:'<你的直链>/', tags:['device'] }  → App 内下载并设为活跃。
+#  验收：Settings → 模型基准测试 → 单次推理 / 基准 x2，核对 输出≤30字、带[动作:]、带「喵～」、TPS。
 ```
 
 ## 初赛“走通”验收标准
