@@ -101,3 +101,5 @@ docs/demos/*.apk
 
 # SME2 Docker MNN 编译缓存
 scripts/sme2-demo/.docker-mnn-build/
+
+.mnn-ios-build/

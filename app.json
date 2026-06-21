@@ -33,7 +33,8 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      "./plugins/withCatuneMnn.js"
     ]
   }
 }

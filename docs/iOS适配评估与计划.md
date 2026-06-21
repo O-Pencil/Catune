@@ -53,27 +53,46 @@ npx expo run:ios --device
 
 ---
 
-## 3. 目标 B：iOS 端侧 Qwen+MNN（复赛）
+## 3. 目标 B：iOS 端侧 Qwen+MNN（代码已写完，待你 Mac 上编 MNN + 真机验证）
 
-C++ 核可复用，主要是「编 MNN iOS 库 + 写 ObjC++ 桥」。骨架已放 `ios/CatuneMnn/`（见 §4）。
+**已实现**（复用安卓 C++ 核，只换桥层）：
+- `ios/CatuneMnn/CatuneMnn.{h,mm}` —— **完整** ObjC++ RN 模块，方法/事件名与安卓 `MnnDebugModule` 完全一致：`getStatus / inferText / inferTextStream / analyzeImage / runBenchmark / releaseModel`，内部直接调 `eyes::EyesLlmSession`；流式用 `RCTEventEmitter` 发 `onMnnToken/onMnnDone/onMnnError`，串行队列保证不并发，轮询 `getPartial()` 出 token。**JS 侧零改动**。
+- `ios/CatuneMnn/CatuneMnn.podspec` —— 编本模块 + 共享 C++ 核（排除 JNI 专属 `eyes_mnn_bridge.cpp`）+ 链接 MNN 静态库，C++17。
+- `android/.../cpp/eyes_log.h` —— 已改**跨平台**（Android logcat / iOS stderr），C++ 核 iOS 可编。
+- `plugins/withCatuneMnn.js` —— Expo config plugin：prebuild 时把 Pod 加进 Podfile；**守卫**：仅当 `ios/CatuneMnn/MNN/lib/libMNN.a` 存在才启用 → **目标 A（无端侧）的 prebuild 不受影响**。已挂到 `app.json`。
+- `scripts/build-mnn-ios.sh` —— 编 MNN iOS 静态库 + 汇总头文件到 `ios/CatuneMnn/MNN/`。
 
-### 步骤
-1. **编 MNN iOS**：MNN 源码 `cmake` 出 iOS arm64（device+sim）静态库/framework，带 `MNN_BUILD_LLM` + KleidiAI；或用 MNN 官方 iOS 构建脚本。
-2. **加 C++ 核到 Xcode 工程**：把 `eyes_llm_session.{h,cpp}`、`llm_stream_buffer.hpp`、`utf8_stream_processor.hpp`（与安卓共享同一份）加入 iOS target（建议软链或 Podspec 引用，避免两份拷贝）。
-3. **ObjC++ 桥 `CatuneMnn.mm`**（骨架已给）：实现 `RCTBridgeModule`，方法名与安卓一致（`getStatus/inferText/inferTextStream/analyzeImage/runBenchmark`），内部直接调 `eyes::EyesLlmSession`。流式用 `RCTEventEmitter` 发 `onMnnToken/onMnnDone/onMnnError`（与安卓事件名一致，JS 侧 `inferStreamClient` 零改动）。
-4. **Podfile / 链接**：链接 libMNN.framework + 设置 `CLANG_CXX_LANGUAGE_STANDARD=c++17`、把模型放 `Documents/mnn_models/`（`expo-file-system` 的 documentDirectory，与安卓 filesDir 对齐）。
-5. **真机验证**：A18 Pro 跑 Qwen2.5-0.5B，看中文输出 + TPS（NEON/SME，非 SME2）。
+**你只剩两件（Mac 上）**：
+```bash
+# 1) 编 MNN iOS 库（产出 ios/CatuneMnn/MNN/lib/libMNN.a + include/）
+export MNN_SRC=$PWD/android/app/src/main/cpp/third_party/MNN
+bash scripts/build-mnn-ios.sh
 
-> 工作量：约 3~5 天（编库+桥+联调；C++ 复用省大头）。
+# 2) prebuild + 装 Pod + 真机跑（plugin 检测到 libMNN.a 自动接通端侧）
+npx expo prebuild -p ios && cd ios && pod install && cd ..
+npx expo run:ios --device
+```
+3) App 内下载模型（`Documents/mnn_models/qwen2.5-0.5b/`，`expo-file-system` 与安卓对齐）→ Settings 基准测试看中文输出 + TPS。
+
+> 注意点（按 MNN 版本可能要微调）：
+> - MNN iOS 的 cmake 开关/产物路径因版本而异，`build-mnn-ios.sh` 是起点；头文件需含 MNN core + `transformers/llm/engine/include`（脚本已尝试汇总）。
+> - 脚本默认只编 **device arm64**；要同时跑模拟器需 xcframework（device+sim）。
+> - A18 Pro **有 SME、无 SME2** → iOS 端侧走 NEON/SME，不是 SME2（SME2 考核点用安卓口径）。
+> - 这套原生**无法在本仓库 CI/Linux 编译验证**，首次真机构建大概率要按报错小修（MNN 头路径/符号）。
+
+> 工作量：编 MNN iOS + 真机联调约 1~2 天（代码已写完，省了写桥的时间）。
 
 ---
 
-## 4. iOS 桥骨架（`ios/CatuneMnn/`）
+## 4. 文件清单（`ios/CatuneMnn/` 等）
 
-- `CatuneMnn.h` / `CatuneMnn.mm`：RN 原生模块骨架，方法签名与安卓 `MnnDebugModule` 对齐，含 TODO 标注待接 `eyes::EyesLlmSession`。
-- **未接入构建**（不影响目标 A）：这些文件需在 `expo prebuild` 后手动加入 Xcode target（或写成 Expo config plugin / 本地 Pod）才参与编译。目标 A 的 iPhone 包**不需要**它们。
-
-集成顺序：先跑通目标 A → 复赛再把 §3 的库与桥接进 Xcode target。
+| 文件 | 作用 |
+| --- | --- |
+| `ios/CatuneMnn/CatuneMnn.h` / `.mm` | iOS RN 原生模块（完整实现） |
+| `ios/CatuneMnn/CatuneMnn.podspec` | 编模块 + 共享 C++ 核 + 链接 MNN |
+| `plugins/withCatuneMnn.js` | Expo 插件，按需把 Pod 加进 Podfile（无 MNN 库则跳过） |
+| `scripts/build-mnn-ios.sh` | 编 MNN iOS 库 + 汇总头 |
+| `android/.../cpp/*`（共享） | C++ 推理核，Android/iOS 同一份（`eyes_log.h` 已跨平台） |
 
 ---
 
