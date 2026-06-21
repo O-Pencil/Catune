@@ -2,6 +2,11 @@
  * @file ModelDownloadCard.tsx
  * @description 端侧模型管理：模型选择（推荐内嵌）/下载/激活 + 设备指标（底部折叠）。
  * 推荐徽章 ✓ 贴在被推荐模型的卡片右上角，1 行简短理由；选中≠推荐时显示 hint。
+ *
+ * [WHO] 导出 `ModelDownloadCard`
+ * [FROM] 依赖 `react`、`react-native`、`expo-file-system/legacy`、`../../mnn/modelCatalog`、`../../mnn/modelDownloadService`
+ * [TO] 被 SettingsScreen 嵌入（settings.group.core → 模型管理）
+ * [HERE] src/ui/components/ModelDownloadCard.tsx · 模型管理卡片
  */
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Alert, NativeModules, Pressable, StyleSheet, Text, View} from 'react-native';
@@ -132,7 +137,7 @@ const optionStyles = StyleSheet.create({
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    padding: 12,
+    padding: theme.spacing.md2,
     paddingTop: 14,
     position: 'relative',
     minHeight: 110,
@@ -145,28 +150,28 @@ const optionStyles = StyleSheet.create({
   cardDisabled: {opacity: 0.5},
   recBadge: {
     position: 'absolute',
-    top: 6,
-    right: 6,
-    paddingVertical: 2,
-    paddingHorizontal: 6,
+    top: theme.spacing.sm,
+    right: theme.spacing.sm,
+    paddingVertical: theme.spacing.xxs,
+    paddingHorizontal: theme.spacing.sm,
     borderRadius: theme.radius.pill,
     backgroundColor: '#1B7A3E',
   },
   recBadgeText: {color: '#FFFFFF', fontSize: 10, fontWeight: theme.font.weightBold},
   label: {color: theme.colors.textPrimary, fontSize: theme.font.sizeMd, fontWeight: theme.font.weightBold},
-  sizeHint: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: 2},
+  sizeHint: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: theme.spacing.xxs},
   statusPill: {
     alignSelf: 'flex-start',
-    marginTop: 8,
-    paddingVertical: 2,
-    paddingHorizontal: 6,
+    marginTop: theme.spacing.sm2,
+    paddingVertical: theme.spacing.xxs,
+    paddingHorizontal: theme.spacing.sm,
     borderRadius: theme.radius.pill,
   },
   statusPillReady: {backgroundColor: '#E9F8EE'},
   statusPillWarn: {backgroundColor: '#FFF4DC'},
   statusPillMuted: {backgroundColor: theme.colors.surfaceMuted},
   statusPillText: {fontSize: 10, color: theme.colors.textSecondary, fontWeight: theme.font.weightBold},
-  reason: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: 6, lineHeight: 16},
+  reason: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: theme.spacing.sm, lineHeight: 16},
 });
 
 // ─── 子组件：设备指标（折叠） ────────────────────────────────────────────────
@@ -244,21 +249,21 @@ const metricsStyles = StyleSheet.create({
     marginTop: 14,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
-    paddingTop: 10,
+    paddingTop: theme.spacing.md,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 4,
+    paddingVertical: theme.spacing.xs,
   },
-  headerLeft: {flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0},
-  tierBadge: {paddingVertical: 2, paddingHorizontal: 8, borderRadius: theme.radius.pill},
+  headerLeft: {flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm2, flex: 1, minWidth: 0},
+  tierBadge: {paddingVertical: theme.spacing.xxs, paddingHorizontal: theme.spacing.sm2, borderRadius: theme.radius.pill},
   tierBadgeText: {fontSize: 10, fontWeight: theme.font.weightBold},
   summary: {color: theme.colors.textSecondary, fontSize: theme.font.sizeXs, flex: 1},
   toggle: {color: theme.colors.primary, fontSize: theme.font.sizeXs, fontWeight: theme.font.weightBold, flexShrink: 0},
-  detail: {marginTop: 8, paddingLeft: 4},
-  detailLine: {color: theme.colors.textSecondary, fontSize: theme.font.sizeXs, lineHeight: 17, marginBottom: 2},
+  detail: {marginTop: theme.spacing.sm2, paddingLeft: theme.spacing.xs},
+  detailLine: {color: theme.colors.textSecondary, fontSize: theme.font.sizeXs, lineHeight: 17, marginBottom: theme.spacing.xxs},
   placeholder: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, lineHeight: 16},
 });
 
@@ -611,24 +616,24 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
 
 const styles = StyleSheet.create({
   card: {marginBottom: theme.spacing.md},
-  titleRow: {flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12, gap: 8},
+  titleRow: {flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: theme.spacing.md2, gap: theme.spacing.sm2},
   cardTitle: {color: theme.colors.textPrimary, fontSize: theme.font.sizeMd, fontWeight: theme.font.weightBold},
   titleHint: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, flex: 1, textAlign: 'right'},
-  optionsRow: {flexDirection: 'row', gap: theme.spacing.sm, marginBottom: 6},
-  swapHint: {color: theme.colors.primary, fontSize: theme.font.sizeXs, marginTop: 4, lineHeight: 16, fontStyle: 'italic'},
-  sectionLabel: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginBottom: 8},
-  statusText: {color: theme.colors.textSecondary, fontSize: theme.font.sizeSm, marginTop: 8, lineHeight: 18},
-  bar: {height: 6, borderRadius: 3, backgroundColor: theme.colors.surfaceMuted, marginTop: 8, overflow: 'hidden'},
+  optionsRow: {flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.sm},
+  swapHint: {color: theme.colors.primary, fontSize: theme.font.sizeXs, marginTop: theme.spacing.xs, lineHeight: 16, fontStyle: 'italic'},
+  sectionLabel: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginBottom: theme.spacing.sm2},
+  statusText: {color: theme.colors.textSecondary, fontSize: theme.font.sizeSm, marginTop: theme.spacing.sm2, lineHeight: 18},
+  bar: {height: 6, borderRadius: 3, backgroundColor: theme.colors.surfaceMuted, marginTop: theme.spacing.sm2, overflow: 'hidden'},
   barFill: {height: 6, borderRadius: 3, backgroundColor: theme.colors.primary},
-  error: {color: '#C20A0A', fontSize: theme.font.sizeXs, marginTop: 8, lineHeight: 17},
-  rowGap: {flexDirection: 'row', gap: theme.spacing.sm, marginTop: 10, flexWrap: 'wrap'},
+  error: {color: '#C20A0A', fontSize: theme.font.sizeXs, marginTop: theme.spacing.sm2, lineHeight: 17},
+  rowGap: {flexDirection: 'row', gap: theme.spacing.sm, marginTop: theme.spacing.md, flexWrap: 'wrap'},
   btnFlex: {flex: 1},
-  btn: {paddingVertical: 10, paddingHorizontal: 16, borderRadius: theme.radius.md, borderWidth: 1, alignItems: 'center'},
+  btn: {paddingVertical: theme.spacing.md, paddingHorizontal: theme.spacing.lg, borderRadius: theme.radius.md, borderWidth: 1, alignItems: 'center'},
   btnPrimary: {borderColor: theme.colors.primary, backgroundColor: '#FCEAE0'},
   btnDanger: {borderColor: '#C20A0A', backgroundColor: '#FFF5F5'},
   btnText: {color: theme.colors.primary, fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
   btnDangerText: {color: '#C20A0A', fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
-  installedBlock: {marginTop: 12},
+  installedBlock: {marginTop: theme.spacing.md2},
   installedRow: {color: theme.colors.textSecondary, fontSize: theme.font.sizeXs, lineHeight: 18},
-  hint: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: 10, lineHeight: 18},
+  hint: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: theme.spacing.md, lineHeight: 18},
 });

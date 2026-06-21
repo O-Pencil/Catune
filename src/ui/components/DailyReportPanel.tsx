@@ -1,6 +1,11 @@
 /**
  * @file DailyReportPanel.tsx
  * @description 日报视图：今日分 / 不驼背时长 / Streak / AI 评论（规则兜底）。无数据态用纯文字。
+ *
+ * [WHO] 导出 `DailyReportPanel`
+ * [FROM] 依赖 `react`、`react-native`、`../../posture/growth`(GrowthState)、`../../posture/dailyReport`(buildDailyReport)、`../theme`、`../i18n`
+ * [TO] 被 LoopTabs 嵌入（汇总 → 日报 pill）
+ * [HERE] src/ui/components/DailyReportPanel.tsx · 日报视图
  */
 import React, {useMemo} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
@@ -58,13 +63,13 @@ export function DailyReportPanel({growth}: Props): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  root: {paddingVertical: 4},
+  root: {paddingVertical: theme.spacing.xs},
   scoreBlock: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
+    gap: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm2,
   },
   scoreNum: {
     color: theme.colors.primary,
@@ -72,26 +77,26 @@ const styles = StyleSheet.create({
     fontWeight: theme.font.weightHeavy,
   },
   scoreLabel: {color: theme.colors.textMuted, fontSize: theme.font.sizeMd, fontWeight: theme.font.weightBold},
-  statsRow: {flexDirection: 'row', gap: 8, marginTop: 4, marginBottom: 12},
+  statsRow: {flexDirection: 'row', gap: theme.spacing.sm2, marginTop: theme.spacing.xs, marginBottom: theme.spacing.md2},
   statCell: {
     flex: 1,
     alignItems: 'center',
     backgroundColor: theme.colors.surfaceMuted,
     borderRadius: theme.radius.md,
-    paddingVertical: 10,
+    paddingVertical: theme.spacing.md,
   },
   statValue: {color: theme.colors.textPrimary, fontSize: theme.font.sizeLg, fontWeight: theme.font.weightHeavy},
-  statLabel: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: 2},
+  statLabel: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: theme.spacing.xxs},
   aiBlock: {
     backgroundColor: '#FFFAF5',
     borderRadius: theme.radius.md,
-    padding: 12,
+    padding: theme.spacing.md2,
     borderWidth: 1,
     borderColor: '#F2D5B7',
   },
-  aiLabel: {color: theme.colors.primary, fontSize: theme.font.sizeXs, fontWeight: theme.font.weightBold, marginBottom: 4, letterSpacing: 0.5},
+  aiLabel: {color: theme.colors.primary, fontSize: theme.font.sizeXs, fontWeight: theme.font.weightBold, marginBottom: theme.spacing.xs, letterSpacing: 0.5},
   aiText: {color: theme.colors.textPrimary, fontSize: theme.font.sizeSm, lineHeight: 20},
-  empty: {alignItems: 'center', paddingVertical: 24, paddingHorizontal: 12},
+  empty: {alignItems: 'center', paddingVertical: theme.spacing.xxl, paddingHorizontal: theme.spacing.md2},
   emptyTitle: {color: theme.colors.textSecondary, fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
-  emptyHint: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: 6},
+  emptyHint: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: theme.spacing.sm},
 });

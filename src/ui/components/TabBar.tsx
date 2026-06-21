@@ -34,7 +34,7 @@ function AnimatedTab({
       stiffness: 400,
       damping: 20,
     }).start();
-  }, [active]);
+  }, [active, scale]);
 
   return (
     <Pressable style={[styles.tab, active && styles.tabActive]} onPress={onPress}>
@@ -75,9 +75,9 @@ const styles = StyleSheet.create({
   wrap: {position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center'},
   bar: {
     flexDirection: 'row',
-    gap: 4,
+    gap: theme.spacing.xs,
     margin: theme.spacing.lg,
-    padding: 4,
+    padding: theme.spacing.xs,
     borderRadius: theme.radius.lg,
     backgroundColor: theme.colors.surfaceMuted,
     borderWidth: 1,
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     width: '92%',
     ...theme.shadow.pill,
   },
-  tab: {flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: theme.radius.md, gap: 3},
+  tab: {flex: 1, alignItems: 'center', paddingVertical: theme.spacing.sm2, borderRadius: theme.radius.md, gap: 3},
   tabActive: {backgroundColor: theme.colors.surface, ...theme.shadow.pill},
   label: {fontSize: theme.font.sizeXs, fontWeight: theme.font.weightBold},
 });

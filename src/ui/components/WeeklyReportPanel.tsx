@@ -1,6 +1,11 @@
 /**
  * @file WeeklyReportPanel.tsx
  * @description 周报视图：最近 7 天每日积分柱图 + AI 周总结。柱高按本周最高分归一化；缺数据态用纯文字。
+ *
+ * [WHO] 导出 `WeeklyReportPanel`
+ * [FROM] 依赖 `react`、`react-native`、`../../posture/dailyReport`(buildWeeklyReport/WeekDay)、`../theme`、`../i18n`
+ * [TO] 被 LoopTabs 嵌入（汇总 → 周报 pill）
+ * [HERE] src/ui/components/WeeklyReportPanel.tsx · 周报视图
  */
 import React, {useMemo} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
@@ -96,9 +101,9 @@ function isWeekend(d: WeekDay): boolean {
 const BAR_HEIGHT = 90;
 
 const styles = StyleSheet.create({
-  root: {paddingVertical: 4},
-  barsRow: {flexDirection: 'row', gap: 6, alignItems: 'flex-end', marginBottom: 12},
-  barCol: {flex: 1, alignItems: 'center', gap: 4},
+  root: {paddingVertical: theme.spacing.xs},
+  barsRow: {flexDirection: 'row', gap: theme.spacing.sm, alignItems: 'flex-end', marginBottom: theme.spacing.md2},
+  barCol: {flex: 1, alignItems: 'center', gap: theme.spacing.xs},
   barTrack: {
     height: BAR_HEIGHT,
     width: '100%',
@@ -114,29 +119,29 @@ const styles = StyleSheet.create({
     borderTopRightRadius: theme.radius.sm,
   },
   barFillEmpty: {backgroundColor: theme.colors.border, height: 4},
-  barValue: {color: theme.colors.textSecondary, fontSize: theme.font.sizeXs, fontWeight: theme.font.weightBold, marginTop: 4},
+  barValue: {color: theme.colors.textSecondary, fontSize: theme.font.sizeXs, fontWeight: theme.font.weightBold, marginTop: theme.spacing.xs},
   barLabel: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs},
   barLabelWeekend: {color: theme.colors.primary, fontWeight: theme.font.weightBold},
-  summaryRow: {flexDirection: 'row', gap: 8, marginBottom: 12},
+  summaryRow: {flexDirection: 'row', gap: theme.spacing.sm2, marginBottom: theme.spacing.md2},
   summaryCell: {
     flex: 1,
     alignItems: 'center',
     backgroundColor: theme.colors.surfaceMuted,
     borderRadius: theme.radius.md,
-    paddingVertical: 10,
+    paddingVertical: theme.spacing.md,
   },
   summaryValue: {color: theme.colors.textPrimary, fontSize: theme.font.sizeLg, fontWeight: theme.font.weightHeavy},
-  summaryLabel: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: 2},
+  summaryLabel: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: theme.spacing.xxs},
   aiBlock: {
     backgroundColor: '#FFFAF5',
     borderRadius: theme.radius.md,
-    padding: 12,
+    padding: theme.spacing.md2,
     borderWidth: 1,
     borderColor: '#F2D5B7',
   },
-  aiLabel: {color: theme.colors.primary, fontSize: theme.font.sizeXs, fontWeight: theme.font.weightBold, marginBottom: 4, letterSpacing: 0.5},
+  aiLabel: {color: theme.colors.primary, fontSize: theme.font.sizeXs, fontWeight: theme.font.weightBold, marginBottom: theme.spacing.xs, letterSpacing: 0.5},
   aiText: {color: theme.colors.textPrimary, fontSize: theme.font.sizeSm, lineHeight: 20},
-  empty: {alignItems: 'center', paddingVertical: 24, paddingHorizontal: 12},
+  empty: {alignItems: 'center', paddingVertical: theme.spacing.xxl, paddingHorizontal: theme.spacing.md2},
   emptyTitle: {color: theme.colors.textSecondary, fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
-  emptyHint: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: 6},
+  emptyHint: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: theme.spacing.sm},
 });

@@ -1,5 +1,11 @@
 /**
- * 全局下载进度条：切 Tab 后仍可见；窄屏两行布局，避免文字溢出。
+ * @file ModelDownloadBanner.tsx
+ * @description 全局下载进度条：切 Tab 后仍可见；窄屏两行布局，避免文字溢出。
+ *
+ * [WHO] 导出 `ModelDownloadBanner`
+ * [FROM] 依赖 `react`、`react-native`、`../../mnn/modelDownloadService`、`../../mnn/modelCatalog`
+ * [TO] 被 AppShell 顶部渲染（所有 Tab 都可见）
+ * [HERE] src/ui/components/ModelDownloadBanner.tsx · 全局下载进度条
  */
 import React, {useEffect, useMemo, useState} from 'react';
 import {Alert, Pressable, StyleSheet, Text, useWindowDimensions, View} from 'react-native';
@@ -94,11 +100,11 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingLeft: theme.spacing.md,
     paddingRight: theme.spacing.sm,
-    paddingVertical: 8,
+    paddingVertical: theme.spacing.sm2,
     backgroundColor: '#FFF8F3',
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-    gap: 4,
+    gap: theme.spacing.xs,
   },
   main: {
     flex: 1,
@@ -107,7 +113,7 @@ const styles = StyleSheet.create({
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: theme.spacing.sm2,
   },
   title: {
     flex: 1,
@@ -123,7 +129,7 @@ const styles = StyleSheet.create({
     fontWeight: theme.font.weightBold,
   },
   fileName: {
-    marginTop: 2,
+    marginTop: theme.spacing.xxs,
     color: theme.colors.textMuted,
     fontSize: theme.font.sizeXs,
     lineHeight: 16,
@@ -132,14 +138,14 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: theme.colors.surfaceMuted,
-    marginTop: 6,
+    marginTop: theme.spacing.sm,
     overflow: 'hidden',
   },
   barFill: {height: 4, borderRadius: 2, backgroundColor: theme.colors.primary},
   cancelBtn: {
     flexShrink: 0,
-    paddingHorizontal: 6,
-    paddingTop: 2,
+    paddingHorizontal: theme.spacing.sm,
+    paddingTop: theme.spacing.xxs,
     minWidth: 36,
     alignItems: 'center',
   },

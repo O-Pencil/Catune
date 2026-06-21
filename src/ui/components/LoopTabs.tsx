@@ -4,8 +4,13 @@
  *   一级 TAB：[事件] / [汇总]（默认事件）
  *   汇总内二级 pill：[日报] / [周报]（持久化）
  *   事件 TAB = 原 growth.log 渲染，0 改动
+ *
+ * [WHO] 导出 `LoopTabs`
+ * [FROM] 依赖 `react`、`react-native`、`../../posture/growth`(GrowthState)、`./DailyReportPanel`、`./WeeklyReportPanel`
+ * [TO] 被 PlantScreen 渲染
+ * [HERE] src/ui/components/LoopTabs.tsx · Plant 闭环卡（一级 TAB + 汇总内二级 pill）
  */
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {GrowthState} from '../../posture/growth';
 import {Card} from '../primitives/Card';
@@ -29,10 +34,10 @@ export function LoopTabs({growth}: Props): React.JSX.Element {
     {value: 'events', label: t('loopTabs.events')},
     {value: 'summary', label: t('loopTabs.summary')},
   ];
-  const SUMMARY_OPTIONS: TabOption<SummaryTab>[] = [
+  const SUMMARY_OPTIONS = useMemo<TabOption<SummaryTab>[]>(() => [
     {value: 'daily', label: t('loopTabs.daily')},
     {value: 'weekly', label: t('loopTabs.weekly')},
-  ];
+  ], [t]);
 
   const [primary, setPrimary] = useState<PrimaryTab>('events');
   const [summary, setSummary] = useState<SummaryTab>('daily');
@@ -146,11 +151,11 @@ function EventsView({growth}: {growth: GrowthState}): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  card: {marginBottom: theme.spacing.sm, gap: 10},
-  primaryRow: {flexDirection: 'row', gap: 8},
+  card: {marginBottom: theme.spacing.sm, gap: theme.spacing.md},
+  primaryRow: {flexDirection: 'row', gap: theme.spacing.sm2},
   primaryPill: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: theme.spacing.md,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -160,11 +165,11 @@ const styles = StyleSheet.create({
   primaryPillActive: {borderColor: theme.colors.primary, backgroundColor: '#FCEAE0'},
   primaryPillText: {color: theme.colors.textMuted, fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
   primaryPillTextActive: {color: theme.colors.primary},
-  divider: {height: 1, backgroundColor: theme.colors.border, marginVertical: 2},
-  summaryRow: {flexDirection: 'row', gap: 6, marginBottom: 10},
+  divider: {height: 1, backgroundColor: theme.colors.border, marginVertical: theme.spacing.xxs},
+  summaryRow: {flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.md},
   summaryPill: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md2,
     borderRadius: theme.radius.pill,
     borderWidth: 1,
     borderColor: theme.colors.border,
@@ -173,13 +178,13 @@ const styles = StyleSheet.create({
   summaryPillActive: {borderColor: theme.colors.primary, backgroundColor: '#FCEAE0'},
   summaryPillText: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, fontWeight: theme.font.weightBold},
   summaryPillTextActive: {color: theme.colors.primary},
-  logRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: 10},
+  logRow: {flexDirection: 'row', alignItems: 'center', paddingVertical: theme.spacing.md},
   logDivider: {borderBottomWidth: 1, borderBottomColor: theme.colors.border},
   logTextBlock: {flex: 1, minWidth: 0},
   logTime: {color: theme.colors.textMuted, fontSize: 11},
-  logAction: {color: theme.colors.textSecondary, fontSize: 13, marginTop: 2},
-  logDelta: {fontSize: 14, fontWeight: theme.font.weightBold, marginLeft: 12},
-  empty: {alignItems: 'center', paddingVertical: 24, paddingHorizontal: 12},
+  logAction: {color: theme.colors.textSecondary, fontSize: 13, marginTop: theme.spacing.xxs},
+  logDelta: {fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold, marginLeft: theme.spacing.md2},
+  empty: {alignItems: 'center', paddingVertical: theme.spacing.xxl, paddingHorizontal: theme.spacing.md2},
   emptyTitle: {color: theme.colors.textSecondary, fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
-  emptyHint: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: 6, textAlign: 'center'},
+  emptyHint: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginTop: theme.spacing.sm, textAlign: 'center'},
 });
