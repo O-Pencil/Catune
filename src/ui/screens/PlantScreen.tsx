@@ -9,8 +9,7 @@
  * [HERE] src/ui/screens/PlantScreen.tsx · 植物养成屏
  */
 import React from 'react';
-import {ScrollView, StyleSheet, Text, View} from 'react-native';
-import Svg, {Circle, Ellipse, Path, Rect} from 'react-native-svg';
+import {Image, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {theme} from '../theme';
 import {Card} from '../primitives/Card';
 import {SunIcon} from '../icons';
@@ -19,83 +18,9 @@ import {LoopTabs} from '../components/LoopTabs';
 import {useT} from '../i18n';
 
 const STAGES = STAGE_NAMES.map((name, id) => ({id, name}));
+const PLANT_IMAGE = require('../../../public/plant.png');
 
-const P = {
-  potBody: '#C2725A',
-  potRim: '#A0563D',
-  potHi: '#D4886F',
-  soil: '#5C3D24',
-  sprout: '#A3B559',
-  stemYoung: '#7BA05B',
-  stemMid: '#5B8043',
-  stemMature: '#3F6A2E',
-  leaf: '#7BA05B',
-  leafLight: '#9DBE6E',
-  bud: '#CE82FF',
-  budLight: '#E9B0FF',
-  fruitRed: '#C75348',
-  fruitYellow: '#E8A93C',
-};
-
-function PlantSvg({stage}: {stage: number}): React.JSX.Element {
-  return (
-    <Svg width={176} height={176} viewBox="0 0 100 100">
-      <Ellipse cx={50} cy={93} rx={30} ry={3} fill="#000000" opacity={0.1} />
-      {/* Pot */}
-      <Path d="M 14 70 L 22 92 L 58 92 L 66 70 Z" fill={P.potBody} />
-      <Path d="M 14 70 L 66 70 L 64 73 L 16 73 Z" fill={P.potRim} />
-      <Rect x={14} y={67} width={52} height={4} rx={1} fill={P.potHi} />
-      <Ellipse cx={40} cy={70} rx={24} ry={2.5} fill={P.soil} />
-
-      {stage === 0 && <Ellipse cx={50} cy={68} rx={3} ry={1.5} fill={P.sprout} />}
-
-      {stage === 1 && (
-        <>
-          <Path d="M 50 68 L 50 50" stroke={P.stemYoung} strokeWidth={2} strokeLinecap="round" />
-          <Ellipse cx={46} cy={55} rx={6} ry={2.5} fill={P.leafLight} rotation={-25} originX={46} originY={55} />
-          <Ellipse cx={54} cy={52} rx={6} ry={2.5} fill={P.leafLight} rotation={25} originX={54} originY={52} />
-        </>
-      )}
-
-      {stage === 2 && (
-        <>
-          <Path d="M 50 68 L 50 35" stroke={P.stemMid} strokeWidth={2.5} strokeLinecap="round" />
-          <Ellipse cx={40} cy={50} rx={9} ry={3.5} fill={P.leaf} rotation={-25} originX={40} originY={50} />
-          <Ellipse cx={60} cy={45} rx={9} ry={3.5} fill={P.leaf} rotation={25} originX={60} originY={45} />
-          <Ellipse cx={42} cy={62} rx={7} ry={3} fill={P.leafLight} rotation={-15} originX={42} originY={62} />
-          <Ellipse cx={58} cy={58} rx={7} ry={3} fill={P.leafLight} rotation={15} originX={58} originY={58} />
-          <Circle cx={50} cy={35} r={2} fill={P.leaf} />
-        </>
-      )}
-
-      {stage === 3 && (
-        <>
-          <Path d="M 50 68 L 50 22" stroke={P.stemMature} strokeWidth={3} strokeLinecap="round" />
-          <Ellipse cx={38} cy={50} rx={11} ry={4} fill={P.leaf} rotation={-30} originX={38} originY={50} />
-          <Ellipse cx={62} cy={44} rx={11} ry={4} fill={P.leaf} rotation={30} originX={62} originY={44} />
-          <Ellipse cx={40} cy={62} rx={9} ry={3.5} fill={P.leafLight} rotation={-15} originX={40} originY={62} />
-          <Ellipse cx={60} cy={56} rx={9} ry={3.5} fill={P.leafLight} rotation={15} originX={60} originY={56} />
-          <Ellipse cx={50} cy={22} rx={8} ry={10} fill={P.bud} />
-          <Ellipse cx={50} cy={22} rx={5} ry={7} fill={P.budLight} />
-        </>
-      )}
-
-      {stage === 4 && (
-        <>
-          <Path d="M 50 68 L 50 14" stroke={P.stemMature} strokeWidth={3.5} strokeLinecap="round" />
-          <Ellipse cx={35} cy={50} rx={13} ry={4.5} fill={P.leaf} rotation={-30} originX={35} originY={50} />
-          <Ellipse cx={65} cy={45} rx={13} ry={4.5} fill={P.leaf} rotation={30} originX={65} originY={45} />
-          <Ellipse cx={40} cy={64} rx={10} ry={4} fill={P.leafLight} rotation={-15} originX={40} originY={64} />
-          <Ellipse cx={60} cy={60} rx={10} ry={4} fill={P.leafLight} rotation={15} originX={60} originY={60} />
-          <Circle cx={42} cy={40} r={4} fill={P.fruitRed} />
-          <Circle cx={58} cy={38} r={4} fill={P.fruitYellow} />
-          <Circle cx={50} cy={22} r={3.5} fill={P.fruitRed} />
-          <Circle cx={46} cy={30} r={3} fill={P.fruitYellow} />
-        </>
-      )}
-    </Svg>
-  );
-}
+// 植物主视觉用 public/plant.png（旧的 5 阶段 SVG 已移除）。
 
 export function PlantScreen({growth}: {growth: GrowthState}): React.JSX.Element {
   const t = useT();
@@ -123,7 +48,7 @@ export function PlantScreen({growth}: {growth: GrowthState}): React.JSX.Element 
           <View style={styles.sun}>
             <SunIcon size={20} />
           </View>
-          <PlantSvg stage={stage} />
+          <Image source={PLANT_IMAGE} style={styles.plantImg} resizeMode="contain" />
         </View>
 
         {/* 阶段条为只读进度指示：高亮当前由积分推导的阶段 */}
@@ -169,6 +94,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     overflow: 'hidden',
   },
+  plantImg: {width: '86%', height: '86%'},
   sceneFloor: {
     ...StyleSheet.absoluteFillObject,
     top: 112,
