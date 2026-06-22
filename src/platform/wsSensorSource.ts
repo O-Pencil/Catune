@@ -54,12 +54,12 @@ export function createWsSensorSource(engine: PostureEngine): WsSensorSource {
     lastRaw.roll = d.roll;
     // 统一几何：竖直=挺直、前倾=驼背/低头、平放=坏（见 postureMapping）
     const {neck, thor, lumbar} = orientationToNodes(d.pitch, d.roll, baseline.pitch, baseline.roll);
-    // node-T：单点(背) → 颈不动（背部传感器测不到头）、胸=驼背、腰=侧倾
-    // 3-axis：一台手机演三态 → 同一前倾量也给颈（低头）
+    // node-T：单点(背) → 颈由胸椎耦合推算（生理曲度，与 BLE/发送端一致）
+    // 3-axis：一台手机演三态 → 前倾量直接给颈，低头更易触发
     if (mapping === '3-axis') {
-      engine.update(neck, thor, lumbar);
+      engine.update(thor, thor, lumbar);
     } else {
-      engine.update(0, thor, lumbar);
+      engine.update(neck, thor, lumbar);
     }
   };
 

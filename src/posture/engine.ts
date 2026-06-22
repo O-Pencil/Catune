@@ -90,22 +90,26 @@ function adviceFor(actionId: string | null, severityLevel: number, posture: Post
 
 // ---------------- 3 节点分类（规则） ----------------
 
-/** 单一判定来源：3 节点角度 → 姿态 + 推荐动作。SLUMPED 由胸椎(thor)驱动（PRD 驼背主指标）。 */
+/** 单一判定来源：3 节点角度 → 姿态 + 推荐动作。
+ *  前倾(俯仰轴：驼背/低头)与侧倾(翻滚轴：弯腰)是两个独立轴；各算"超阈值比例"，取比例最大者展示
+ *  —— 与人体一致：最明显的那个偏差最先被注意。侧倾对称（左右都算）。比例相同优先驼背(PRD 主指标)。 */
 function classifyAndAction(
   neck: number,
   thor: number,
   lumbar: number,
 ): {posture: PostureName; actionId: string | null} {
-  if (thor > THRESHOLDS.thorSlumpDeg) {
-    return {posture: 'SLUMPED', actionId: 'thoracic_extension'};
+  const candidates: Array<{posture: PostureName; actionId: string; ratio: number}> = [
+    {posture: 'SLUMPED', actionId: 'thoracic_extension', ratio: thor / THRESHOLDS.thorSlumpDeg},
+    {posture: 'LEFT_LEAN', actionId: 'scapular_retraction', ratio: Math.abs(lumbar) / Math.abs(THRESHOLDS.lumbarLeanDeg)},
+    {posture: 'TECH_NECK', actionId: 'neck_retraction', ratio: neck / THRESHOLDS.neckTechDeg},
+  ];
+  let best: {posture: PostureName; actionId: string; ratio: number} | null = null;
+  for (const c of candidates) {
+    if (c.ratio >= 1 && (best === null || c.ratio > best.ratio)) {
+      best = c;
+    }
   }
-  if (neck > THRESHOLDS.neckTechDeg) {
-    return {posture: 'TECH_NECK', actionId: 'neck_retraction'};
-  }
-  if (lumbar < THRESHOLDS.lumbarLeanDeg) {
-    return {posture: 'LEFT_LEAN', actionId: 'scapular_retraction'};
-  }
-  return {posture: 'NORMAL', actionId: null};
+  return best ? {posture: best.posture, actionId: best.actionId} : {posture: 'NORMAL', actionId: null};
 }
 
 function severityOf(posture: PostureName, s: PostureSignals): number {

@@ -1,11 +1,11 @@
 /**
  * @file wsSenderSource.ts
  * @description WS 发送方：本机 DeviceMotion → JSON {nodeId,pitch,roll} 推到 Mac 中转，
- *   同时用 mapNodeTToSpine 喂本地 engine（发送端 Desk 也能看到指标变化）。
+ *   同时用 orientationToNodes 喂本地 engine（发送端 Desk 也能看到指标变化）。
  */
 import {DeviceMotion} from 'expo-sensors';
 import type {PostureEngine} from '../posture/engine';
-import {mapNodeTToSpine} from '../posture/spineKinematics';
+import {orientationToNodes} from '../posture/postureMapping';
 import {loadWsConfig} from './wsConfig';
 import type {WsStatus} from './wsSensorSource';
 
@@ -70,8 +70,9 @@ export function createWsSenderSource(engine: PostureEngine): WsSenderSource {
       }
       pitch = angles.pitch;
       roll = angles.roll;
-      const spine = mapNodeTToSpine(pitch, roll);
-      engine.update(spine.neckPitch, spine.thorPitch, spine.lumbarRoll);
+      // 发送原始 pitch/roll；本地也用统一几何(竖直=挺直、前倾=驼背)喂引擎，与接收端一致
+      const spine = orientationToNodes(pitch, roll);
+      engine.update(spine.neck, spine.thor, spine.lumbar);
       sendFrame();
     });
   };
