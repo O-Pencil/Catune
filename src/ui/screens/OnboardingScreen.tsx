@@ -14,6 +14,8 @@ import {Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-na
 import {RememberInput} from '../../platform/memory/types';
 import {theme} from '../theme';
 import {useT} from '../i18n';
+import {AppLogo} from '../components/AppLogo';
+import {APP_NAME, formatAppVersion} from '../../constants/appMeta';
 
 type ToneKey = 'encourage' | 'direct' | 'gentle';
 type AreaKey = 'neck' | 'back' | 'waist' | 'none';
@@ -71,6 +73,13 @@ export function OnboardingScreen({onComplete}: {onComplete: (inputs: RememberInp
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.body} style={styles.scroll}>
+        <View style={styles.brandRow}>
+          <AppLogo size={56} />
+          <View>
+            <Text style={styles.brandName}>{APP_NAME}</Text>
+            <Text style={styles.brandVersion}>{formatAppVersion()}</Text>
+          </View>
+        </View>
         <Text style={styles.kicker}>{t('onboarding.kicker')}</Text>
         <Text style={styles.title}>{t('onboarding.title')}</Text>
         <Text style={styles.subtitle}>{t('onboarding.subtitle')}</Text>
@@ -122,6 +131,9 @@ const styles = StyleSheet.create({
   },
   scroll: {flex: 1},
   body: {padding: 28, paddingTop: 64, paddingBottom: theme.spacing.xxl},
+  brandRow: {flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, marginBottom: theme.spacing.xl},
+  brandName: {color: theme.colors.textPrimary, fontSize: theme.font.sizeLg, fontFamily: theme.font.displaySemiBold, letterSpacing: 1.5},
+  brandVersion: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, fontFamily: theme.font.body, marginTop: theme.spacing.xxs},
   kicker: {color: theme.colors.textMuted, fontSize: 11, fontFamily: theme.font.displayMedium, letterSpacing: 1},
   title: {color: theme.colors.textPrimary, fontSize: theme.font.sizeXl, fontFamily: theme.font.displaySemiBold, marginTop: theme.spacing.sm},
   subtitle: {color: theme.colors.textMuted, fontSize: theme.font.sizeSm, lineHeight: 20, marginTop: theme.spacing.sm2},

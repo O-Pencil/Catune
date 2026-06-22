@@ -226,23 +226,20 @@ function AboutSection() {
       <SectionHeader icon={IconInfoCircle} label="ABOUT" />
       <div className="skeuo-card p-4">
         <div className="flex items-center gap-3 mb-4">
-          <div
-            className="size-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-            style={{
-              background: "rgba(251, 75, 0, 0.1)",
-              boxShadow: "inset 0 0 0 1px rgba(251, 75, 0, 0.2)",
-            }}
-          >
-            <span className="text-[#fb4b00] font-bold text-lg font-mono">C</span>
-          </div>
+          <img
+            src="/logo/LOGO.svg"
+            alt="CATUNE logo"
+            className="size-12 rounded-2xl flex-shrink-0 object-cover"
+            style={{ boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.06)" }}
+          />
           <div>
             <div
-              className="text-base font-bold text-[#141414]"
+              className="text-base font-bold text-[#141414] tracking-wider"
               style={{ fontFamily: "'Fredoka', sans-serif" }}
             >
-              Catune
+              CATUNE
             </div>
-            <div className="text-[10px] text-[#9B9590] font-mono">No-slouch posture companion</div>
+            <div className="text-[10px] text-[#9B9590] font-mono">v1.0.0</div>
           </div>
         </div>
         <div className="divide-y divide-[rgba(0,0,0,0.04)]">

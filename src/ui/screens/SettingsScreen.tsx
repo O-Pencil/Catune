@@ -10,7 +10,7 @@
  * [HERE] src/ui/screens/SettingsScreen.tsx · 设置页布局
  */
 import React, {useCallback, useEffect, useState} from 'react';
-import {Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import {Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import {theme} from '../theme';
 import {Card} from '../primitives/Card';
 import {ModelDownloadCard} from '../components/ModelDownloadCard';
@@ -25,8 +25,10 @@ import {DEFAULT_WS_CONFIG, loadWsConfig, saveWsConfig, WsConfig, WsMapping} from
 import {AssessReadiness, checkAssessReadiness} from '../../assess/readiness';
 import {Locale, useLocale, useT} from '../i18n';
 import {IconCpu, IconBrain, IconBell, IconInfoCircle} from '@tabler/icons-react-native';
+import {AppLogo} from '../components/AppLogo';
+import {APP_NAME, APP_VERSION, formatAppVersion} from '../../constants/appMeta';
 
-export type DataMode = 'loading' | 'sensor' | 'mock' | 'ble' | 'ws';
+export type DataMode = 'loading' | 'sensor' | 'mock' | 'ble' | 'ws' | 'ws-send';
 export type BleStatusLite = 'idle' | 'scanning' | 'connecting' | 'connected' | 'error';
 export type WsStatusLite = 'idle' | 'connecting' | 'connected' | 'error';
 
@@ -40,6 +42,7 @@ type Props = {
   onUseMock: () => void;
   onUseBle?: () => void;
   onUseWs?: () => void;
+  onUseWsSend?: () => void;
   onCalibrate?: () => void;
   onScenario: (s: MockScenario) => void;
 };
@@ -164,16 +167,23 @@ const WS_MAPPING_LABEL: Record<WsMapping, string> = {
   '3-axis': '单机·演三态',
 };
 
+const WS_MAPPING_HINT: Record<WsMapping, string> = {
+  'node-T': 'pitch→胸 · roll→腰 · 颈由胸+生理曲度推算',
+  '3-axis': 'pitch→颈+胸 · roll→腰',
+};
+
 /** 保底数据源：另一台手机当姿态带（WS）。自管 url/映射持久化；连接/校准走 App。 */
 function WsConfigCard({
   mode,
   wsStatus,
   onUseWs,
+  onUseWsSend,
   onCalibrate,
 }: {
   mode: DataMode;
   wsStatus?: WsStatusLite;
   onUseWs?: () => void;
+  onUseWsSend?: () => void;
   onCalibrate?: () => void;
 }): React.JSX.Element | null {
   const [cfg, setCfg] = useState<WsConfig>(DEFAULT_WS_CONFIG);
@@ -182,9 +192,11 @@ function WsConfigCard({
     loadWsConfig().then(setCfg);
   }, []);
 
-  if (!onUseWs) {
+  if (!onUseWs && !onUseWsSend) {
     return null;
   }
+
+  const isSender = mode === 'ws-send';
 
   const setUrl = (url: string) => {
     const next = {...cfg, url};
@@ -201,7 +213,11 @@ function WsConfigCard({
     <Card style={styles.card}>
       <Text style={styles.cardTitle}>手机姿态带（WS · 保底）</Text>
       <Text style={styles.hint}>
-        ESP32 没烧通时用：另一台手机贴背当传感器。先在 Mac 跑 scripts/ws-relay，把它打印的地址填这里。
+        {isSender
+          ? '本机当传感器：贴背、竖握，填 Mac 中转 ws 地址后点「开始发送」。原生 App 无需 ngrok。'
+          : Platform.OS === 'web'
+          ? 'Web 接收端：启动后自动连 ws://127.0.0.1:8787。iPhone 选「姿态发送方」推数据，在此看 Desk/Monitor。'
+          : '接收方：另一台 iPhone 发来的姿态。Mac 跑 node server.mjs，填打印的 ws 地址。'}
       </Text>
       <TextInput
         style={[styles.input, {marginTop: theme.spacing.md2}]}
@@ -212,14 +228,25 @@ function WsConfigCard({
         autoCapitalize="none"
         autoCorrect={false}
       />
-      <View style={[styles.rowGap, {marginTop: theme.spacing.md2}]}>
-        {(Object.keys(WS_MAPPING_LABEL) as WsMapping[]).map(m => (
-          <Pill key={m} active={cfg.mapping === m} label={WS_MAPPING_LABEL[m]} onPress={() => setMapping(m)} />
-        ))}
-      </View>
-      <Pressable style={styles.saveBtn} onPress={onUseWs}>
-        <Text style={styles.saveBtnText}>{mode === 'ws' ? '重新连接' : '连接'}</Text>
-      </Pressable>
+      {!isSender ? (
+        <View style={[styles.rowGap, {marginTop: theme.spacing.md2}]}>
+          {(Object.keys(WS_MAPPING_LABEL) as WsMapping[]).map(m => (
+            <Pill key={m} active={cfg.mapping === m} label={WS_MAPPING_LABEL[m]} onPress={() => setMapping(m)} />
+          ))}
+        </View>
+      ) : null}
+      {!isSender && cfg.mapping ? (
+        <Text style={[styles.hint, {marginTop: theme.spacing.sm}]}>{WS_MAPPING_HINT[cfg.mapping]}</Text>
+      ) : null}
+      {isSender && onUseWsSend ? (
+        <Pressable style={styles.saveBtn} onPress={onUseWsSend}>
+          <Text style={styles.saveBtnText}>{mode === 'ws-send' && wsStatus === 'connected' ? '重新发送' : '开始发送'}</Text>
+        </Pressable>
+      ) : onUseWs ? (
+        <Pressable style={styles.saveBtn} onPress={onUseWs}>
+          <Text style={styles.saveBtnText}>{mode === 'ws' ? '重新连接' : '连接'}</Text>
+        </Pressable>
+      ) : null}
       <Text style={styles.hint}>状态：{WS_STATUS_LABEL[wsStatus ?? 'idle']}</Text>
       {mode === 'ws' && wsStatus === 'connected' && onCalibrate ? (
         <Pressable style={styles.saveBtn} onPress={onCalibrate}>
@@ -390,6 +417,25 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
+  aboutBrand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.md,
+    marginBottom: theme.spacing.md2,
+  },
+  aboutBrandText: {flex: 1},
+  aboutAppName: {
+    color: theme.colors.textPrimary,
+    fontSize: theme.font.sizeLg,
+    fontFamily: theme.font.displayMedium,
+    letterSpacing: 1.2,
+  },
+  aboutVersionLine: {
+    color: theme.colors.textMuted,
+    fontSize: theme.font.sizeXs,
+    fontFamily: theme.font.body,
+    marginTop: theme.spacing.xxs,
+  },
   aboutLabel: {color: theme.colors.textMuted, fontSize: theme.font.sizeSm},
   aboutValue: {color: theme.colors.textPrimary, fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
 });
@@ -412,6 +458,7 @@ export function SettingsScreen({
   onUseMock,
   onUseBle,
   onUseWs,
+  onUseWsSend,
   onCalibrate,
   onScenario,
 }: Props): React.JSX.Element {
@@ -448,6 +495,7 @@ export function SettingsScreen({
         <View style={styles.wrapRow}>
           {onUseBle ? <Pill active={mode === 'ble'} label={t('settings.data.hardwareBand')} onPress={onUseBle} /> : null}
           {onUseWs ? <Pill active={mode === 'ws'} label="手机姿态带" onPress={onUseWs} /> : null}
+          {onUseWsSend ? <Pill active={mode === 'ws-send'} label="姿态发送方" onPress={onUseWsSend} /> : null}
           <Pill active={mode === 'sensor'} label={t('settings.data.sensor')} onPress={onUseSensor} />
           <Pill active={mode === 'mock'} label={t('settings.data.mock')} onPress={onUseMock} />
         </View>
@@ -463,7 +511,9 @@ export function SettingsScreen({
         ) : (
           <Text style={styles.hint}>
             {mode === 'ws'
-              ? '手机姿态带（WS）— 配置见下方卡片'
+              ? '手机姿态带（WS 接收）— 配置见下方卡片'
+              : mode === 'ws-send'
+              ? '姿态发送方 — 本机陀螺仪推送到 Mac 中转'
               : mode === 'sensor'
               ? t('settings.data.activeSensor')
               : mode === 'mock'
@@ -473,7 +523,7 @@ export function SettingsScreen({
         )}
       </Card>
 
-      <WsConfigCard mode={mode} wsStatus={wsStatus} onUseWs={onUseWs} onCalibrate={onCalibrate} />
+      <WsConfigCard mode={mode} wsStatus={wsStatus} onUseWs={onUseWs} onUseWsSend={onUseWsSend} onCalibrate={onCalibrate} />
 
       <Card style={styles.card}>
         <Text style={styles.cardTitle}>{t('settings.mock.title')}</Text>
@@ -506,10 +556,16 @@ export function SettingsScreen({
       <LanguageCard />
 
       <Card style={styles.card}>
-        <Text style={styles.cardTitle}>{t('settings.about.title')}</Text>
+        <View style={styles.aboutBrand}>
+          <AppLogo size={48} />
+          <View style={styles.aboutBrandText}>
+            <Text style={styles.aboutAppName}>{APP_NAME}</Text>
+            <Text style={styles.aboutVersionLine}>{formatAppVersion()}</Text>
+          </View>
+        </View>
         <View style={styles.aboutRow}>
           <Text style={styles.aboutLabel}>{t('settings.about.version')}</Text>
-          <Text style={styles.aboutValue}>1.0.0</Text>
+          <Text style={styles.aboutValue}>{APP_VERSION}</Text>
         </View>
         <View style={styles.aboutRow}>
           <Text style={styles.aboutLabel}>{t('settings.about.model')}</Text>

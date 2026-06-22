@@ -1,8 +1,14 @@
 {
   "expo": {
-    "name": "Catune",
+    "name": "CATUNE",
     "slug": "catune",
     "version": "1.0.0",
+    "icon": "./public/logo/icon.png",
+    "splash": {
+      "image": "./public/logo/icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -18,6 +24,7 @@
     },
     "android": {
       "package": "com.catune",
+      "versionCode": 1,
       "permissions": [
         "android.permission.BLUETOOTH_SCAN",
         "android.permission.BLUETOOTH_CONNECT",

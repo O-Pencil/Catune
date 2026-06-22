@@ -30,6 +30,7 @@ import {CatSprite} from '../components/CatSprite';
 import {LEAN_FRAMES} from '../assets/leanFrames';
 import {LEAN_ATLAS} from '../assets/leanAtlas';
 import {anchorsAt} from '../assets/catAnchors';
+import {APP_NAME} from '../../constants/appMeta';
 
 const PORTAL_IMAGE = require('../../../public/portal.png');
 const DESK_IMAGE = require('../../../public/desk.png');
@@ -94,7 +95,7 @@ function DeskHeader({
           <Text style={styles.assessEntryText}>{t('desk.assessEntry')}</Text>
         </Pressable>
       ) : null}
-      <Text style={styles.kicker}>CATUNE</Text>
+      <Text style={styles.kicker}>{APP_NAME}</Text>
       <Text style={styles.greeting}>
         {t(greetingKey())}, <Text style={styles.highlight}>{displayName}</Text>
       </Text>

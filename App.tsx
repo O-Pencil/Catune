@@ -7,15 +7,17 @@
  * [TO] 被 `index.js`(registerRootComponent) 注册
  * [HERE] 项目根 /App.tsx · 统一 Expo App 入口（数据/状态宿主）
  *
- * UI 全在 src/ui（RN 原语，RNW 兼容）；逻辑全在 src/posture。web(RNW) 无传感器 → 自动回退 mock。
+ * UI 全在 src/ui（RN 原语，RNW 兼容）；逻辑全在 src/posture。web(RNW) 无本机 IMU → 优先 WS 接收，失败回退 mock。
  * 端侧 Qwen+MNN 为安卓原生支线（docs/端侧模型对接计划.md）。
  */
 import React, {useEffect, useRef, useState} from 'react';
-import {ActivityIndicator, View} from 'react-native';
+import {ActivityIndicator, Platform, Text, View} from 'react-native';
 import {useFonts, Fredoka_400Regular, Fredoka_500Medium, Fredoka_600SemiBold, Fredoka_700Bold} from '@expo-google-fonts/fredoka';
 import {Geist_400Regular, Geist_500Medium, Geist_700Bold} from '@expo-google-fonts/geist';
 
 import {AppShell} from './src/ui/AppShell';
+import {AppLogo} from './src/ui/components/AppLogo';
+import {APP_NAME, formatAppVersion} from './src/constants/appMeta';
 import {createPostureEngine} from './src/posture/engine';
 import {createAdviceOrchestrator} from './src/posture/adviceOrchestrator';
 import {createMemoryService} from './src/platform/memory/service';
@@ -25,6 +27,7 @@ import {createMockSource, MockScenario, MockSource} from './src/posture/mock';
 import {createSensorSource, SensorSource} from './src/platform/sensorSource';
 import {BleSensorSource, BleStatus, createBleSensorSource} from './src/platform/bleSensorSource';
 import {createWsSensorSource, WsSensorSource, WsStatus} from './src/platform/wsSensorSource';
+import {createWsSenderSource, WsSenderSource} from './src/platform/wsSenderSource';
 import {DashboardState} from './src/posture/types';
 import {Locale, LocaleProvider, tr, useT} from './src/ui/i18n';
 
@@ -44,7 +47,7 @@ function buildInitialState(locale: Locale): DashboardState {
   };
 }
 
-type Mode = 'loading' | 'sensor' | 'mock' | 'ble' | 'ws';
+type Mode = 'loading' | 'sensor' | 'mock' | 'ble' | 'ws' | 'ws-send';
 
 function App(): React.JSX.Element {
   // 加载 Fredoka 字体（圆润可爱标题字体）
@@ -70,6 +73,7 @@ function App(): React.JSX.Element {
   const bleRef = useRef<BleSensorSource>(createBleSensorSource(engineRef.current));
   // 保底数据源（另一台手机当姿态带，WS）；ESP32 没烧通时用
   const wsRef = useRef<WsSensorSource>(createWsSensorSource(engineRef.current));
+  const wsSenderRef = useRef<WsSenderSource>(createWsSenderSource());
   const mockRef = useRef<MockSource>(createMockSource(engineRef.current));
   // 语义记忆（教练"懂你"）：本地存储，注入教练 prompt 个性化；写入由 onboarding/反馈钩子调用
   const memoryRef = useRef(createMemoryService());
@@ -87,13 +91,20 @@ function App(): React.JSX.Element {
   const [mode, setMode] = useState<Mode>('loading');
   const [bleStatus, setBleStatus] = useState<BleStatus>('idle');
   const [wsStatus, setWsStatus] = useState<WsStatus>('idle');
+  const [wsSendStatus, setWsSendStatus] = useState<WsStatus>('idle');
 
   // 停掉除当前要启用之外的所有数据源（数据源互斥）
-  const stopOthers = (keep: 'sensor' | 'mock' | 'ble' | 'ws') => {
+  const stopOthers = (keep: 'sensor' | 'mock' | 'ble' | 'ws' | 'ws-send') => {
     if (keep !== 'sensor') sensorRef.current.stop();
     if (keep !== 'mock') mockRef.current.stop();
     if (keep !== 'ble') bleRef.current.stop();
     if (keep !== 'ws') wsRef.current.stop();
+    if (keep !== 'ws-send') wsSenderRef.current.stop();
+  };
+
+  const useMockFallback = () => {
+    mockRef.current.start();
+    setMode('mock');
   };
 
   const useSensor = async () => {
@@ -102,8 +113,7 @@ function App(): React.JSX.Element {
     if (ok) {
       setMode('sensor');
     } else {
-      mockRef.current.start();
-      setMode('mock');
+      useMockFallback();
     }
   };
 
@@ -138,12 +148,26 @@ function App(): React.JSX.Element {
     const ok = await wsRef.current.start();
     if (ok) {
       setMode('ws');
+    } else if (Platform.OS === 'web') {
+      useMockFallback();
     } else {
       useSensor();
     }
   };
 
-  // 坐直校准：作用于当前激活的姿态带（BLE / WS）
+  const useWsSend = async () => {
+    stopOthers('ws-send');
+    const ok = await wsSenderRef.current.start();
+    if (ok) {
+      setMode('ws-send');
+    } else if (Platform.OS === 'web') {
+      useMockFallback();
+    } else {
+      useSensor();
+    }
+  };
+
+  // 坐直校准：作用于当前激活的姿态带（BLE / WS 接收）
   const calibrate = () => {
     if (mode === 'ws') {
       wsRef.current.calibrate();
@@ -157,10 +181,12 @@ function App(): React.JSX.Element {
     const unsubscribeGrowth = growthRef.current.subscribe(setGrowth);
     bleRef.current.onStatus(s => setBleStatus(s));
     wsRef.current.onStatus(s => setWsStatus(s));
+    wsSenderRef.current.onStatus(s => setWsSendStatus(s));
     adviceRef.current.start();
     growthRef.current.start();
     reminderRef.current.start();
-    void useSensor();
+    // Web 无本机陀螺仪：直接当 WS 接收端（Desk/Monitor 看 iPhone 发来的姿态）
+    void (Platform.OS === 'web' ? useWs() : useSensor());
     memoryRef.current.ready.then(() => {
       const saved = memoryRef.current.locale();
       localeRef.current = saved;
@@ -175,6 +201,7 @@ function App(): React.JSX.Element {
       sensorRef.current.stop();
       bleRef.current.stop();
       wsRef.current.stop();
+      wsSenderRef.current.stop();
       mockRef.current.stop();
     };
     // refs 是 stable 的（useRef），无需列入 deps
@@ -193,11 +220,14 @@ function App(): React.JSX.Element {
     memoryRef.current.setLocale(l);
   };
 
-  // 字体加载中显示 loading
+  // 字体加载中显示品牌启动页
   if (!fontsLoaded) {
     return (
-      <View style={{flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F2F0EC'}}>
-        <ActivityIndicator size="small" color="#FB4B00" />
+      <View style={{flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F2F0EC', gap: 16}}>
+        <AppLogo size={72} />
+        <Text style={{fontFamily: 'Fredoka_600SemiBold', fontSize: 22, letterSpacing: 2, color: '#141414'}}>{APP_NAME}</Text>
+        <Text style={{fontFamily: 'Geist_400Regular', fontSize: 12, color: '#9B9590'}}>{formatAppVersion()}</Text>
+        <ActivityIndicator size="small" color="#FB4B00" style={{marginTop: 8}} />
       </View>
     );
   }
@@ -210,11 +240,12 @@ function App(): React.JSX.Element {
         memory={memoryRef.current}
         mode={mode}
         bleStatus={bleStatus}
-        wsStatus={wsStatus}
+        wsStatus={mode === 'ws-send' ? wsSendStatus : wsStatus}
         onUseSensor={useSensor}
         onUseMock={useMock}
         onUseBle={useBle}
         onUseWs={useWs}
+        onUseWsSend={useWsSend}
         onCalibrate={calibrate}
         onScenario={pinScenario}
       />
@@ -233,6 +264,7 @@ function AppContent({
   onUseMock,
   onUseBle,
   onUseWs,
+  onUseWsSend,
   onCalibrate,
   onScenario,
 }: {
@@ -246,6 +278,7 @@ function AppContent({
   onUseMock: () => void;
   onUseBle: () => Promise<void>;
   onUseWs: () => Promise<void>;
+  onUseWsSend: () => Promise<void>;
   onCalibrate: () => void;
   onScenario: (s: MockScenario) => void;
 }): React.JSX.Element {
@@ -254,6 +287,13 @@ function AppContent({
     // 对外口径：WS 与 BLE 一律呈现为「硬件姿态带（BLE）」，面向观众不暴露手机当传感器
     mode === 'ble' || mode === 'ws'
       ? '数据源：硬件姿态带（BLE）'
+<<<<<<< HEAD
+=======
+      : mode === 'ws'
+      ? '数据源：手机姿态带（WS）'
+      : mode === 'ws-send'
+      ? '本机：姿态发送方（WS）'
+>>>>>>> e4956a0 (feat(branding): 正式化 CATUNE 品牌、版本号与 Android 覆盖升级)
       : mode === 'sensor'
       ? t('settings.data.activeSensor')
       : mode === 'mock'
@@ -272,6 +312,7 @@ function AppContent({
       onUseMock={onUseMock}
       onUseBle={onUseBle}
       onUseWs={onUseWs}
+      onUseWsSend={onUseWsSend}
       onCalibrate={onCalibrate}
       onScenario={onScenario}
     />
