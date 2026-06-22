@@ -201,7 +201,7 @@ function SensorOverlay({
 
 type RenderMode = 'sprite' | 'frames';
 
-function PostureScene({state}: {state: DashboardState}): React.JSX.Element {
+function PostureScene({state, onZoomToPlant}: {state: DashboardState; onZoomToPlant?: () => void}): React.JSX.Element {
   const {locale} = useLocale();
   const t = useT();
   const hasAtlas = LEAN_ATLAS.source != null && LEAN_ATLAS.count > 1;
@@ -254,12 +254,10 @@ function PostureScene({state}: {state: DashboardState}): React.JSX.Element {
           resizeMode="cover"
         />
 
-        {/* 植物层：在桌子左侧 */}
-        <Image 
-          source={PLANT_IMAGE} 
-          style={styles.plantImage} 
-          resizeMode="contain"
-        />
+        {/* 植物层：在桌子左侧，可点 → 镜头推进到 Plant 页 */}
+        <Pressable style={styles.plantImage} onPress={onZoomToPlant} hitSlop={10}>
+          <Image source={PLANT_IMAGE} style={StyleSheet.absoluteFill} resizeMode="contain" />
+        </Pressable>
 
         {/* 猫盒子：主视觉 + 点位层共用同一矩形，点位用比例坐标自动贴合 */}
         <View style={boxStyle}>
@@ -326,12 +324,14 @@ export function DeskScreen({
   state,
   onOpenTraining,
   onOpenAssess,
+  onZoomToPlant,
   memory,
 }: {
   state: DashboardState;
   subtitle?: string;
   onOpenTraining?: (action: PostureAction) => void;
   onOpenAssess?: () => void;
+  onZoomToPlant?: () => void;
   memory?: MemoryService;
 }): React.JSX.Element {
   const {locale} = useLocale();
@@ -398,7 +398,7 @@ export function DeskScreen({
         onFeedback={onFeedback}
       />
       <MetricStrip state={state} />
-      <PostureScene state={state} />
+      <PostureScene state={state} onZoomToPlant={onZoomToPlant} />
     </View>
   );
 }

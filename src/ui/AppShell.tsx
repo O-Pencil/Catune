@@ -7,8 +7,8 @@
  * [TO] 被 /App.tsx 渲染；数据/控制由 App 透传
  * [HERE] src/ui/AppShell.tsx · 应用外壳（Tab 导航）
  */
-import React, {useEffect, useMemo, useState} from 'react';
-import {SafeAreaView, StyleSheet} from 'react-native';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
+import {Animated, Easing, SafeAreaView, StyleSheet} from 'react-native';
 import {StatusBar} from 'expo-status-bar';
 
 import {ModelDownloadBanner} from './components/ModelDownloadBanner';
@@ -73,6 +73,25 @@ export function AppShell({
     [t],
   );
   const [tab, setTab] = useState('desk');
+  // Plant 页入场缩放：点桌上植物 → 镜头推进(0→1 缩放+淡入)；走 Tab 切则瞬时为 1（无动画）
+  const plantZoom = useRef(new Animated.Value(1)).current;
+  const changeTab = (value: string) => {
+    if (value === 'plant') {
+      plantZoom.setValue(1); // 普通 Tab 切换：不做推进动画
+    }
+    setTab(value);
+  };
+  // 点击 Desk 桌上植物：镜头推进到 Plant 页
+  const zoomToPlant = () => {
+    plantZoom.setValue(0);
+    setTab('plant');
+    Animated.timing(plantZoom, {
+      toValue: 1,
+      duration: 460,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  };
   // 跟练页：由 Desk 建议动作 chip 点击弹出的全屏聚焦 overlay（不占 tab）
   const [trainingAction, setTrainingAction] = useState<PostureAction | null>(null);
   // AI 评估页：由 Desk 入口下钻的全屏 overlay（不占 tab）
@@ -95,10 +114,20 @@ export function AppShell({
           subtitle={deskSubtitle}
           onOpenTraining={setTrainingAction}
           onOpenAssess={() => setAssessOpen(true)}
+          onZoomToPlant={zoomToPlant}
           memory={memory}
         />
       )}
-      {tab === 'plant' && <PlantScreen growth={growth} />}
+      {tab === 'plant' && (
+        <Animated.View
+          style={{
+            flex: 1,
+            opacity: plantZoom,
+            transform: [{scale: plantZoom.interpolate({inputRange: [0, 1], outputRange: [1.12, 1]})}],
+          }}>
+          <PlantScreen growth={growth} />
+        </Animated.View>
+      )}
       {tab === 'monitor' && <MonitorScreen state={state} mode={mode} />}
       {tab === 'settings' && (
         <SettingsScreen
@@ -115,7 +144,7 @@ export function AppShell({
           onScenario={onScenario}
         />
       )}
-      {onboarded !== false ? <TabBar tabs={TABS} value={tab} onChange={setTab} /> : null}
+      {onboarded !== false ? <TabBar tabs={TABS} value={tab} onChange={changeTab} /> : null}
       {trainingAction ? (
         <TrainingScreen action={trainingAction} memory={memory} onClose={() => setTrainingAction(null)} />
       ) : null}
