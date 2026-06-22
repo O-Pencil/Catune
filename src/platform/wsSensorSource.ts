@@ -10,6 +10,7 @@
  * [HERE] src/platform/wsSensorSource.ts · WS 手机姿态带保底数据源
  */
 import type {PostureEngine} from '../posture/engine';
+import {orientationToNodes, UPRIGHT_PITCH_DEG} from '../posture/postureMapping';
 import {loadWsConfig, WsMapping} from './wsConfig';
 
 export type WsStatus = 'idle' | 'connecting' | 'connected' | 'error';
@@ -30,8 +31,9 @@ export function createWsSensorSource(engine: PostureEngine): WsSensorSource {
   let statusCb: ((s: WsStatus, info?: string) => void) | null = null;
   let mapping: WsMapping = 'node-T';
 
-  const baseline = {pitch: 0, roll: 0};
-  const lastRaw = {pitch: 0, roll: 0};
+  // 基线默认竖直挺直（pitch≈90°）→ 校准前平放也能正确判坏；「坐直校准」会覆盖成实测值
+  const baseline = {pitch: UPRIGHT_PITCH_DEG, roll: 0};
+  const lastRaw = {pitch: UPRIGHT_PITCH_DEG, roll: 0};
 
   const setStatus = (s: WsStatus, info?: string) => {
     status = s;
@@ -50,14 +52,14 @@ export function createWsSensorSource(engine: PostureEngine): WsSensorSource {
     }
     lastRaw.pitch = d.pitch;
     lastRaw.roll = d.roll;
-    const p = d.pitch - baseline.pitch;
-    const r = d.roll - baseline.roll;
-    // node-T：单点(背) → 颈不动、pitch=胸(驼背)、roll=腰(侧倾)
-    // 3-axis：一台手机演三态 → pitch 同时给颈+胸
+    // 统一几何：竖直=挺直、前倾=驼背/低头、平放=坏（见 postureMapping）
+    const {neck, thor, lumbar} = orientationToNodes(d.pitch, d.roll, baseline.pitch, baseline.roll);
+    // node-T：单点(背) → 颈不动（背部传感器测不到头）、胸=驼背、腰=侧倾
+    // 3-axis：一台手机演三态 → 同一前倾量也给颈（低头）
     if (mapping === '3-axis') {
-      engine.update(p, p, r);
+      engine.update(neck, thor, lumbar);
     } else {
-      engine.update(0, p, r);
+      engine.update(0, thor, lumbar);
     }
   };
 

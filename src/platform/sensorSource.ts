@@ -12,7 +12,7 @@
  */
 import {DeviceMotion} from 'expo-sensors';
 import type {PostureEngine} from '../posture/engine';
-import {clamp} from '../posture/utils';
+import {orientationToNodes} from '../posture/postureMapping';
 
 const RAD2DEG = 180 / Math.PI;
 
@@ -22,12 +22,9 @@ export type SensorSource = {
   stop: () => void;
 };
 
-/** 把前后俯仰/左右翻滚（度）写入引擎的 3 节点。 */
+/** 把前后俯仰/左右翻滚（度）写入引擎的 3 节点。几何见 postureMapping：竖直=挺直、前倾=驼背、平放=坏。 */
 function feed(engine: PostureEngine, pitchDeg: number, rollDeg: number): void {
-  // 单手机一个朝向 → 颈/胸共用前后轴（无法分离），腰用左右轴
-  const neck = clamp(pitchDeg, -45, 60);
-  const thor = clamp(pitchDeg, -20, 45);
-  const lumbar = clamp(rollDeg, -40, 40);
+  const {neck, thor, lumbar} = orientationToNodes(pitchDeg, rollDeg);
   engine.update(neck, thor, lumbar);
 }
 
