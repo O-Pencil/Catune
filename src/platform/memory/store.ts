@@ -83,3 +83,13 @@ export async function loadLocale(): Promise<Locale> {
 export async function saveLocale(locale: Locale): Promise<void> {
   await writeMeta({locale});
 }
+
+/** 是否已看过欢迎启动页（Get Start 后不再展示）。 */
+export async function loadLaunchSeen(): Promise<boolean> {
+  const meta = await readMeta();
+  return Boolean(meta.launchSeen);
+}
+
+export async function saveLaunchSeen(value: boolean): Promise<void> {
+  await writeMeta({launchSeen: value});
+}

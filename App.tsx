@@ -11,13 +11,14 @@
  * 端侧 Qwen+MNN 为安卓原生支线（docs/端侧模型对接计划.md）。
  */
 import React, {useEffect, useRef, useState} from 'react';
-import {ActivityIndicator, Platform, Text, View} from 'react-native';
+import {ActivityIndicator, Platform, View} from 'react-native';
 import {useFonts, Fredoka_400Regular, Fredoka_500Medium, Fredoka_600SemiBold, Fredoka_700Bold} from '@expo-google-fonts/fredoka';
 import {Geist_400Regular, Geist_500Medium, Geist_700Bold} from '@expo-google-fonts/geist';
+import {Quicksand_600SemiBold, Quicksand_700Bold} from '@expo-google-fonts/quicksand';
 
 import {AppShell} from './src/ui/AppShell';
-import {AppLogo} from './src/ui/components/AppLogo';
-import {APP_NAME, formatAppVersion} from './src/constants/appMeta';
+import {loadLaunchSeen, saveLaunchSeen} from './src/platform/memory/store';
+import {LaunchScreen} from './src/ui/screens/LaunchScreen';
 import {createPostureEngine} from './src/posture/engine';
 import {createAdviceOrchestrator} from './src/posture/adviceOrchestrator';
 import {createMemoryService} from './src/platform/memory/service';
@@ -59,7 +60,11 @@ function App(): React.JSX.Element {
     Geist_400Regular,
     Geist_500Medium,
     Geist_700Bold,
+    Quicksand_600SemiBold,
+    Quicksand_700Bold,
   });
+
+  const [launchSeen, setLaunchSeen] = useState<boolean | null>(null);
 
   // locale state 独立于 useRef 容器，让 engine / growth 通过 getter 拿到当前值
   const [locale, setLocaleState] = useState<Locale>('en');
@@ -177,6 +182,13 @@ function App(): React.JSX.Element {
   };
 
   useEffect(() => {
+    loadLaunchSeen().then(setLaunchSeen);
+  }, []);
+
+  useEffect(() => {
+    if (launchSeen !== true) {
+      return;
+    }
     const unsubscribe = engineRef.current.subscribe(setK);
     const unsubscribeGrowth = growthRef.current.subscribe(setGrowth);
     bleRef.current.onStatus(s => setBleStatus(s));
@@ -207,7 +219,7 @@ function App(): React.JSX.Element {
     // refs 是 stable 的（useRef），无需列入 deps
     // eslint-disable-next-line react-hooks/exhaustive-deps
     // eslint-disable-next-line react-hooks/rules-of-hooks
-  }, []);
+  }, [launchSeen]);
 
   // locale 变化：engine 重算 + emit；growth 重新 snapshot
   useEffect(() => {
@@ -220,15 +232,24 @@ function App(): React.JSX.Element {
     memoryRef.current.setLocale(l);
   };
 
-  // 字体加载中显示品牌启动页
-  if (!fontsLoaded) {
+  const handleLaunchStart = () => {
+    void saveLaunchSeen(true).then(() => setLaunchSeen(true));
+  };
+
+  // 字体 / 启动页状态加载中
+  if (!fontsLoaded || launchSeen === null) {
     return (
-      <View style={{flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F2F0EC', gap: 16}}>
-        <AppLogo size={72} />
-        <Text style={{fontFamily: 'Fredoka_600SemiBold', fontSize: 22, letterSpacing: 2, color: '#141414'}}>{APP_NAME}</Text>
-        <Text style={{fontFamily: 'Geist_400Regular', fontSize: 12, color: '#9B9590'}}>{formatAppVersion()}</Text>
-        <ActivityIndicator size="small" color="#FB4B00" style={{marginTop: 8}} />
+      <View style={{flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF'}}>
+        <ActivityIndicator size="small" color="#141414" />
       </View>
+    );
+  }
+
+  if (!launchSeen) {
+    return (
+      <LocaleProvider locale={locale} onChange={handleLocaleChange}>
+        <LaunchScreen onStart={handleLaunchStart} />
+      </LocaleProvider>
     );
   }
 

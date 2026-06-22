@@ -477,6 +477,10 @@ export const zh: Dict = {
   'mock.LEFT_LEAN': '侧倾',
   'mock.OFFLINE': '离线',
 
+  // ── launch ────────────────────────────────────────────────────────────
+  'launch.tagline': '跟着猫咪，\n矫正你的坐姿！',
+  'launch.cta': 'Get Start!',
+
   // ── onboarding ──────────────────────────────────────────────────────────
   'onboarding.title': '快速认识你',
   'onboarding.subtitle': '几个小问题，让教练更懂你。答案只存在本机，可随时在设置里清空。',

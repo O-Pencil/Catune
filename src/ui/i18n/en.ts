@@ -484,6 +484,10 @@ export const en: Dict = {
   'mock.LEFT_LEAN': 'LEFT LEAN',
   'mock.OFFLINE': 'OFFLINE',
 
+  // ── launch ────────────────────────────────────────────────────────────
+  'launch.tagline': 'Follow the cat to\ncorrect your posture!',
+  'launch.cta': 'Get Start!',
+
   // ── onboarding ──────────────────────────────────────────────────────────
   'onboarding.title': 'Quick intro',
   'onboarding.subtitle': 'Three questions so the coach can talk to you right.',
