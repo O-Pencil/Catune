@@ -14,6 +14,11 @@
   .tip{margin-top:20px;color:#bbb;font-size:13px;line-height:1.7}
   .dot{display:inline-block;width:9px;height:9px;border-radius:9px;background:#666;margin-right:6px;vertical-align:middle}
   .on{background:#3ddc84}
+  .test{margin-top:26px;padding:16px;border:1px solid #333;border-radius:12px;text-align:left}
+  .test h2{font-size:14px;color:#FB4B00;margin:0 0 12px}
+  .test label{display:block;font-size:13px;color:#ccc;margin:10px 0 4px}
+  .test input[type=range]{width:100%}
+  .test .auto{margin-top:14px;font-size:14px;color:#eee}
 </style>
 </head>
 <body>
@@ -22,13 +27,29 @@
   <div class="status"><span class="dot" id="dot"></span><span id="status">未连接</span></div>
   <button id="go">开始（授权运动）</button>
   <div class="vals" id="vals">— / —</div>
-  <div class="tip">把这台手机竖着贴在上背、屏幕朝外。<br>前倾 = 驼背，左右倾 = 侧倾。<br>到 App 里坐直点「坐直校准」归零。</div>
+  <div class="tip">手机：竖贴上背、屏幕朝外，前倾=驼背、左右倾=侧倾。<br>到 App 里坐直点「坐直校准」归零。</div>
+
+  <!-- 桌面测试模式：Mac 浏览器读不到方向传感器，用滑块/自动摆动发合成数据，验证接收链路 -->
+  <div class="test">
+    <h2>桌面测试模式（Mac 用，手机忽略）</h2>
+    <label>pitch（前后/驼背）：<span id="pv">0</span>°</label>
+    <input type="range" id="pitch" min="-60" max="60" value="0" />
+    <label>roll（左右/侧倾）：<span id="rv">0</span>°</label>
+    <input type="range" id="roll" min="-60" max="60" value="0" />
+    <div class="auto"><label style="display:inline"><input type="checkbox" id="auto" /> 自动摆动（正弦循环）</label></div>
+  </div>
 <script>
   var NODE_ID = 1;            // 1 = 胸 Node-T
-  var ws = null, last = 0;
+  var ws = null;
+  var pitch = 0, roll = 0;            // 实际发送值
+  var sPitch = 0, sRoll = 0, sensorAt = 0;  // 手机方向传感器值（仅手机有）
+  var t0 = Date.now();
   var statusEl = document.getElementById('status');
   var valsEl = document.getElementById('vals');
   var dotEl = document.getElementById('dot');
+  var pSlider = document.getElementById('pitch');
+  var rSlider = document.getElementById('roll');
+  var autoBox = document.getElementById('auto');
 
   function setStatus(t, on){ statusEl.textContent = t; dotEl.className = 'dot' + (on ? ' on' : ''); }
 
@@ -40,20 +61,36 @@
     ws.onerror = function(){ setStatus('连接错误', false); };
   }
 
-  function onOri(e){
-    var pitch = e.beta || 0;   // 前后俯仰 -180..180
-    var roll  = e.gamma || 0;  // 左右翻滚 -90..90
-    valsEl.textContent = Math.round(pitch) + '° / ' + Math.round(roll) + '°';
-    var now = Date.now();
-    if (ws && ws.readyState === 1 && now - last > 33) {   // ~30Hz
-      last = now;
-      ws.send(JSON.stringify({nodeId: NODE_ID, pitch: pitch, roll: roll}));
-    }
+  // 手机：真实方向传感器
+  function onOri(e){ sPitch = e.beta || 0; sRoll = e.gamma || 0; sensorAt = Date.now(); }
+
+  // 桌面滑块
+  pSlider.oninput = function(){ document.getElementById('pv').textContent = pSlider.value; };
+  rSlider.oninput = function(){ document.getElementById('rv').textContent = rSlider.value; };
+
+  // 统一发送循环 ~30Hz：手机有真实数据用真实；否则自动摆动；否则滑块
+  function startSending(){
+    setInterval(function(){
+      var now = Date.now();
+      if (now - sensorAt < 1500) {            // 手机真实方向（1.5s 内有事件）
+        pitch = sPitch; roll = sRoll;
+      } else if (autoBox.checked) {           // 桌面自动摆动
+        pitch = 30 * Math.sin((now - t0) / 1500);
+        roll = 20 * Math.sin((now - t0) / 2300);
+      } else {                                 // 桌面滑块
+        pitch = Number(pSlider.value);
+        roll = Number(rSlider.value);
+      }
+      valsEl.textContent = Math.round(pitch) + '° / ' + Math.round(roll) + '°';
+      if (ws && ws.readyState === 1) {
+        ws.send(JSON.stringify({nodeId: NODE_ID, pitch: pitch, roll: roll}));
+      }
+    }, 33);
   }
 
   document.getElementById('go').onclick = async function(){
     try {
-      // iOS 13+ 需用户手势 + 显式授权
+      // iOS 13+ 需用户手势 + 显式授权；桌面没有此 API，跳过
       if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) {
         var r = await DeviceOrientationEvent.requestPermission();
         if (r !== 'granted') { setStatus('运动权限被拒', false); return; }
@@ -61,7 +98,8 @@
     } catch (err) {}
     window.addEventListener('deviceorientation', onOri);
     connect();
-    setStatus('已授权，连接中…', false);
+    startSending();
+    setStatus('已启动，连接中…', false);
   };
 </script>
 </body>
