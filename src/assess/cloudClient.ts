@@ -8,11 +8,13 @@
  * [HERE] src/assess/cloudClient.ts · 云端 VL 评估客户端
  */
 import {AssessmentResult, CloudConfig} from './types';
-import {ASSESS_SYSTEM, ASSESS_USER, parseAssessJson} from './parse';
+import {buildAssessSystem, buildAssessUser, parseAssessJson} from './parse';
+import type {Locale} from '../ui/i18n';
 
 export async function cloudAssess(
   cfg: CloudConfig,
   imageBase64: string,
+  locale: Locale = 'en',
   mime = 'image/jpeg',
 ): Promise<AssessmentResult> {
   const res = await fetch(`${cfg.baseURL.replace(/\/$/, '')}/chat/completions`, {
@@ -25,11 +27,11 @@ export async function cloudAssess(
       model: cfg.model,
       temperature: 0.3,
       messages: [
-        {role: 'system', content: ASSESS_SYSTEM},
+        {role: 'system', content: buildAssessSystem(locale)},
         {
           role: 'user',
           content: [
-            {type: 'text', text: ASSESS_USER},
+            {type: 'text', text: buildAssessUser(locale)},
             {type: 'image_url', image_url: {url: `data:${mime};base64,${imageBase64}`}},
           ],
         },
@@ -41,5 +43,5 @@ export async function cloudAssess(
   }
   const data = await res.json();
   const text: string = data?.choices?.[0]?.message?.content ?? '';
-  return {source: 'cloud', ...parseAssessJson(text), raw: text};
+  return {source: 'cloud', ...parseAssessJson(text, locale), raw: text};
 }

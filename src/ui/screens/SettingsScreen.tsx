@@ -333,12 +333,13 @@ export function SettingsScreen({
 }: Props): React.JSX.Element {
   const t = useT();
   const [mnnRefreshKey, setMnnRefreshKey] = useState(0);
-  const bleLabel: Record<string, string> = {
-    idle: '未连接',
-    scanning: '扫描中…',
-    connecting: '连接中…',
-    connected: '已连接',
-    error: '连接失败',
+  // BLE 状态 → i18n key。键名与 BleStatusLite 严格对齐；空值兜底 idle。
+  const BLE_STATUS_KEY: Record<BleStatusLite, string> = {
+    idle: 'settings.ble.status.idle',
+    scanning: 'settings.ble.status.scanning',
+    connecting: 'settings.ble.status.connecting',
+    connected: 'settings.ble.status.connected',
+    error: 'settings.ble.status.error',
   };
 
   return (
@@ -361,16 +362,16 @@ export function SettingsScreen({
       <Card style={styles.card}>
         <Text style={styles.cardTitle}>{t('settings.data.title')}</Text>
         <View style={styles.wrapRow}>
-          {onUseBle ? <Pill active={mode === 'ble'} label="硬件姿态带" onPress={onUseBle} /> : null}
+          {onUseBle ? <Pill active={mode === 'ble'} label={t('settings.data.hardwareBand')} onPress={onUseBle} /> : null}
           <Pill active={mode === 'sensor'} label={t('settings.data.sensor')} onPress={onUseSensor} />
           <Pill active={mode === 'mock'} label={t('settings.data.mock')} onPress={onUseMock} />
         </View>
         {mode === 'ble' ? (
           <View>
-            <Text style={styles.hint}>硬件姿态带（ESP32+BNO085 · BLE）：{bleLabel[bleStatus ?? 'idle']}</Text>
+            <Text style={styles.hint}>{t('settings.ble.hint', {status: t(BLE_STATUS_KEY[bleStatus ?? 'idle'])})}</Text>
             {bleStatus === 'connected' && onCalibrate ? (
               <Pressable style={styles.saveBtn} onPress={onCalibrate}>
-                <Text style={styles.saveBtnText}>坐直校准</Text>
+                <Text style={styles.saveBtnText}>{t('settings.ble.calibrate')}</Text>
               </Pressable>
             ) : null}
           </View>

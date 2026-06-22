@@ -271,6 +271,7 @@ const metricsStyles = StyleSheet.create({
 
 export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
   const t = useT();
+  const {locale} = useLocale();
   const docDir: string | null = FileSystem.documentDirectory ?? null;
   const supported = Boolean(docDir);
 
@@ -293,13 +294,14 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
     setRecLoading(true);
     try {
       const profile = await getDeviceProfile();
-      setRecommendation(recommendModel(profile));
+      // locale 切换时重新计算（reason/details 文案跟 locale 走）
+      setRecommendation(recommendModel(profile, locale));
     } catch {
       setRecommendation(null);
     } finally {
       setRecLoading(false);
     }
-  }, []);
+  }, [locale]);
 
   useEffect(() => {
     loadRecommendation();

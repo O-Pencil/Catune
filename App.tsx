@@ -25,21 +25,23 @@ import {createMockSource, MockScenario, MockSource} from './src/posture/mock';
 import {createSensorSource, SensorSource} from './src/platform/sensorSource';
 import {BleSensorSource, BleStatus, createBleSensorSource} from './src/platform/bleSensorSource';
 import {DashboardState} from './src/posture/types';
-import {Locale, LocaleProvider, useT} from './src/ui/i18n';
+import {Locale, LocaleProvider, tr, useT} from './src/ui/i18n';
 
-const INITIAL: DashboardState = {
-  neckPitch: 0,
-  thorPitch: 0,
-  lumbarRoll: 0,
-  posture: 'NORMAL',
-  postureLabel: 'Initializing…',
-  score: 100,
-  abnormalDurationMinutes: 0,
-  advice: '',
-  inferenceSource: 'RULE_FALLBACK',
-  streaming: false,
-  action: null,
-};
+function buildInitialState(locale: Locale): DashboardState {
+  return {
+    neckPitch: 0,
+    thorPitch: 0,
+    lumbarRoll: 0,
+    posture: 'NORMAL',
+    postureLabel: tr(locale, 'common.loading'),
+    score: 100,
+    abnormalDurationMinutes: 0,
+    advice: '',
+    inferenceSource: 'RULE_FALLBACK',
+    streaming: false,
+    action: null,
+  };
+}
 
 type Mode = 'loading' | 'sensor' | 'mock' | 'ble';
 
@@ -69,7 +71,7 @@ function App(): React.JSX.Element {
   // 语义记忆（教练"懂你"）：本地存储，注入教练 prompt 个性化；写入由 onboarding/反馈钩子调用
   const memoryRef = useRef(createMemoryService());
   // 模型建议异步编排（姿态变化/久持时后台生成温暖文案，流式写回；规则先兜底）
-  const adviceRef = useRef(createAdviceOrchestrator(engineRef.current, memoryRef.current));
+  const adviceRef = useRef(createAdviceOrchestrator(engineRef.current, memoryRef.current, {getLocale: () => localeRef.current}));
   // 植物成长累加器（真实坐姿 → 积分/阶段/日志，驱动 Plant 页）
   const growthRef = useRef(
     createGrowthTracker(engineRef.current, {getLocale: () => localeRef.current}),
@@ -77,7 +79,7 @@ function App(): React.JSX.Element {
   // 异常坐姿震动提醒（非异常→异常入态那一下，带冷却）
   const reminderRef = useRef(createReminder(engineRef.current));
 
-  const [k, setK] = useState<DashboardState>(INITIAL);
+  const [k, setK] = useState<DashboardState>(() => buildInitialState(locale));
   const [growth, setGrowth] = useState<GrowthState>(() => growthRef.current.getState());
   const [mode, setMode] = useState<Mode>('loading');
   const [bleStatus, setBleStatus] = useState<BleStatus>('idle');

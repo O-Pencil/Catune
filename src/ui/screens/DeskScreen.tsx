@@ -14,7 +14,7 @@
  * [TO] 被 `AppShell` 在 desk tab 渲染
  * [HERE] src/ui/screens/DeskScreen.tsx · Desk 首页布局原型的 RNW 迁移版
  */
-import React, {useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import Svg, {Circle, Path} from 'react-native-svg';
 
@@ -23,6 +23,7 @@ import {getActionMeta} from '../../posture/actionTag';
 import {getExercise} from '../../posture/exercises';
 import {MemoryService} from '../../platform/memory/service';
 import {useLocale, useT} from '../i18n';
+import {extractUserName} from './userName';
 import {theme} from '../theme';
 import {CatFlipbook} from '../components/CatFlipbook';
 import {CatSprite} from '../components/CatSprite';
@@ -62,6 +63,7 @@ function spineCurvePath(c7: Pixel, t12: Pixel, l5: Pixel): string {
 function DeskHeader({
   state,
   locale,
+  userName,
   onOpenTraining,
   onOpenAssess,
   showFeedback,
@@ -70,6 +72,7 @@ function DeskHeader({
 }: {
   state: DashboardState;
   locale: 'en' | 'zh';
+  userName: string | null;
   onOpenTraining?: (action: PostureAction) => void;
   onOpenAssess?: () => void;
   showFeedback?: boolean;
@@ -81,6 +84,8 @@ function DeskHeader({
   // 仅当动作有配套例程时才把 chip 做成可点（HOLD/保持 无例程，不展示）
   const trainable = state.action != null && state.action !== 'HOLD' && getExercise(state.action, locale) != null;
   const actionMeta = state.action ? getActionMeta(state.action, locale) : null;
+  // 没有 memory 名字时按 locale 兜底：en='friend', zh='朋友'。
+  const displayName = userName ?? t('desk.fallbackName');
 
   return (
     <View style={styles.header}>
@@ -91,7 +96,7 @@ function DeskHeader({
       ) : null}
       <Text style={styles.kicker}>CATUNE</Text>
       <Text style={styles.greeting}>
-        {t(greetingKey())}, <Text style={styles.highlight}>Xiao Yu</Text>
+        {t(greetingKey())}, <Text style={styles.highlight}>{displayName}</Text>
       </Text>
       <Text style={styles.feedback} numberOfLines={3}>
         {state.streaming ? `${feedback} ▍` : feedback}
@@ -331,6 +336,26 @@ export function DeskScreen({
   const {locale} = useLocale();
   const t = useT();
   const [ratedAdvice, setRatedAdvice] = useState<string | null>(null);
+  // 从 memory 抽 entity 名字（onboarding 时写入的称呼）；memory 异步 ready
+  const [userName, setUserName] = useState<string | null>(null);
+  useEffect(() => {
+    if (!memory) {
+      return;
+    }
+    let cancelled = false;
+    const refresh = () => {
+      const name = extractUserName(memory.list());
+      if (!cancelled) {
+        setUserName(name);
+      }
+    };
+    refresh();
+    // memory.ready 后再刷一次（覆盖初始化竞态）
+    void memory.ready.then(refresh);
+    return () => {
+      cancelled = true;
+    };
+  }, [memory]);
   const abnormal = state.posture === 'SLUMPED' || state.posture === 'TECH_NECK' || state.posture === 'LEFT_LEAN';
   const showFeedback = !!memory && !!state.advice && abnormal && !state.streaming && state.advice !== ratedAdvice;
   const justRated = !!state.advice && abnormal && state.advice === ratedAdvice;
@@ -364,6 +389,7 @@ export function DeskScreen({
       <DeskHeader
         state={state}
         locale={locale}
+        userName={userName}
         onOpenTraining={onOpenTraining}
         onOpenAssess={onOpenAssess}
         showFeedback={showFeedback}

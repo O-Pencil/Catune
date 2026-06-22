@@ -7,7 +7,7 @@
  * [TO] 被 `npm test` 触发
  * [HERE] src/posture/__tests__/engine.test.ts
  */
-import {THRESHOLDS, ruleFallback, sanitize, getBannedWords} from '../engine';
+import {THRESHOLDS, ruleFallback, sanitize, getBannedWords, createPostureEngine} from '../engine';
 import type {PostureSignals} from '../types';
 
 const sig = (overrides: Partial<PostureSignals> = {}): PostureSignals => ({
@@ -73,5 +73,57 @@ describe('engine.banned-words', () => {
   it('sanitize replaces en text containing banned word', () => {
     const out = sanitize('This is a cure for slouching', 'en');
     expect(out).not.toContain('cure');
+  });
+});
+
+describe('engine.locale-emits', () => {
+  it('initial state postureLabel reflects current locale (no hardcoded English)', () => {
+    const enEngine = createPostureEngine({getLocale: () => 'en'});
+    const zhEngine = createPostureEngine({getLocale: () => 'zh'});
+    expect(enEngine.getState().postureLabel).toBe('Normal');
+    expect(zhEngine.getState().postureLabel).toBe('正常');
+  });
+
+  it('setLocale triggers immediate emit with new locale label (not waiting for next update)', () => {
+    let current: 'en' | 'zh' = 'en';
+    const engine = createPostureEngine({getLocale: () => current});
+    const seen: string[] = [];
+    engine.subscribe(s => seen.push(s.postureLabel));
+    // 订阅时立刻收到 en label
+    expect(seen[0]).toBe('Normal');
+    current = 'zh';
+    engine.setLocale('zh');
+    // setLocale 后立刻收到 zh label（不等 update）
+    expect(seen[seen.length - 1]).toBe('正常');
+  });
+
+  it('setLocale re-renders RULE_FALLBACK advice to new locale', () => {
+    let current: 'en' | 'zh' = 'en';
+    const engine = createPostureEngine({getLocale: () => current});
+    // 触发一次 SLUMPED 走规则
+    engine.update(0, 20, 0); // thor > 15
+    expect(engine.getState().inferenceSource).toBe('RULE_FALLBACK');
+    expect(engine.getState().posture).toBe('SLUMPED');
+    const enAdvice = engine.getState().advice;
+    current = 'zh';
+    engine.setLocale('zh');
+    const zhAdvice = engine.getState().advice;
+    expect(zhAdvice).not.toBe(enAdvice);
+    // zh advice 含中文动作关键词
+    expect(zhAdvice).toMatch(/[一-鿿]/);
+  });
+
+  it('setLocale does not clobber MODEL advice (粘性 preserved)', () => {
+    let current: 'en' | 'zh' = 'en';
+    const engine = createPostureEngine({getLocale: () => current});
+    // 先 SET model advice
+    engine.setModelAdvice('Hello from model [Action:Neck Retraction]', {streaming: false});
+    expect(engine.getState().inferenceSource).toBe('MODEL');
+    expect(engine.getState().advice).toContain('Hello from model');
+    // 切 locale
+    engine.setLocale('zh');
+    // model advice 不应被重算覆盖
+    expect(engine.getState().inferenceSource).toBe('MODEL');
+    expect(engine.getState().advice).toContain('Hello from model');
   });
 });

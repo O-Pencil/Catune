@@ -10,7 +10,8 @@
  */
 import {NativeModules} from 'react-native';
 import {AssessmentResult} from './types';
-import {ASSESS_USER, parseAssessJson} from './parse';
+import {buildAssessUser, parseAssessJson} from './parse';
+import type {Locale} from '../ui/i18n';
 
 type CatuneMnnVl = {
   analyzeImage?: (imageBase64: string, prompt: string) => Promise<{rawOutput?: string}>;
@@ -21,11 +22,11 @@ export function isLocalVlAvailable(): boolean {
   return Boolean(CatuneMnn?.analyzeImage);
 }
 
-export async function localVlAssess(imageBase64: string): Promise<AssessmentResult> {
+export async function localVlAssess(imageBase64: string, locale: Locale = 'en'): Promise<AssessmentResult> {
   if (!CatuneMnn?.analyzeImage) {
     throw new Error('local VL unavailable');
   }
-  const res = await CatuneMnn.analyzeImage(imageBase64, ASSESS_USER);
+  const res = await CatuneMnn.analyzeImage(imageBase64, buildAssessUser(locale));
   const text = res?.rawOutput ?? '';
-  return {source: 'local', ...parseAssessJson(text), raw: text};
+  return {source: 'local', ...parseAssessJson(text, locale), raw: text};
 }

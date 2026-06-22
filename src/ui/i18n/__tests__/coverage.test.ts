@@ -29,6 +29,18 @@ const enFlat = flatDict(en as Record<string, unknown>);
 const zhFlat = flatDict(zh as Record<string, unknown>);
 
 describe('i18n.coverage', () => {
+  it('benchmark.promptDefault exists in both locales and differs', () => {
+    const enVal = en['benchmark.promptDefault'] as string;
+    const zhVal = zh['benchmark.promptDefault'] as string;
+    expect(enVal).toBeTruthy();
+    expect(zhVal).toBeTruthy();
+    expect(enVal).not.toBe(zhVal);
+    // zh 保留原指令关键词
+    expect(zhVal).toContain('医疗诊断');
+    // en 是纯英文（无 CJK）
+    expect(enVal).not.toMatch(/[一-鿿]/);
+  });
+
   it('en 和 zh 键数量完全一致', () => {
     expect(zhFlat.size).toBe(enFlat.size);
   });

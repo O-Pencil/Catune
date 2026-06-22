@@ -7,7 +7,7 @@
  * [TO] 被 SettingsScreen 嵌入（settings.assess 区域）
  * [HERE] src/ui/screens/BenchmarkScreen.tsx · 模型基准测试面板
  */
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {NativeModules, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
 import {colors, theme} from '../theme';
 import {Card} from '../primitives/Card';
@@ -57,21 +57,29 @@ type MetricScope = 'idle' | 'infer' | 'bench';
 type T = (key: string, vars?: Record<string, string | number>) => string;
 
 const CatuneMnn = NativeModules.CatuneMnn as CatuneMnnModule | undefined;
-const DEFAULT_PROMPT = '请用一句不超过30字、有温度的中文提醒我坐直，语气温和，不要医疗诊断。';
 
-const PREVIEW_STATUS: Status = {
+/** PREVIEW_STATUS 模板：用户可见的 3 字段（activeModelId/modelDir/readiness）按 locale 替换；
+ *  boolean/numeric 字段无关 locale。
+ *  调用方在组件内 useMemo(() => buildPreviewStatus(t), [t]) 构造。 */
+const PREVIEW_STATUS_TEMPLATE = {
   nativeLibLoaded: false,
   modelLoaded: false,
   configExists: false,
-  activeModelId: 'qwen2.5-0.5b（预览）',
-  modelDir: 'Expo Go 无原生 MNN',
   cpu: {
     sme2Hw: false,
     libSme2: false,
     backend: '—',
-    readiness: 'Expo Go 预览',
   },
-};
+} as const;
+
+function buildPreviewStatus(t: (k: string) => string): Status {
+  return {
+    ...PREVIEW_STATUS_TEMPLATE,
+    activeModelId: t('benchmark.preview.activeModelId'),
+    modelDir: t('benchmark.preview.modelDir'),
+    cpu: {...PREVIEW_STATUS_TEMPLATE.cpu, readiness: t('benchmark.preview.readiness')},
+  };
+}
 
 type BenchmarkPanelProps = {refreshKey?: number};
 
@@ -234,9 +242,25 @@ export function BenchmarkPanel({refreshKey = 0}: BenchmarkPanelProps): React.JSX
   const t = useT();
   const nativeReady = Boolean(CatuneMnn);
   const previewMode = !nativeReady;
+  // preview status 按 locale 渲染（activeModelId/modelDir/readiness 用户可见字段）
+  const previewStatus = useMemo<Status>(() => buildPreviewStatus(t), [t]);
 
-  const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
-  const [status, setStatus] = useState<Status | null>(previewMode ? PREVIEW_STATUS : null);
+  // 默认 prompt 按 locale 切换：切到新 locale 且用户未改过时同步替换。
+  // `userEdited` 标记用户是否在 TextInput 上动过 prompt；切换 locale 不覆盖用户改动。
+  const defaultPrompt = t('benchmark.promptDefault');
+  const [prompt, setPrompt] = useState(defaultPrompt);
+  const lastDefaultRef = useRef(defaultPrompt);
+  const userEditedRef = useRef(false);
+  useEffect(() => {
+    // locale 变化导致 default 变化：若用户没改过 prompt，把 default 同步到当前 locale
+    if (defaultPrompt !== lastDefaultRef.current) {
+      lastDefaultRef.current = defaultPrompt;
+      if (!userEditedRef.current) {
+        setPrompt(defaultPrompt);
+      }
+    }
+  }, [defaultPrompt]);
+  const [status, setStatus] = useState<Status | null>(previewMode ? previewStatus : null);
   const [output, setOutput] = useState('');
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [inferenceMs, setInferenceMs] = useState<number | null>(null);
@@ -252,7 +276,7 @@ export function BenchmarkPanel({refreshKey = 0}: BenchmarkPanelProps): React.JSX
 
   const refresh = useCallback(async () => {
     if (!CatuneMnn) {
-      setStatus(PREVIEW_STATUS);
+      setStatus(previewStatus);
       return;
     }
     setBusy('status');
@@ -358,7 +382,10 @@ export function BenchmarkPanel({refreshKey = 0}: BenchmarkPanelProps): React.JSX
         <TextInput
           style={[styles.promptInput, previewMode && styles.inputPreview]}
           value={prompt}
-          onChangeText={setPrompt}
+          onChangeText={text => {
+            userEditedRef.current = true;
+            setPrompt(text);
+          }}
           multiline
           placeholder={t('benchmark.promptPlaceholder')}
           placeholderTextColor={colors.textMuted}

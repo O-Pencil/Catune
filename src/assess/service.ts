@@ -37,16 +37,16 @@ export function createAssessService(locale: Locale = 'en'): AssessService {
       try {
         if (imageBase64) {
           if (cfg.backend === 'cloud' && cfg.cloud.apiKey.trim()) {
-            return safety(await cloudAssess(cfg.cloud, imageBase64), locale);
+            return safety(await cloudAssess(cfg.cloud, imageBase64, locale), locale);
           }
           if (cfg.backend === 'local' && isLocalVlAvailable()) {
-            return safety(await localVlAssess(imageBase64), locale);
+            return safety(await localVlAssess(imageBase64, locale), locale);
           }
         }
       } catch {
         // 网络/原生/解析失败 → 落到预置
       }
-      return safety(pickPreset(), locale);
+      return safety(pickPreset(locale), locale);
     },
   };
 }

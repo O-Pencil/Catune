@@ -21,7 +21,13 @@ export type MnnModelDef = {
   tags: readonly ('emulator' | 'device' | 'sme2')[];
   /** 视觉模型（VL）：走 analyzeImage 图像路径用于体态评估；不作为文本教练默认。 */
   vision?: boolean;
+  /**
+   * 模拟器提示（旧字段，zh 原文）。新 UI 优先用 emulatorNoteKey 走 tr(locale, key)，
+   * 旧字段保留做兜底/向后兼容。
+   */
   emulatorNote?: string;
+  /** emulatorNote 的 i18n key（首选）。 */
+  emulatorNoteKey?: string;
 };
 
 export const MNN_MODELS_ROOT = 'mnn_models/';
@@ -53,6 +59,7 @@ export const MODEL_CATALOG: readonly MnnModelDef[] = [
     files: MNN_FILE_SET,
     tags: ['emulator', 'device'],
     emulatorNote: '模拟器可跑通下载与 UI；INT4 推理易出现乱码，中文质量以真机为准。',
+    emulatorNoteKey: 'device.model.emulatorNote.qwen25_05b',
   },
   {
     id: 'qwen3-1.7b',
@@ -63,6 +70,7 @@ export const MODEL_CATALOG: readonly MnnModelDef[] = [
     files: MNN_FILE_SET,
     tags: ['device', 'sme2'],
     emulatorNote: '体积大，模拟器易 OOM；仅建议在 SME2/大内存真机验收。',
+    emulatorNoteKey: 'device.model.emulatorNote.qwen3_17b',
   },
   {
     id: 'qwen2-vl-2b',
@@ -75,6 +83,7 @@ export const MODEL_CATALOG: readonly MnnModelDef[] = [
     vision: true,
     emulatorNote: '视觉模型，供 AI 评估的 analyzeImage 路径；仅真机、体积大、易 OOM。' +
       '下载前核对仓库文件名；可能需 libMNN 含视觉支持重编。设为活跃模型后端侧 VL 评估才生效。',
+    emulatorNoteKey: 'device.model.emulatorNote.qwen2_vl_2b',
   },
 ];
 

@@ -256,7 +256,7 @@ export function createPostureEngine(opts: EngineOptions = {}): PostureEngine {
     },
     setModelAdvice(advice: string, opts: {streaming: boolean}) {
       // 解析尾部 [动作:xxx]：正文给用户看，动作驱动点位高亮；流式未出标签时保留按姿态推导的动作
-      const {text, action} = parseActionTag(advice);
+      const {text, action} = parseActionTag(advice, getLocale());
       state = {
         ...state,
         advice: sanitize(text, getLocale()),

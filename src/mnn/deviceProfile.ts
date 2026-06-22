@@ -206,8 +206,11 @@ export async function getDeviceProfile(): Promise<DeviceProfile> {
  * - 入门（<4GB 或非 arm64）→ 仅 0.5B，大模型置灰
  * - 主流（4-8GB arm64）→ 默认 0.5B，1.7B 可选
  * - 高性能（>8GB + SME2/i8mm）→ 推荐 1.7B，标「可启 SME2 加速」
+ *
+ * reason/details 按 locale 渲染：locale=en/zh 直接走 tr(locale, key)；
+ * locale 省略时走 zh（向后兼容）。
  */
-export function recommendModel(profile: DeviceProfile): ModelRecommendation {
+export function recommendModel(profile: DeviceProfile, locale: 'en' | 'zh' = 'zh'): ModelRecommendation {
   const details: string[] = [];
   let recommendedId: string;
   let reason: string;
@@ -215,33 +218,47 @@ export function recommendModel(profile: DeviceProfile): ModelRecommendation {
   switch (profile.tier) {
     case 'entry': {
       recommendedId = 'qwen2.5-0.5b';
-      reason = '适合轻量设备';
+      reason = tr(locale, 'device.recommend.reason.entry');
       if (!profile.isArm64) {
-        details.push('设备非 arm64 架构，仅支持轻量模型');
+        details.push(tr(locale, 'device.recommend.detail.notArm64'));
       }
       if (profile.totalMemoryGB < TIER_RAM_ENTRY_MAX) {
-        details.push(`RAM ${profile.totalMemoryGB}GB < ${TIER_RAM_ENTRY_MAX}GB，运行大模型可能 OOM`);
+        details.push(
+          tr(locale, 'device.recommend.detail.lowRam', {
+            ram: profile.totalMemoryGB.toFixed(1),
+            threshold: TIER_RAM_ENTRY_MAX.toString(),
+          }),
+        );
       }
       break;
     }
 
     case 'mainstream': {
       recommendedId = 'qwen2.5-0.5b';
-      reason = '主流配置，默认推荐';
-      details.push(`RAM ${profile.totalMemoryGB}GB，arm64 架构`);
-      details.push('1.7B 模型可选，但 0.5B 更稳定');
+      reason = tr(locale, 'device.recommend.reason.mainstream');
+      details.push(
+        tr(locale, 'device.recommend.detail.ramArch', {
+          ram: profile.totalMemoryGB.toFixed(1),
+        }),
+      );
+      details.push(tr(locale, 'device.recommend.detail.stable17b'));
       break;
     }
 
     case 'high': {
       recommendedId = 'qwen3-1.7b';
-      reason = '高性能设备，推荐大模型';
-      details.push(`RAM ${profile.totalMemoryGB}GB > ${TIER_RAM_MAINSTREAM_MAX}GB`);
+      reason = tr(locale, 'device.recommend.reason.high');
+      details.push(
+        tr(locale, 'device.recommend.detail.highRam', {
+          ram: profile.totalMemoryGB.toFixed(1),
+          threshold: TIER_RAM_MAINSTREAM_MAX.toString(),
+        }),
+      );
       if (profile.hasSme2) {
-        details.push('✓ SME2 加速已就绪，可提升推理速度');
+        details.push(tr(locale, 'device.recommend.detail.sme2'));
       }
       if (profile.hasI8mm) {
-        details.push('✓ i8mm 指令集支持，INT4 推理更快');
+        details.push(tr(locale, 'device.recommend.detail.i8mm'));
       }
       break;
     }
@@ -252,9 +269,12 @@ export function recommendModel(profile: DeviceProfile): ModelRecommendation {
   const hasEnoughStorage = profile.freeDiskBytes > requiredStorageBytes + MIN_STORAGE_BUFFER;
 
   if (!hasEnoughStorage) {
+    const requiredGb = Math.ceil(requiredStorageBytes / (1024 * 1024 * 1024) * 10) / 10;
     details.push(
-      `⚠ 存储不足：需要约 ${Math.ceil(requiredStorageBytes / (1024 * 1024 * 1024) * 10) / 10}GB，` +
-      `当前可用 ${profile.freeDiskGB}GB`
+      tr(locale, 'device.recommend.detail.storageShort', {
+        required: requiredGb.toFixed(1),
+        free: profile.freeDiskGB.toFixed(1),
+      }),
     );
   }
 
@@ -283,27 +303,13 @@ export function getTierLabel(tier: DeviceTier, locale: 'en' | 'zh' = 'en'): stri
 }
 
 /**
- * 获取设备档位的简短描述（UI 展示用）。默认 en。
+ * 获取设备档位的简短描述（UI 展示用）。按 locale 走 tr(locale, key)。
  */
 export function getTierDescription(tier: DeviceTier, locale: 'en' | 'zh' = 'en'): string {
-  // 描述类暂时保留在 deviceProfile 内部作为 fallback；UI 端可以基于 getTierLabel 自行拼接。
-  // 这里只给 zh 默认（向后兼容），其它 locale 走 fallback。
-  if (locale === 'zh') {
-    switch (tier) {
-      case 'entry':
-        return '轻量模型，稳定优先';
-      case 'mainstream':
-        return '平衡性能与体验';
-      case 'high':
-        return '大模型 + 硬件加速';
-    }
-  }
-  switch (tier) {
-    case 'entry':
-      return 'Light model, stability first';
-    case 'mainstream':
-      return 'Balance of performance and experience';
-    case 'high':
-      return 'Large model + hardware acceleration';
-  }
+  const map: Record<DeviceTier, string> = {
+    entry: 'device.tier.desc.entry',
+    mainstream: 'device.tier.desc.mainstream',
+    high: 'device.tier.desc.high',
+  };
+  return tr(locale, map[tier]);
 }
