@@ -100,6 +100,28 @@ export function SunIcon(p: IconProps): React.JSX.Element {
   );
 }
 
+/** 心形（Desk 反馈点赞，lucide heart）。 */
+export function HeartIcon({
+  size = 24,
+  color = '#141414',
+  filled = false,
+  strokeWidth = 2,
+}: IconProps & {filled?: boolean}): React.JSX.Element {
+  const s = size ?? 24;
+  return (
+    <Svg width={s} height={s} viewBox="0 0 24 24">
+      <Path
+        d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill={filled ? color : 'none'}
+      />
+    </Svg>
+  );
+}
+
 /** 电池（设备状态卡），level 0-1。 */
 export function BatteryIcon({level = 1, color = '#9B9590', fill = '#FB4B00', size = 22}: {level?: number; color?: string; fill?: string; size?: number}): React.JSX.Element {
   const w = size;

@@ -17,6 +17,7 @@ import {Image, Pressable, StyleSheet, Text, View} from 'react-native';
 import Svg, {Circle, Path} from 'react-native-svg';
 
 import {DashboardState, PostureAction, PostureName, SpineNode} from '../../posture/types';
+import {SPINE_KINEMATICS} from '../../posture/spineKinematics';
 import {getActionMeta} from '../../posture/actionTag';
 import {getExercise} from '../../posture/exercises';
 import {MemoryService} from '../../platform/memory/service';
@@ -32,11 +33,12 @@ import {PITCH_FRAMES} from '../assets/pitchFrames';
 import {PITCH_ATLAS} from '../assets/pitchAtlas';
 import {anchorsAt, PostureAxis} from '../assets/catAnchors';
 import {APP_NAME} from '../../constants/appMeta';
+import {HeartIcon} from '../icons';
 
 const PORTAL_IMAGE = require('../../../public/portal.png');
 const DESK_IMAGE = require('../../../public/desk.png');
 const PLANT_IMAGE = require('../../../public/plant.png');
-/** 俯仰翻页可视角度范围（neckPitch 度）。视频 3–5s 帧序与传感器正方向相反，CatSprite 用 invert。 */
+/** 俯仰翻页可视角度范围（相对 normalNeckRestDeg 的偏移，度）。 */
 const PITCH_RANGE_DEG = 25;
 /** 左右倾回退轴的可视角度范围（lumbarRoll 度）。 */
 const LEAN_RANGE_DEG = 25;
@@ -45,15 +47,15 @@ const CALIBRATE = false;
 /** 允许相对图集单格 1:1 像素略放大（主视觉 hero） */
 const ATLAS_DISPLAY_UPSCALE = 2.3;
 /** 场景内布局：桌 top 锚点 + 猫相对桌 + 植物 scene 左上角 */
-const DESK_TOP_RATIO = 0.2;
+const DESK_TOP_RATIO = 0.1;
 const DESK_TO_CAT_WIDTH = 1.68;
 const DESK_ASPECT = 0.92;
 /** 猫「脚」落在桌面上的位置（相对 desk 高度，自 desk 顶向下） */
 const CAT_FEET_ON_DESK_RATIO = 0.1;
 const PLANT_WIDTH_RATIO = 0.1;
-const PLANT_ASPECT = 0.72;
-/** 脊柱点位 SVG 相对猫 box 右移 */
-const SENSOR_OVERLAY_X_SHIFT = 0.1;
+const PLANT_ASPECT = 1;
+/** 脊柱点位 SVG 相对猫 box 右移（与雪碧图脊柱中线对齐） */
+const SENSOR_OVERLAY_X_SHIFT = 0.16;
 /** 桌面宽度不超过 scene 的比例，防止随猫放大溢出 */
 const DESK_MAX_SCENE_WIDTH = 0.96;
 /** 猫在 scene 内占宽/占高上限 */
@@ -79,6 +81,11 @@ function greetingKey(): 'desk.greeting.morning' | 'desk.greeting.afternoon' | 'd
 
 function formatDeg(value: number): string {
   return `${Math.abs(value).toFixed(1)}°`;
+}
+
+/** 俯仰雪碧图驱动角：相对生理休息位，正=前倾/低头、负=后仰/抬头（背贴 IMU / WS 一致）。 */
+function pitchAtlasAngle(neckPitch: number): number {
+  return neckPitch - SPINE_KINEMATICS.normalNeckRestDeg;
 }
 
 /** 俯仰 / 侧倾双轴：取偏离中立更大的那一轴驱动猫雪碧图；带迟滞避免阈值附近抖。 */
@@ -121,6 +128,7 @@ function useStablePostureAxis(
 type SceneLayoutMetrics = {
   deskW: number;
   deskH: number;
+  plantW: number;
   plantH: number;
   catTop: number;
   catLeft: number;
@@ -137,6 +145,7 @@ function computeSceneLayout(
   const empty = {
     deskW: 0,
     deskH: 0,
+    plantW: 0,
     plantH: 0,
     catTop: 0,
     catLeft: 0,
@@ -163,7 +172,7 @@ function computeSceneLayout(
   const catTop = Math.max(SCENE_BOTTOM_GAP, deskTop - boxH + deskH * CAT_FEET_ON_DESK_RATIO);
   const catLeft = (sceneW - boxW) / 2;
 
-  return {deskW, deskH, plantH, catTop, catLeft, boxW, boxH};
+  return {deskW, deskH, plantW, plantH, catTop, catLeft, boxW, boxH};
 }
 
 /** 经过 C7→T12→L5 三点的平滑脊柱曲线（像素坐标）。 */
@@ -175,30 +184,23 @@ function spineCurvePath(c7: Pixel, t12: Pixel, l5: Pixel): string {
 
 function DeskHeader({
   state,
-  locale,
   userName,
-  onOpenTraining,
   onOpenAssess,
-  showFeedback,
-  justRated,
-  onFeedback,
+  showLikeHeart,
+  liked,
+  onLike,
 }: {
   state: DashboardState;
-  locale: 'en' | 'zh';
   userName: string | null;
-  onOpenTraining?: (action: PostureAction) => void;
   onOpenAssess?: () => void;
-  showFeedback?: boolean;
-  justRated?: boolean;
-  onFeedback?: (good: boolean) => void;
+  showLikeHeart?: boolean;
+  liked?: boolean;
+  onLike?: () => void;
 }): React.JSX.Element {
   const t = useT();
   const feedback = state.advice || t('desk.feedbackDefault');
-  // 仅当动作有配套例程时才把 chip 做成可点（HOLD/保持 无例程，不展示）
-  const trainable = state.action != null && state.action !== 'HOLD' && getExercise(state.action, locale) != null;
-  const actionMeta = state.action ? getActionMeta(state.action, locale) : null;
-  // 没有 memory 名字时按 locale 兜底：en='friend', zh='朋友'。
   const displayName = userName ?? t('desk.fallbackName');
+  const heartColor = liked ? theme.colors.primary : theme.colors.textMuted;
 
   return (
     <View style={styles.header}>
@@ -211,28 +213,44 @@ function DeskHeader({
       <Text style={styles.greeting}>
         {t(greetingKey())}, <Text style={styles.highlight}>{displayName}</Text>
       </Text>
-      <Text style={styles.feedback} numberOfLines={3}>
-        {state.streaming ? `${feedback} ▍` : feedback}
-      </Text>
+      <View style={styles.feedbackLine}>
+        <Text style={styles.feedback} numberOfLines={3}>
+          {state.streaming ? `${feedback} ▍` : feedback}
+        </Text>
+        {showLikeHeart ? (
+          <Pressable
+            hitSlop={10}
+            style={styles.feedbackHeart}
+            onPress={liked ? undefined : onLike}
+            disabled={liked}>
+            <HeartIcon size={16} color={heartColor} filled={liked} strokeWidth={1.75} />
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+function TrainChip({
+  state,
+  locale,
+  onOpenTraining,
+}: {
+  state: DashboardState;
+  locale: 'en' | 'zh';
+  onOpenTraining?: (action: PostureAction) => void;
+}): React.JSX.Element {
+  const t = useT();
+  const trainable = state.action != null && state.action !== 'HOLD' && getExercise(state.action, locale) != null;
+  const actionMeta = state.action ? getActionMeta(state.action, locale) : null;
+  return (
+    <View style={styles.trainChipWrap}>
       {trainable && state.action && actionMeta ? (
         <Pressable style={styles.actionChip} onPress={() => onOpenTraining?.(state.action as PostureAction)}>
           <View style={styles.actionDot} />
           <Text style={styles.actionChipText}>{t('desk.trainChip', {label: actionMeta.label})}</Text>
           <Text style={styles.actionChevron}>›</Text>
         </Pressable>
-      ) : null}
-      {showFeedback ? (
-        <View style={styles.feedbackRow}>
-          <Text style={styles.feedbackQ}>{t('desk.feedback.rateGood')}</Text>
-          <Pressable hitSlop={8} style={styles.fbBtn} onPress={() => onFeedback?.(true)}>
-            <Text style={styles.fbEmoji}>👍</Text>
-          </Pressable>
-          <Pressable hitSlop={8} style={styles.fbBtn} onPress={() => onFeedback?.(false)}>
-            <Text style={styles.fbEmoji}>👎</Text>
-          </Pressable>
-        </View>
-      ) : justRated ? (
-        <Text style={styles.feedbackThanks}>{t('desk.feedback.remembered')}</Text>
       ) : null}
     </View>
   );
@@ -337,9 +355,10 @@ function PostureScene({
   const useSprite = renderMode === 'sprite' && (hasPitchAtlas || hasLeanAtlas);
   const showModeToggle = false;
   const highlightNode: SpineNode | null = state.action ? getActionMeta(state.action, locale).node : null;
+  const pitchAngle = pitchAtlasAngle(state.neckPitch);
 
   const layout = computeSceneLayout(sceneLayout.width, sceneLayout.height, visualSize);
-  const {deskW, deskH, plantH, catTop, catLeft, boxW, boxH} = layout;
+  const {deskW, deskH, plantW, plantH, catTop, catLeft, boxW, boxH} = layout;
   const sceneReady = sceneLayout.width > 0 && sceneLayout.height > 0 && boxW > 0;
 
   useEffect(() => {
@@ -395,9 +414,13 @@ function PostureScene({
               resizeMode="cover"
             />
 
-            <Pressable style={[styles.plantImage, {height: plantH}]} onPress={onZoomToPlant} hitSlop={10}>
-              <Image source={PLANT_IMAGE} style={StyleSheet.absoluteFill} resizeMode="contain" />
-            </Pressable>
+            {/* <Pressable
+              style={[styles.plantImage]}
+              onPress={onZoomToPlant}
+              hitSlop={10}
+              >
+              <Image source={PLANT_IMAGE} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            </Pressable> */}
 
             <View style={[styles.sceneVisual, {width: boxW, height: boxH, top: catTop, left: catLeft}]}>
               {useSprite && postureAxis === 'pitch' && hasPitchAtlas && PITCH_ATLAS.source ? (
@@ -411,7 +434,6 @@ function PostureScene({
                   cellHeight={boxH}
                   minDeg={-PITCH_RANGE_DEG}
                   maxDeg={PITCH_RANGE_DEG}
-                  invert
                   onFrameChange={setFrameIndex}
                   style={StyleSheet.absoluteFill}
                 />
@@ -435,7 +457,6 @@ function PostureScene({
                   angle={state.thorPitch}
                   minDeg={-PITCH_RANGE_DEG}
                   maxDeg={PITCH_RANGE_DEG}
-                  invert
                   onFrameChange={setFrameIndex}
                   style={StyleSheet.absoluteFill}
                 />
@@ -525,44 +546,35 @@ export function DeskScreen({
   const showFeedback = !!memory && !!state.advice && abnormal && !state.streaming && state.advice !== ratedAdvice;
   const justRated = !!state.advice && abnormal && state.advice === ratedAdvice;
 
-  const onFeedback = (good: boolean) => {
+  const onLike = () => {
     if (!memory) {
       return;
     }
-    if (good) {
-      memory.remember({
-        type: 'lesson',
-        text: t('desk.memory.goodPrefix', {posture: t(`desk.feedback.${state.posture.toLowerCase()}` as `desk.feedback.${PostureName}`)}),
-        tags: [state.posture],
-        importance: 0.6,
-        source: 'feedback',
-      });
-    } else {
-      memory.remember({
-        type: 'preference',
-        text: t('desk.memory.bad'),
-        tags: ['tone'],
-        importance: 0.45,
-        source: 'feedback',
-      });
-    }
+    memory.remember({
+      type: 'lesson',
+      text: t('desk.memory.goodPrefix', {posture: t(`desk.feedback.${state.posture.toLowerCase()}` as `desk.feedback.${PostureName}`)}),
+      tags: [state.posture],
+      importance: 0.6,
+      source: 'feedback',
+    });
     setRatedAdvice(state.advice);
   };
+
+  const showLikeHeart = !!memory && !!state.advice && abnormal && !state.streaming && (showFeedback || justRated);
 
   return (
     <View style={styles.root}>
       <View>
         <DeskHeader
           state={state}
-          locale={locale}
           userName={userName}
-          onOpenTraining={onOpenTraining}
           onOpenAssess={onOpenAssess}
-          showFeedback={showFeedback}
-          justRated={justRated}
-          onFeedback={onFeedback}
+          showLikeHeart={showLikeHeart}
+          liked={justRated}
+          onLike={onLike}
         />
         <MetricStrip state={state} />
+        <TrainChip state={state} locale={locale} onOpenTraining={onOpenTraining} />
       </View>
       <View style={styles.sceneHost}>
         <PostureScene state={state} onZoomToPlant={onZoomToPlant} />
@@ -586,7 +598,7 @@ const styles = StyleSheet.create({
   },
   assessEntry: {
     position: 'absolute',
-    top: theme.spacing.sm,
+    top: theme.spacing.xxl,
     right: theme.spacing.xxl,
     paddingVertical: 5,
     paddingHorizontal: theme.spacing.md2,
@@ -617,20 +629,36 @@ const styles = StyleSheet.create({
   highlight: {
     color: theme.colors.primary,
   },
+  feedbackLine: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginTop: theme.spacing.sm2,
+    minHeight: FEEDBACK_BLOCK_MIN_HEIGHT,
+    gap: theme.spacing.sm,
+  },
   feedback: {
+    flex: 1,
     color: theme.colors.textPrimary,
     fontSize: theme.font.sizeSm,
     fontWeight: theme.font.weightBold,
     lineHeight: FEEDBACK_LINE_HEIGHT,
-    marginTop: theme.spacing.sm2,
-    maxWidth: 320,
-    minHeight: FEEDBACK_BLOCK_MIN_HEIGHT,
+  },
+  feedbackHeart: {
+    marginTop: 2,
+    paddingTop: 1,
+  },
+  trainChipWrap: {
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.xs,
+    // 始终保留 chip 高度的占位，避免 chip 出现/消失时下方 cat 和 desk 跟着上下抖。
+    minHeight: 32,
+    justifyContent: 'center',
   },
   actionChip: {
     flexDirection: 'row',
     alignItems: 'center',
     alignSelf: 'flex-start',
-    marginTop: theme.spacing.sm2,
     paddingVertical: theme.spacing.xs,
     paddingHorizontal: theme.spacing.md,
     borderRadius: theme.radius.pill,
@@ -657,11 +685,6 @@ const styles = StyleSheet.create({
     marginLeft: theme.spacing.xs,
     marginTop: -1,
   },
-  feedbackRow: {flexDirection: 'row', alignItems: 'center', gap: theme.spacing.md, marginTop: theme.spacing.md},
-  feedbackQ: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs},
-  fbBtn: {paddingHorizontal: theme.spacing.xxs},
-  fbEmoji: {fontSize: 16},
-  feedbackThanks: {color: '#3A9E1F', fontSize: theme.font.sizeXs, fontWeight: theme.font.weightBold, marginTop: theme.spacing.md},
   metrics: {
     flexDirection: 'row',
     paddingHorizontal: theme.spacing.xl,
@@ -757,9 +780,10 @@ const styles = StyleSheet.create({
   },
   plantImage: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    width: `${PLANT_WIDTH_RATIO * 100}%`,
+    top: -200,
+    left: -20,
+    width: 40,
+    height: 40,
     zIndex: 3,
   },
 });

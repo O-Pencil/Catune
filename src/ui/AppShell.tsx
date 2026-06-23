@@ -119,7 +119,7 @@ export function AppShell({
     <AppSafeArea style={[styles.root, {backgroundColor: shellBg}]}>
       <StatusBar style="dark" />
       <ModelDownloadBanner onOpenSettings={() => setTab('settings')} />
-      {tab === 'desk' && (
+      {tab === 'desk' && !assessOpen && !trainingAction ? (
         <DeskScreen
           state={state}
           subtitle={deskSubtitle}
@@ -128,7 +128,7 @@ export function AppShell({
           onZoomToPlant={zoomToPlant}
           memory={memory}
         />
-      )}
+      ) : null}
       {tab === 'plant' && (
         <Animated.View
           style={{
@@ -158,7 +158,9 @@ export function AppShell({
           onScenario={onScenario}
         />
       )}
-      {onboarded !== false ? <TabBar tabs={TABS} value={tab} onChange={changeTab} /> : null}
+      {onboarded !== false && !assessOpen && !trainingAction ? (
+        <TabBar tabs={TABS} value={tab} onChange={changeTab} />
+      ) : null}
       {trainingAction ? (
         <TrainingScreen action={trainingAction} memory={memory} onClose={() => setTrainingAction(null)} />
       ) : null}

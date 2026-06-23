@@ -80,7 +80,7 @@ export function AssessScreen({onClose, onGoSettings}: {onClose: () => void; onGo
         <View style={styles.closeBtn} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.body}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.body}>
         {phase === 'idle' ? (
           <>
             <Text style={styles.intro}>{t('assess.intro')}</Text>
@@ -172,11 +172,20 @@ export function AssessScreen({onClose, onGoSettings}: {onClose: () => void; onGo
 }
 
 const styles = StyleSheet.create({
-  root: {...StyleSheet.absoluteFillObject, backgroundColor: theme.colors.surface, paddingTop: 48, fontFamily: theme.font.body},
-  topBar: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: theme.spacing.lg},
+  root: {...StyleSheet.absoluteFillObject, backgroundColor: theme.colors.surface, zIndex: 20, elevation: 20, fontFamily: theme.font.body},
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: 48,
+    paddingBottom: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+  },
   closeBtn: {width: 32, height: 32, alignItems: 'center', justifyContent: 'center'},
   closeText: {color: theme.colors.textSecondary, fontSize: 20, fontWeight: theme.font.weightBold},
   kicker: {color: theme.colors.textPrimary, fontSize: theme.font.sizeMd, fontFamily: theme.font.displayMedium},
+  scroll: {flex: 1, backgroundColor: theme.colors.surface},
   body: {padding: theme.spacing.xxl, paddingBottom: 40},
   intro: {color: theme.colors.textMuted, fontSize: theme.font.sizeSm, lineHeight: 20, marginTop: theme.spacing.sm2},
   guard: {
