@@ -195,23 +195,29 @@ void resolveEop(Llm* llm,
 }
 
 std::string formatQwenInstructPrompt(const std::string& system, const std::string& user) {
+    // Qwen 0.5B-Instruct-MNN model dir llm_config.json has prompt_template
+    // consisting of only the user and assistant blocks (no system role in training).
+    // Adding the system block breaks generation on this model (empty response),
+    // so we ignore the system arg here to match the model export shape.
+    (void)system;
+    constexpr const char* kImStart = "<|im_start|>";
     constexpr const char* kImEnd = "<|im_end|>";
-    return std::string("<|im_start|>system\n") + system + kImEnd +
-           "\n<|im_start|>user\n" + user + kImEnd + "\n<|im_start|>assistant\n";
+    return std::string(kImStart) + "user\n" + user + kImEnd +
+           "\n" + kImStart + "assistant\n";
 }
 
 std::string buildRuntimeConfig(const std::string& cache_dir) {
+    // 0.5B-Instruct-MNN + NEON emulator: keep config minimal.
+    // - use_mmap=true (MNN default; use_mmap=false broke output on emulator)
+    // - max_all_tokens=384 keeps prefill KV cache small enough
+    // - thread_num=2 reduces memory pressure (vs 4)
     return R"({
         "max_new_tokens": 64,
-        "max_all_tokens": 512,
-        "thread_num": 4,
+        "max_all_tokens": 384,
+        "thread_num": 2,
         "precision": "low",
         "memory": "low",
-        "sampler_type": "penalty",
-        "penalty": 1.1,
-        "penalty_sampler": "temperature",
-        "temperature": 0.7,
-        "use_template": false,
+        "use_template": true,
         "use_mmap": true,
         "tmp_path": ")" + cache_dir + R"(",
         "async": false
@@ -313,7 +319,7 @@ std::string EyesLlmSession::infer(
         partial_.append(s, n);
     });
     std::ostream stream_os(&stream_buffer);
-    llm->response(formatted_prompt, &stream_os);
+    llm->response(prompt, &stream_os);
 
     const auto* context = llm->getContext();
     if (context != nullptr) {
