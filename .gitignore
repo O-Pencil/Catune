@@ -96,6 +96,9 @@ skills-lock.json
 # MNN source (build locally; see android README)
 android/app/src/main/cpp/third_party/MNN/
 
+# 本地下载的 MNN 模型（仓库根的 MNN/，不要入库）
+/MNN/
+
 # Large demo artifacts (regenerate locally)
 docs/demos/*.apk
 
