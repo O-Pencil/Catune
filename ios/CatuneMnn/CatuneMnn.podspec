@@ -10,8 +10,11 @@ Pod::Spec.new do |s|
   s.homepage     = 'https://github.com/O-Pencil/Posture-AI'
   s.license      = { :type => 'MIT' }
   s.author       = 'Catune'
-  s.platforms    = { :ios => '15.1' }
+  s.platform     = :ios, '15.1'
   s.source       = { :path => '.' }
+
+  # MNN 在 iOS 上依赖 Accelerate（BLAS/vDSP）；Metal 已关，故不链 Metal。链接报缺符号时再按需补。
+  s.frameworks   = 'Accelerate'
 
   # 本模块 .mm/.h + 共享 C++ 核（与安卓同一份；**排除** JNI 专属的 eyes_mnn_bridge.cpp）
   s.source_files = [

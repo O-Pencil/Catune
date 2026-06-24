@@ -25,6 +25,11 @@ static dispatch_queue_t gInferQueue;
 
 static NSString *DefaultModelId() { return @"qwen2.5-0.5b"; }
 
+/** std::string → NSString，非法 UTF-8（如截断的多字节）时回退空串，避免把 nil 塞进 @{} 字典崩溃。 */
+static NSString *SafeStr(const std::string &s) {
+  return [NSString stringWithUTF8String:s.c_str()] ?: @"";
+}
+
 static NSString *DocumentsDir() {
   return [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
 }
@@ -57,7 +62,7 @@ static BOOL EnsureLoaded(NSString **errOut) {
   std::string cacheDir([NSTemporaryDirectory() UTF8String]);
   bool ok = gSession.load(std::string([cfg UTF8String]), cacheDir);
   if (!ok) {
-    if (errOut) *errOut = [NSString stringWithUTF8String:gSession.lastError().c_str()];
+    if (errOut) *errOut = SafeStr(gSession.lastError());
     return NO;
   }
   gLoadedModelId = modelId;
@@ -156,12 +161,12 @@ RCT_EXPORT_METHOD(inferText:(NSString *)prompt resolve:(RCTPromiseResolveBlock)r
     NSDate *start = [NSDate date];
     std::string out = gSession.infer(std::string([prompt UTF8String]), "", "");
     if (out.empty()) {
-      reject(@"CATUNE_MNN_INFER_FAILED", [NSString stringWithUTF8String:gSession.lastError().c_str()], nil);
+      reject(@"CATUNE_MNN_INFER_FAILED", SafeStr(gSession.lastError()), nil);
       return;
     }
     double ms = -[start timeIntervalSinceNow] * 1000.0;
     resolve(@{
-      @"rawOutput": [NSString stringWithUTF8String:out.c_str()],
+      @"rawOutput": SafeStr(out),
       @"inferenceMs": @(ms),
       @"metrics": MetricsMap(),
     });
@@ -197,11 +202,11 @@ RCT_EXPORT_METHOD(inferTextStream:(NSString *)prompt resolve:(RCTPromiseResolveB
     std::string out = gSession.infer(std::string([prompt UTF8String]), "", "");
     done = YES;
     if (out.empty()) {
-      if (self->_hasListeners) [self sendEventWithName:@"onMnnError" body:@{@"error": [NSString stringWithUTF8String:gSession.lastError().c_str()]}];
+      if (self->_hasListeners) [self sendEventWithName:@"onMnnError" body:@{@"error": SafeStr(gSession.lastError())}];
       reject(@"CATUNE_MNN_INFER_FAILED", @"infer failed", nil);
       return;
     }
-    NSString *full = [NSString stringWithUTF8String:out.c_str()] ?: @"";
+    NSString *full = SafeStr(out) ?: @"";
     if (full.length > emitted && self->_hasListeners) {
       [self sendEventWithName:@"onMnnToken" body:@{@"token": [full substringFromIndex:emitted]}];
     }
@@ -229,10 +234,10 @@ RCT_EXPORT_METHOD(analyzeImage:(NSString *)imageBase64 prompt:(NSString *)prompt
     [data writeToFile:jpg atomically:YES];
     std::string out = gSession.infer(std::string([prompt UTF8String]), std::string([jpg UTF8String]), "");
     if (out.empty()) {
-      reject(@"CATUNE_MNN_INFER_FAILED", [NSString stringWithUTF8String:gSession.lastError().c_str()], nil);
+      reject(@"CATUNE_MNN_INFER_FAILED", SafeStr(gSession.lastError()), nil);
       return;
     }
-    resolve(@{@"rawOutput": [NSString stringWithUTF8String:out.c_str()], @"metrics": MetricsMap()});
+    resolve(@{@"rawOutput": SafeStr(out), @"metrics": MetricsMap()});
   });
 }
 
@@ -253,7 +258,7 @@ RCT_EXPORT_METHOD(runBenchmark:(NSString *)prompt resolve:(RCTPromiseResolveBloc
       std::string out = gSession.infer(std::string([prompt UTF8String]), "", "");
       if (out.empty()) {
         if (i == 0) {
-          reject(@"CATUNE_MNN_BENCH_FAILED", [NSString stringWithUTF8String:gSession.lastError().c_str()], nil);
+          reject(@"CATUNE_MNN_BENCH_FAILED", SafeStr(gSession.lastError()), nil);
           return;
         }
         continue;
@@ -265,7 +270,7 @@ RCT_EXPORT_METHOD(runBenchmark:(NSString *)prompt resolve:(RCTPromiseResolveBloc
         @"label": i == 0 ? @"warmup" : @"timed",
         @"inferenceMs": @(ms),
         @"metrics": metrics,
-        @"rawOutput": [NSString stringWithUTF8String:out.c_str()],
+        @"rawOutput": SafeStr(out),
       }];
       if (i > 0) {
         totalTps += [metrics[@"decodeTps"] doubleValue];
