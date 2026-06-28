@@ -16,13 +16,15 @@ Pod::Spec.new do |s|
   # MNN 在 iOS 上依赖 Accelerate（BLAS/vDSP）；Metal 已关，故不链 Metal。链接报缺符号时再按需补。
   s.frameworks   = 'Accelerate'
 
-  # 本模块 .mm/.h + 共享 C++ 核（与安卓同一份；**排除** JNI 专属的 eyes_mnn_bridge.cpp）
+  # 共享 C++ 核通过 ios/CatuneMnn/cpp/ 下的 symlink 引入（CocoaPods 不编 pod 目录外的 .cpp）。
   s.source_files = [
-    'CatuneMnn.{h,mm}',
-    '../../android/app/src/main/cpp/eyes_llm_session.{h,cpp}',
-    '../../android/app/src/main/cpp/eyes_log.h',
-    '../../android/app/src/main/cpp/llm_stream_buffer.hpp',
-    '../../android/app/src/main/cpp/utf8_stream_processor.hpp',
+    'CatuneMnn.h',
+    'CatuneMnn.mm',
+    'cpp/eyes_llm_session.h',
+    'cpp/eyes_llm_session.cpp',
+    'cpp/eyes_log.h',
+    'cpp/llm_stream_buffer.hpp',
+    'cpp/utf8_stream_processor.hpp',
   ]
 
   # MNN 静态库（device arm64；同/双架构请改 xcframework）。由 build-mnn-ios.sh 放到 MNN/lib/。
@@ -41,6 +43,8 @@ Pod::Spec.new do |s|
       "\"#{mnn}/tools/audio/include\"",
       "\"#{mnn}/3rd_party\"",
     ].join(' '),
+    # libMNN.a 体积大且 .o 分散；常规 -lMNN 只拉部分符号，LLM 链会 Undefined symbol → force_load 全量链入。
+    'OTHER_LDFLAGS' => '$(inherited) -force_load "$(PODS_TARGET_SRCROOT)/MNN/lib/libMNN.a"',
   }
 
   s.dependency 'React-Core'

@@ -18,25 +18,26 @@ BUILD="$ROOT/.mnn-ios-build"
 
 [ -d "$MNN_SRC/include/MNN" ] || { echo "✗ 未找到 $MNN_SRC/include/MNN，MNN_SRC 不对"; exit 1; }
 
-echo "==> 配置 MNN iOS（device arm64；开关对齐安卓 libMNN）"
+echo "==> 配置 MNN iOS（device arm64；LLM+NEON 汇编，iOS 关 SME2/KleidiAI）"
 cmake -S "$MNN_SRC" -B "$BUILD" \
   -DCMAKE_SYSTEM_NAME=iOS \
   -DCMAKE_OSX_ARCHITECTURES=arm64 \
   -DCMAKE_OSX_DEPLOYMENT_TARGET=15.1 \
   -DCMAKE_BUILD_TYPE=Release \
+  -DARCHS=arm64 \
+  -DCMAKE_SYSTEM_PROCESSOR=aarch64 \
   -DMNN_BUILD_SHARED_LIBS=OFF \
   -DMNN_SEP_BUILD=OFF \
   -DMNN_AAPL_FMWK=OFF \
   -DMNN_METAL=OFF \
   -DMNN_BUILD_LLM=ON \
-  -DMNN_KLEIDIAI=ON \
-  -DMNN_SME2=ON \
+  -DMNN_KLEIDIAI=OFF \
+  -DMNN_SME2=OFF \
   -DMNN_ARM82=ON \
-  -DMNN_LOW_MEMORY=ON \
-  -DMNN_CPU_WEIGHT_DEQUANT_GEMM=ON
+  -DMNN_LOW_MEMORY=ON
 
-echo "==> 编译"
-cmake --build "$BUILD" --config Release -j"$(sysctl -n hw.ncpu)"
+echo "==> 编译（仅 libMNN，跳过 quantize_llm 等工具链以免 iOS 链接缺符号）"
+cmake --build "$BUILD" --config Release -j"$(sysctl -n hw.ncpu)" --target MNN
 
 echo "==> 收集静态库 → $OUT/lib"
 mkdir -p "$OUT/lib"

@@ -1,7 +1,7 @@
 # BLE 协议与固件（ESP32-S3 + BNO085 → App）
 
 > App 侧：`src/platform/bleSensorSource.ts`（已实现）。固件：`firmware/catune_node/catune_node.ino`（骨架）。
-> 两边的 UUID 与包格式**必须一致**。关联 [硬件采购与小白使用指南](./硬件采购与小白使用指南.md) · [iOS适配评估与计划](./iOS适配评估与计划.md)。
+> 两边的 UUID 与包格式**必须一致**。关联 [硬件采购与小白使用指南](./硬件采购与小白使用指南.md) · [硬件单板自检指南](./硬件单板自检指南.md) · [iOS真机构建与环境](./iOS真机构建与环境.md)。
 
 ## 1. BLE 协议（单一事实来源）
 | 项 | 值 |
