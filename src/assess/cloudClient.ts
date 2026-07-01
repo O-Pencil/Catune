@@ -9,7 +9,7 @@
  */
 import {AssessmentResult, CloudConfig} from './types';
 import {buildAssessSystem, buildAssessUser, parseAssessJson} from './parse';
-import type {Locale} from '../ui/i18n';
+import type {Locale} from '../design/i18n';
 
 export async function cloudAssess(
   cfg: CloudConfig,

@@ -1,7 +1,7 @@
 /**
  * @file types.ts
  * @description 语义记忆数据契约（教练"懂你"）。借 catui-mem 的 7 类记忆概念，RN 原生精简实现。
- *   仅本地存储、可衰减/淘汰；注入教练 prompt 时只取极少几条。详见 docs/语义记忆设计.md。
+ *   仅本地存储、可衰减/淘汰；注入教练 prompt 时只取极少几条。
  *
  * [WHO] 导出 `MemoryType`/`MemorySource`/`MemoryItem`/`RememberInput`
  * [FROM] 无依赖（纯类型）

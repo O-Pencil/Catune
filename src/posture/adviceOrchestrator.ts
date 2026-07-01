@@ -15,7 +15,7 @@ import {MemoryService} from '../platform/memory/service';
 import {isModelAvailable, streamInfer} from '../mnn/inferStreamClient';
 import {logEvent} from '../debug/logBus';
 import {ABNORMAL_POSTURES} from './utils';
-import type {Locale} from '../ui/i18n';
+import type {Locale} from '../design/i18n';
 
 const MIN_INTERVAL_MS = 12000; // 两次模型调用最小间隔（生成慢，避免堆积）
 const HOLD_REPEAT_MS = 120000; // 同一异常姿态久持 → 每 2 分钟再鼓励一次

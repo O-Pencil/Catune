@@ -15,12 +15,24 @@ import React from 'react';
 import renderer, {act} from 'react-test-renderer';
 import App from '../App';
 
-it('renders correctly', () => {
+it('renders correctly', async () => {
   // 使用 fake timers，避免模拟数据源的 setInterval 在测试后继续触发
   jest.useFakeTimers();
-  act(() => {
-    renderer.create(<App />);
-  });
-  jest.clearAllTimers();
-  jest.useRealTimers();
+  let tree: renderer.ReactTestRenderer | null = null;
+  try {
+    await act(async () => {
+      tree = renderer.create(<App />);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(tree).not.toBeNull();
+  } finally {
+    if (tree) {
+      act(() => {
+        tree?.unmount();
+      });
+    }
+    jest.clearAllTimers();
+    jest.useRealTimers();
+  }
 });

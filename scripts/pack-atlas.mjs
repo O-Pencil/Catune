@@ -1,7 +1,7 @@
 /**
  * @file pack-atlas.mjs
  * @description 把 public/frames/<axis>/ 的帧打包成一张雪碧图 public/atlas/<axis>_atlas.png，并把 cols/rows/count/cellW/cellH/source
- *   写回 src/ui/assets/<axis>Atlas.ts。网格行优先（与 CatSprite 的 col=i%cols 一致）。
+ *   写回 src/design/assets/<axis>Atlas.ts。网格行优先（与 CatSprite 的 col=i%cols 一致）。
  *
  * 清晰度：默认用源帧原始分辨率（如 540×810），避免缩到 320×480 后在 2–3x 真机上二次放大发糊。
  * 纹理上限：旗舰机常见 8192；老设备 4096 请用较小单格，例如 lean 360 540 8。

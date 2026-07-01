@@ -5,7 +5,7 @@
  *
  * [WHO] 导出 `LogCategory`/`LogEntry`/`logEvent`/`subscribeLog`/`clearLog`/`setLogEnabled`
  * [FROM] 无依赖
- * [TO] 被 engine/sensorSource/adviceOrchestrator/reminder 写入；被 src/ui/components/LogConsole 订阅
+ * [TO] 被 engine/sensorSource/adviceOrchestrator/reminder 写入；被 src/design/components/LogConsole 订阅
  * [HERE] src/debug/logBus.ts · 运行日志总线
  */
 export type LogCategory = 'sensor' | 'model' | 'infer' | 'flow';

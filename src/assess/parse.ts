@@ -4,11 +4,11 @@
  *   按 locale 切 system/user prompt：zh 是与原训练一致的指令；en 是平行英文指令。
  *
  * [WHO] 导出 `buildAssessSystem(locale)` / `buildAssessUser(locale)` / `parseAssessJson(text, locale?)`
- * [FROM] 依赖 ./types、../ui/i18n(Locale)
+ * [FROM] 依赖 ./types、../design/i18n(Locale)
  * [TO] 被 src/assess/{cloudClient,localVlClient}.ts 消费
  * [HERE] src/assess/parse.ts · 评估 prompt 与解析
  */
-import {type Locale} from '../ui/i18n';
+import {type Locale} from '../design/i18n';
 import {AssessObservation, Severity} from './types';
 
 /** zh system 指令：与原 prompt 逐字一致（任何外部脚本/微调数据用到此文本都要同步更新）。 */

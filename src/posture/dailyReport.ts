@@ -6,11 +6,11 @@
  *   - 全部真实数据，无假数据；缺数据时返回 hasData=false 让 UI 显示无数据态。
  *
  * [WHO] 导出 `buildDailyReport` / `buildWeeklyReport` / `DailyReport` / `WeeklyReport`
- * [FROM] 依赖 ./growth(GrowthState)、./dailyHistory(DailyHistory/getWeekSnapshots/loadDailyHistory)、../ui/i18n
- * [TO] 被 src/ui/components/DailyReportPanel / WeeklyReportPanel 消费
+ * [FROM] 依赖 ./growth(GrowthState)、./dailyHistory(DailyHistory/getWeekSnapshots/loadDailyHistory)、../design/i18n
+ * [TO] 被 src/design/components/DailyReportPanel / WeeklyReportPanel 消费
  * [HERE] src/posture/dailyReport.ts · 日报/周报聚合
  */
-import {tr, type Locale} from '../ui/i18n';
+import {tr, type Locale} from '../design/i18n';
 import {GrowthState} from './growth';
 import {
   DailyHistory,

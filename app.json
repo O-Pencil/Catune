@@ -47,7 +47,8 @@
         }
       ],
       "expo-font",
-      "./plugins/withCatuneMnn.js"
+      "./plugins/withCatuneMnn.js",
+      "expo-asset"
     ]
   }
 }

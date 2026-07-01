@@ -10,7 +10,7 @@
  */
 import * as FileSystem from 'expo-file-system/legacy';
 
-import type {Locale} from '../../ui/i18n';
+import type {Locale} from '../../design/i18n';
 import {MemoryItem} from './types';
 
 const DIR = (FileSystem.documentDirectory ?? '') + 'catune_memory/';

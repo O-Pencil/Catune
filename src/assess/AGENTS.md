@@ -25,7 +25,7 @@
 ## 数据流
 
 ```
-[读图] src/ui/screens/AssessScreen ──► service.run(image)
+[读图] src/design/screens/AssessScreen ──► service.run(image)
        ↓
 [选后端] service 判 'auto' → readiness.check() → 选 cloud / local
        ↓
@@ -38,5 +38,5 @@
 
 ## 消费方
 
-- `src/ui/screens/AssessScreen.tsx` · 评估屏（拍照 + 提交）
-- `src/ui/components/AssessResult.tsx` · 评估结果展示
+- `src/design/screens/AssessScreen.tsx` · 评估屏（拍照 + 提交）
+- `src/design/components/AssessResult.tsx` · 评估结果展示

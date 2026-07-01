@@ -78,4 +78,4 @@ The device supports: ... sme2: 1
 - 若 B 段出现 `sme2:1`，可说「QEMU 模拟 SME2 CPU，MNN 运行时探测通过」；仍应注明是**模拟环境**。
 - 真机 `hw sme2=true` 仍是最终验收标准。
 
-详见 [联调进度 §7](../../docs/联调进度与实测记录.md#7-mac-docker-sme2-演示a1a2--2026-06-20)。
+本目录只保留功能级演示脚本；真实端侧模型联调以 `src/mnn/`、`android/app/src/main/cpp/` 和根 `AGENTS.md` 为准。

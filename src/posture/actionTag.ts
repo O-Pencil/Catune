@@ -8,11 +8,11 @@
  *   标签前缀正则同时接受 `动作` / `Action`（兼容英文 prompt 的输出）。
  *
  * [WHO] 导出 `parseActionTag`、`actionForPosture`、`getActionMeta`
- * [FROM] 依赖 ./types(PostureAction/PostureName/SpineNode)、../ui/i18n(Locale/tr)
+ * [FROM] 依赖 ./types(PostureAction/PostureName/SpineNode)、../design/i18n(Locale/tr)
  * [TO] 被 engine.ts（setModelAdvice/commit）写入，DeskScreen/TrainingScreen 读 action 驱动高亮/动作 chip
  * [HERE] src/posture/actionTag.ts · 动作标签解析与映射
  */
-import {tr, type Locale} from '../ui/i18n';
+import {tr, type Locale} from '../design/i18n';
 import {PostureAction, PostureName, SpineNode} from './types';
 
 /** 标签前缀（接受中英文 + 中英冒号），与训练 prompt 中 `[动作:xxx]` / `[Action:xxx]` 兼容。 */

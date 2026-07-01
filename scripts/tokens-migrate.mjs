@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 一次性迁移：把 src/ui 下 .tsx/.ts 里的 StyleSheet 数字字面量替换为 token 引用。
+ * 一次性迁移：把 src/design 下 .tsx/.ts 里的 StyleSheet 数字字面量替换为 token 引用。
  * 映射（最常见间距/圆角/字号）：
  *   2 → spacing.xxs, 4 → spacing.xs, 6 → spacing.sm, 8 → spacing.sm2,
  *   10 → spacing.md, 12 → spacing.md2, 16 → spacing.lg, 20 → spacing.xl,
@@ -13,7 +13,7 @@
 import {readFileSync, writeFileSync, readdirSync, statSync} from 'node:fs';
 import {join, extname} from 'node:path';
 
-const ROOT = 'src/ui';
+const ROOT = 'src/design';
 const EXTS = new Set(['.ts', '.tsx']);
 const SPACING = {2: 'xxs', 4: 'xs', 6: 'sm', 8: 'sm2', 10: 'md', 12: 'md2', 16: 'lg', 20: 'xl', 24: 'xxl', 32: 'xxxl'};
 const FONT = {12: 'sizeXs', 14: 'sizeSm', 15: 'sizeMd', 18: 'sizeLg', 22: 'sizeXl', 56: 'sizeScore'};

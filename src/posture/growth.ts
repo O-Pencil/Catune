@@ -5,11 +5,11 @@
  *   异常「入态」按状态转移扣分并记一条日志（不会每帧刷屏）。OFFLINE 不计分只忽略。
  *
  * [WHO] 导出 `createGrowthTracker(engine, opts?)`、`GrowthState`、`GrowthEvent`、`GrowthTracker`、`STAGE_NAMES`、`STAGE_THRESHOLDS`
- * [FROM] 依赖 ./engine(PostureEngine 类型)、./types(PostureName)、../ui/i18n(tr, Locale)
- * [TO] 被 App.tsx 启动并订阅，结果传给 src/ui/screens/PlantScreen
+ * [FROM] 依赖 ./engine(PostureEngine 类型)、./types(PostureName)、../design/i18n(tr, Locale)
+ * [TO] 被 App.tsx 启动并订阅，结果传给 src/design/screens/PlantScreen
  * [HERE] src/posture/growth.ts · 植物成长累加器（真实数据 → 积分/阶段/日志）
  */
-import {tr, type Locale} from '../ui/i18n';
+import {tr, type Locale} from '../design/i18n';
 import type {PostureEngine} from './engine';
 import {PostureName} from './types';
 import {rolloverIfNewDay, upsertTodaySnapshot} from '../platform/dailyHistory';

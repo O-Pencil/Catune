@@ -1,0 +1,85 @@
+#!/usr/bin/env node
+/**
+ * Product-design guardrails for Catune.
+ *
+ * These checks encode mechanical parts of the repo-local product design
+ * practice. Judgment stays in .agents/skills/catune-product-design/references.
+ */
+import {existsSync, readFileSync, readdirSync, statSync} from 'node:fs';
+import {join, extname} from 'node:path';
+
+const failures = [];
+
+function fail(message) {
+  failures.push(message);
+}
+
+function walk(dir, out = []) {
+  if (!existsSync(dir)) return out;
+  for (const entry of readdirSync(dir)) {
+    const path = join(dir, entry);
+    if (path.includes('node_modules')) continue;
+    const stat = statSync(path);
+    if (stat.isDirectory()) walk(path, out);
+    else out.push(path);
+  }
+  return out;
+}
+
+const forbiddenDirs = ['docs', 'PRD', 'prototype', 'web', 'src/ui'];
+for (const dir of forbiddenDirs) {
+  if (existsSync(dir)) fail(`Forbidden legacy directory exists: ${dir}`);
+}
+
+const requiredFiles = [
+  '.agents/skills/catune-product-design/SKILL.md',
+  '.agents/skills/catune-product-design/AGENTS.md',
+  '.agents/skills/catune-product-design/references/product-judgment.md',
+  '.agents/skills/catune-product-design/references/interface-quality.md',
+  '.agents/skills/catune-product-design/references/copy.md',
+  '.agents/skills/catune-product-design/references/surfaces.md',
+  '.agents/skills/catune-product-design/references/rules.md',
+  '.agents/skills/catune-product-design/references/glossary.md',
+  '.agents/skills/catune-product-design/references/patterns.md',
+  '.agents/skills/catune-product-design/references/coverage-gaps.md',
+];
+for (const file of requiredFiles) {
+  if (!existsSync(file)) fail(`Missing product-design file: ${file}`);
+}
+
+const sourceFiles = [
+  ...walk('src'),
+  ...walk('scripts'),
+].filter(file => ['.md', '.ts', '.tsx', '.mjs'].includes(extname(file)) || file.endsWith('AGENTS.md'));
+
+const stalePathPattern = /\b(?:PRD|prototype|web|src\/ui)\//;
+for (const file of sourceFiles) {
+  const text = readFileSync(file, 'utf8');
+  if (stalePathPattern.test(text)) {
+    fail(`Stale legacy path reference in ${file}`);
+  }
+}
+
+const designFiles = walk('src/design').filter(file => ['.ts', '.tsx'].includes(extname(file)));
+const forbiddenUiImports = [
+  'expo-sensors',
+  'react-native-ble-plx',
+  'expo-file-system',
+  'NativeModules',
+];
+for (const file of designFiles) {
+  const text = readFileSync(file, 'utf8');
+  for (const needle of forbiddenUiImports) {
+    if (text.includes(needle)) {
+      fail(`Platform/native dependency "${needle}" appears in UI file ${file}`);
+    }
+  }
+}
+
+if (failures.length) {
+  console.error('Product design checks failed:');
+  for (const f of failures) console.error(`- ${f}`);
+  process.exit(1);
+}
+
+console.log('Product design checks passed.');

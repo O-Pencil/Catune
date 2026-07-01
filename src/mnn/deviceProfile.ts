@@ -4,7 +4,7 @@
  *
  * [WHO] 导出 `DeviceProfile` / `DeviceTier` / `ModelRecommendation` / `getDeviceProfile` / `recommendModel`
  * [FROM] 依赖 expo-device（RAM/CPU）、expo-file-system（存储）、NativeModules.CatuneMnn（SME2/CPU 能力检测）
- * [TO] 被 src/ui/screens（下载页 / Settings）消费，展示「为你的设备推荐：__，理由：__」
+ * [TO] 被 src/design/screens（下载页 / Settings）消费，展示「为你的设备推荐：__，理由：__」
  * [HERE] src/mnn/deviceProfile.ts · 设备自适应模块
  */
 
@@ -12,7 +12,7 @@ import { Platform, NativeModules } from 'react-native';
 import * as Device from 'expo-device';
 import * as FileSystem from 'expo-file-system/legacy';
 import { MODEL_CATALOG, MnnModelDef } from './modelCatalog';
-import { tr } from '../ui/i18n';
+import { tr } from '../design/i18n';
 
 // ─── 类型定义 ────────────────────────────────────────────────────────────────
 

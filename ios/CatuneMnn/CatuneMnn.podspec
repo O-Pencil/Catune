@@ -2,7 +2,7 @@ require 'json'
 package = JSON.parse(File.read(File.join(__dir__, '..', '..', 'package.json')))
 
 # 端侧 Qwen+MNN 推理 iOS 桥。编译本模块 + 与安卓共享的 C++ 推理核（排除 JNI 专属文件），链接 MNN 静态库。
-# 先用 scripts/build-mnn-ios.sh 产出 MNN 库与头文件到 ios/CatuneMnn/MNN/。详见 docs/iOS适配评估与计划.md。
+# 先用 scripts/build-mnn-ios.sh 产出 MNN 库与头文件到 ios/CatuneMnn/MNN/。
 Pod::Spec.new do |s|
   s.name         = 'CatuneMnn'
   s.version      = package['version'] || '1.0.0'

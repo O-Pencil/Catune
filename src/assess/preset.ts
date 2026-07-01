@@ -4,11 +4,11 @@
  *   按 locale 返回对应语言版本的预置：zh 保留原中文文案；en 是平行英文翻译（label/value/suggestion 全英文化）。
  *
  * [WHO] 导出 `getPresetResults(locale)` / `pickPreset(locale?, seed?)`
- * [FROM] 依赖 ./types、../ui/i18n(Locale)
+ * [FROM] 依赖 ./types、../design/i18n(Locale)
  * [TO] 被 src/assess/service.ts 兜底返回
  * [HERE] src/assess/preset.ts · 预置评估结果（多语）
  */
-import {type Locale} from '../ui/i18n';
+import {type Locale} from '../design/i18n';
 import {AssessmentResult} from './types';
 
 /** zh 预置（与原 PRESET_RESULTS 一字不差，向后兼容）。 */

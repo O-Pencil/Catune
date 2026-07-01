@@ -2,7 +2,7 @@
  * @file coachPrompt.ts
  * @description 端侧教练 prompt 的「单一来源」，与微调训练数据 (training/gen_dataset.py / seed_gold.jsonl) **同格式」。
  *   指令 + （可选记忆前缀「已知用户：…。」）+ 姿态信号行（姿态：…；指标约X°；已持续N分钟。）。
- *   纪律：推理 prompt 必须 ≈ 训练 prompt，否则微调迁移被削弱（见 docs/模型与记忆个性化设计.md §7）。
+ *   纪律：推理 prompt 必须 ≈ 训练 prompt，否则微调迁移会被削弱。
  *
  *   【i18n】按 locale 切换指令与姿态信号文本：
  *   - `zh`：与原训练 prompt 逐字一致（不变）。
@@ -10,12 +10,12 @@
  *     `[动作:xxx]`，由 actionTag.ts 解析端按 locale 选对应词典。
  *
  * [WHO] 导出 `COACH_INSTRUCTION_ZH`（向后兼容别名）、`buildSignalLine`、`buildCoachPrompt`
- * [FROM] 依赖 ./types(DashboardState/PostureName)、../ui/i18n(Locale)
+ * [FROM] 依赖 ./types(DashboardState/PostureName)、../design/i18n(Locale)
  * [TO] 被 adviceOrchestrator 用于生成端侧文案 prompt
  * [HERE] src/posture/coachPrompt.ts · 教练 prompt 单一来源（与训练对齐）
  */
 import {DashboardState, PostureName} from './types';
-import type {Locale} from '../ui/i18n';
+import type {Locale} from '../design/i18n';
 
 /** 与训练 instruction 字段逐字一致（zh）。改这里必须同步 training/gen_dataset.py、compare.py 并重跑生成+训练。 */
 const COACH_INSTRUCTION_ZH =

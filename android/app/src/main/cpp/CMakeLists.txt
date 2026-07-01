@@ -10,12 +10,12 @@ project("posture_ai_bridge")
 
 # MNN 源码（含 llm/llm.hpp 等头文件）须放到仓库内的 cpp/third_party/MNN/。
 # 原历史路径指向仓库外的 Template-github/eyes-on-my-phone/MNN-master（不存在 → 构建失败），已改为仓库内相对路径。
-# 可用 -DMNN_SOURCE_ROOT=<绝对路径> 覆盖。详见 docs/端侧模型对接计划.md。
+# 可用 -DMNN_SOURCE_ROOT=<绝对路径> 覆盖。
 if(NOT DEFINED MNN_SOURCE_ROOT)
     set(MNN_SOURCE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/MNN")
 endif()
 if(NOT EXISTS "${MNN_SOURCE_ROOT}/include/MNN")
-    message(FATAL_ERROR "MNN 源码缺失：未找到 ${MNN_SOURCE_ROOT}/include/MNN。\n请将 MNN 源码放到 cpp/third_party/MNN/，或用 -DMNN_SOURCE_ROOT=<path> 指定。详见 docs/端侧模型对接计划.md。")
+    message(FATAL_ERROR "MNN 源码缺失：未找到 ${MNN_SOURCE_ROOT}/include/MNN。\n请将 MNN 源码放到 cpp/third_party/MNN/，或用 -DMNN_SOURCE_ROOT=<path> 指定。")
 endif()
 set(MNN_LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}")
 

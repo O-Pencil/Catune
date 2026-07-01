@@ -16,6 +16,5 @@ npx expo run:ios --device
 ```
 - `plugins/withCatuneMnn.js`（已挂 app.json）检测到 `MNN/lib/libMNN.a` 才把本 Pod 加进 Podfile；
   没编 MNN 时**自动跳过**，不影响「目标 A（iOS UI/云端/规则 demo）」的构建。
-- 详见 [docs/iOS适配评估与计划.md](../../docs/iOS适配评估与计划.md)。
 
 > `MNN/` 目录（编译产物）不入 git。

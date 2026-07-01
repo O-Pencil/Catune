@@ -4,11 +4,11 @@
  *   初赛为预置内容；复赛可由模型/记忆个性化生成。被 Desk 建议动作 chip 点击后弹出的 TrainingScreen 消费。
  *
  * [WHO] 导出 `Exercise`、`getExercise`
- * [FROM] 依赖 ./types(PostureAction)、../ui/i18n(tr)
- * [TO] 被 src/ui/screens/TrainingScreen.tsx 消费
+ * [FROM] 依赖 ./types(PostureAction)、../design/i18n(tr)
+ * [TO] 被 src/design/screens/TrainingScreen.tsx 消费
  * [HERE] src/posture/exercises.ts · 跟练例程数据
  */
-import {tr} from '../ui/i18n';
+import {tr} from '../design/i18n';
 import {PostureAction} from './types';
 
 export type Exercise = {

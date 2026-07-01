@@ -1,6 +1,6 @@
 /**
  * @file gen-frame-manifest.mjs
- * @description 扫描 public/frames/<axis>/ 下的帧图，生成 src/ui/assets/<axis>Frames.ts 的 require 清单。
+ * @description 扫描 public/frames/<axis>/ 下的帧图，生成 src/design/assets/<axis>Frames.ts 的 require 清单。
  *   Metro 要求 require 路径是静态字面量，所以帧清单必须落成代码而非运行时读目录。
  *
  * 用法：

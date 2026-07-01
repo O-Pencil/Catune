@@ -7,7 +7,6 @@
 //  方法名/事件名与安卓完全一致 → JS 侧（inferStreamClient / BenchmarkPanel / assess）零改动。
 //
 //  模型目录：Documents/mnn_models/<activeId>/（与 expo-file-system documentDirectory + 安卓 filesDir 对齐）。
-//  详见 docs/iOS适配评估与计划.md。
 //
 #import "CatuneMnn.h"
 #import "eyes_llm_session.h"

@@ -89,9 +89,16 @@ web-build/
 # Catui local cache
 .catui/
 
-# Catui installed skills (managed by CLI, not project code)
-.agents/skills/
+# Catui installed skills (managed by CLI, not project code).
+# Keep Catune's repo-local product design skill tracked.
+.agents/skills/*
+!.agents/skills/catune-product-design/
+!.agents/skills/catune-product-design/**
 skills-lock.json
+
+# Local agent/workflow state
+.grub/
+.impeccable/
 
 # MNN source (build locally; see android README)
 android/app/src/main/cpp/third_party/MNN/

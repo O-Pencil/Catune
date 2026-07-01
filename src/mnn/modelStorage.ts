@@ -45,6 +45,10 @@ function modelDir(docDir: string, model: MnnModelDef): string {
   return docDir + model.subdir;
 }
 
+export function getModelDocumentDirectory(): string | null {
+  return FileSystem.documentDirectory ?? null;
+}
+
 export async function readActiveModelId(docDir: string): Promise<string> {
   try {
     const info = await FileSystem.getInfoAsync(docDir + ACTIVE_MODEL_FILE);
@@ -64,6 +68,10 @@ export async function readActiveModelId(docDir: string): Promise<string> {
 export async function writeActiveModelId(docDir: string, modelId: string): Promise<void> {
   await FileSystem.makeDirectoryAsync(docDir + MNN_MODELS_ROOT, {intermediates: true});
   await FileSystem.writeAsStringAsync(docDir + ACTIVE_MODEL_FILE, modelId);
+}
+
+export async function clearActiveModelId(docDir: string): Promise<void> {
+  await FileSystem.deleteAsync(docDir + ACTIVE_MODEL_FILE, {idempotent: true});
 }
 
 function fileSizeBytes(info: FileSystem.FileInfo): number {
