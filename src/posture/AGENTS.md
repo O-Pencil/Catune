@@ -23,14 +23,14 @@
 
 - **零原生依赖**：禁止 `import 'react-native'` / `import 'expo-*'`，违反破坏跨平台性（见 `arch-posture-pure-ts`）。
 - **数据来源**：`src/platform/sensorSource.ts` 推 `update()`；`src/platform/reminder.ts` 读 `subscribe()`；`src/platform/dailyHistory.ts` 持久化；`src/platform/memory/*` 语义记忆。
-- **下游**：`App.tsx` 仪表盘订阅；`src/ui/components/*` 消费 `DashboardState`。
-- **i18n 依赖**：`../ui/i18n`（en/zh），文案生成走 `tr(locale, key)`。
+- **下游**：`App.tsx` 仪表盘订阅；`src/design/components/*` 消费 `DashboardState`。
+- **i18n 依赖**：`../design/i18n`（en/zh），文案生成走 `tr(locale, key)`。
 
 ## 关键 API
 
-- `createPostureEngine(opts?)` · 工厂（见 `docs/api-engine.md`）
+- `createPostureEngine(opts?)` · 姿态引擎工厂
 - `ruleFallback(signals, locale?)` · 端侧模型失败兜底
-- `THRESHOLDS` · 3 节点姿态阈值（PRD §3.3）
+- `THRESHOLDS` · 3 节点姿态阈值
 
 ## 已删除（迁移到 TS 后）
 

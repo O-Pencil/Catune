@@ -31,10 +31,10 @@
 
 ## 消费方
 
-- `src/ui/components/ModelDownloadCard.tsx` · 模型管理卡片
-- `src/ui/components/ModelDownloadBanner.tsx` · 全局下载进度条
+- `src/design/components/ModelDownloadCard.tsx` · 模型管理卡片
+- `src/design/components/ModelDownloadBanner.tsx` · 全局下载进度条
 - `src/posture/adviceOrchestrator.ts` · 调 `inferStreamClient` 流式覆盖建议
-- `src/ui/screens/BenchmarkScreen.tsx` · 模型基准测试
+- `src/design/screens/BenchmarkScreen.tsx` · 模型基准测试
 
 ## 已删除
 

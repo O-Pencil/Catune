@@ -2,14 +2,14 @@
  * @file service.ts
  * @description 语义记忆服务（RN 原生轻量，借 catui-mem 设计）：remember/retrieve/inject/forget/clearAll
  *   + onboarding 状态。写入去重 + 脱敏 + 容量淘汰；inject 为教练 prompt 拼极简前缀（被注入即刷新近因 = 间隔重复 lite）。
- *   持久化节流，仅本地。详见 docs/语义记忆设计.md。
+ *   持久化节流，仅本地。
  *
  * [WHO] 导出 `MemoryService`/`InjectOptions`/`createMemoryService`
  * [FROM] 依赖 ./types、./store、./scoring
  * [TO] 被 App.tsx 创建；onboarding/反馈钩子调 remember/completeOnboarding；adviceOrchestrator 调 inject；Settings 管理卡调 list/forget/clearAll
  * [HERE] src/posture/memory/service.ts · 语义记忆服务
  */
-import type {Locale} from '../../ui/i18n';
+import type {Locale} from '../../design/i18n';
 import {MemoryItem, MemoryType, RememberInput} from './types';
 import {loadItems, loadLocale, loadOnboarded, saveItems, saveLocale, saveOnboarded} from './store';
 import {isExpired, score} from './scoring';

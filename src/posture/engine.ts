@@ -4,7 +4,7 @@
  *   从 Kotlin 侧迁移，iOS/Android 通用，无原生依赖。
  *
  * [WHO] 导出 `createPostureEngine()`、`ruleFallback()`、`THRESHOLDS`、`sanitize()`、`getBannedWords()`
- * [FROM] 依赖 ./types、./actionTag、../ui/i18n(tr, getDict)
+ * [FROM] 依赖 ./types、./actionTag、../design/i18n(tr, getDict)
  * [TO] 被 mock.ts/sensorSource.ts 写入、adviceOrchestrator 推模型文案、Dashboard/App 订阅
  * [HERE] src/posture/engine.ts · 姿态规则引擎（TS）
  *
@@ -12,7 +12,7 @@
  * 纪律（PRD §5.10）：分类/打分用规则（可靠底线）；端侧模型只补「文案生成」；文案一律过禁词。
  * 建议文案「粘性」：规则文案只在姿态类别变化时重算；模型文案经 setModelAdvice 异步替换，不被 10Hz 帧覆盖。
  */
-import {getDict, tr, type Locale} from '../ui/i18n';
+import {getDict, tr, type Locale} from '../design/i18n';
 import {actionForPosture, parseActionTag} from './actionTag';
 import {
   DashboardState,
@@ -298,7 +298,7 @@ export function createPostureEngine(opts: EngineOptions = {}): PostureEngine {
 export const SAFE_FALLBACK = '';
 
 // Re-export for callers that want a typed `Locale` import.
-export type {Locale} from '../ui/i18n';
+export type {Locale} from '../design/i18n';
 
 // getDict re-export for assess/service that wants to enumerate keys.
 export {getDict};

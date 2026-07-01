@@ -7,7 +7,7 @@
  * [TO] 被 src/posture/engine.ts、src/posture/mock.ts、App.tsx 消费
  * [HERE] src/posture/types.ts · 姿态数据契约（TS）
  */
-import {tr} from '../ui/i18n';
+import {tr} from '../design/i18n';
 
 /** 姿态枚举（与原 Kotlin KinematicsHub.Posture 对齐）。 */
 export type PostureName = 'NORMAL' | 'SLUMPED' | 'TECH_NECK' | 'LEFT_LEAN' | 'OFFLINE';

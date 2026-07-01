@@ -9,8 +9,6 @@
     "**/*.tsx"
   ],
   "exclude": [
-    "node_modules",
-    "web",
-    "web/**"
+    "node_modules"
   ]
 }

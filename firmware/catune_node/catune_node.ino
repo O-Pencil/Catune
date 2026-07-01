@@ -12,7 +12,6 @@
  *   - Adafruit BNO08x
  *   - ESP32 板支持包自带 BLEDevice（无需额外装）
  * 板：ESP32-S3 Dev Module。接线：BNO085 SDA/SCL 接 ESP32 默认 I2C（或下方改 Wire.begin 引脚）。
- * 详见 docs/BLE协议与固件.md。
  */
 #include <Wire.h>
 #include <Adafruit_BNO08x.h>

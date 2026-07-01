@@ -1,6 +1,6 @@
 /**
  * @file PerceptionModels.kt
- * @description 推理层可序列化数据契约：结果、结构化感知对象等。源自 VL 引擎，姿态用途需替换为 classification/action_id 等字段（见 docs/端侧模型对接计划.md）。
+ * @description 推理层可序列化数据契约：结果、结构化感知对象等。源自 VL 引擎，姿态用途可替换为 classification/action_id 等字段。
  *
  * [WHO] 提供 `data class PerceptionRequest`（含 `Mode` 枚举 `LOOK/LISTEN/PERCEIVE`）、`data class PerceptionResult`、`data class StructuredPerception`、`data class PerceivedObject`、`data class RawLookResult`
  * [FROM] 依赖 `kotlinx.serialization`（`@Serializable`、`Json.encodeToString`）

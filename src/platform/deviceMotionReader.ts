@@ -5,6 +5,7 @@
 import {DeviceMotion} from 'expo-sensors';
 
 const RAD2DEG = 180 / Math.PI;
+export type DeviceMotionData = Parameters<Parameters<typeof DeviceMotion.addListener>[0]>[0];
 
 function fromGravity(g: {x: number; y: number; z: number}): {pitch: number; roll: number} {
   return {
@@ -14,7 +15,7 @@ function fromGravity(g: {x: number; y: number; z: number}): {pitch: number; roll
 }
 
 /** 读俯仰/翻滚；优先 rotation，全零或缺失时回退加速度计。 */
-export function readDevicePitchRoll(data: DeviceMotion.DeviceMotionMeasurement): {pitch: number; roll: number} | null {
+export function readDevicePitchRoll(data: DeviceMotionData): {pitch: number; roll: number} | null {
   const r = data.rotation;
   if (r && (r.beta !== 0 || r.gamma !== 0 || r.alpha !== 0)) {
     return {pitch: r.beta * RAD2DEG, roll: r.gamma * RAD2DEG};

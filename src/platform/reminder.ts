@@ -47,7 +47,7 @@ export function createReminder(engine: PostureEngine, opts: {cooldownMs?: number
           try {
             Vibration.vibrate(PATTERN);
           } catch {
-            // web/无震动硬件：忽略
+            // RNW/无震动硬件：忽略
           }
         }
       });

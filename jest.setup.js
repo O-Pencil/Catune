@@ -28,6 +28,11 @@ jest.mock('@expo-google-fonts/geist', () => ({
   useFonts: () => [true],
   Geist_400Regular: 'mock', Geist_500Medium: 'mock', Geist_700Bold: 'mock',
 }));
+jest.mock('@expo-google-fonts/quicksand', () => ({
+  __esModule: true,
+  useFonts: () => [true],
+  Quicksand_600SemiBold: 'mock', Quicksand_700Bold: 'mock',
+}));
 
 // expo-sensors / expo-device / expo-image-picker / expo-file-system: 全 stub
 jest.mock('expo-sensors', () => ({

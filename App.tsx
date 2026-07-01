@@ -1,14 +1,14 @@
 /**
  * @file App.tsx
- * @description 统一 Expo App 入口（iOS / Android / Web 一份代码）：持有引擎 + 传感器(优先)/模拟(回退) 数据源 + 当前状态，驱动 src/ui/AppShell（Desk/Plant/Settings）。
+ * @description 统一 Expo App 入口（iOS / Android / Web 一份代码）：持有引擎 + 传感器(优先)/模拟(回退) 数据源 + 当前状态，驱动 src/design/AppShell。
  *
  * [WHO] 默认导出 `App`；用 `createPostureEngine` + `createSensorSource`(回退 `createMockSource`)，渲染 `AppShell`
- * [FROM] 依赖 `react`、`./src/ui/AppShell`、`./src/posture`（engine/mock/sensorSource/types）、`./src/ui/i18n`
+ * [FROM] 依赖 `react`、`./src/design/AppShell`、`./src/posture`（engine/mock/sensorSource/types）、`./src/design/i18n`
  * [TO] 被 `index.js`(registerRootComponent) 注册
  * [HERE] 项目根 /App.tsx · 统一 Expo App 入口（数据/状态宿主）
  *
- * UI 全在 src/ui（RN 原语，RNW 兼容）；逻辑全在 src/posture。web(RNW) 无本机 IMU → 优先 WS 接收，失败回退 mock。
- * 端侧 Qwen+MNN 为安卓原生支线（docs/端侧模型对接计划.md）。
+ * UI 全在 src/design（RN 原语，RNW 兼容）；逻辑全在 src/posture。web(RNW) 无本机 IMU → 优先 WS 接收，失败回退 mock。
+ * 端侧 Qwen+MNN 为安卓原生支线，默认不编 native。
  */
 import React, {useEffect, useRef, useState} from 'react';
 import {ActivityIndicator, Platform, View} from 'react-native';
@@ -17,9 +17,9 @@ import {useFonts, Fredoka_400Regular, Fredoka_500Medium, Fredoka_600SemiBold, Fr
 import {Geist_400Regular, Geist_500Medium, Geist_700Bold} from '@expo-google-fonts/geist';
 import {Quicksand_600SemiBold, Quicksand_700Bold} from '@expo-google-fonts/quicksand';
 
-import {AppShell} from './src/ui/AppShell';
+import {AppShell} from './src/design/AppShell';
 import {loadLaunchSeen, saveLaunchSeen} from './src/platform/memory/store';
-import {LaunchScreen} from './src/ui/screens/LaunchScreen';
+import {LaunchScreen} from './src/design/screens/LaunchScreen';
 import {createPostureEngine} from './src/posture/engine';
 import {createAdviceOrchestrator} from './src/posture/adviceOrchestrator';
 import {createMemoryService} from './src/platform/memory/service';
@@ -31,7 +31,7 @@ import {BleSensorSource, BleStatus, createBleSensorSource} from './src/platform/
 import {createWsSensorSource, WsSensorSource, WsStatus} from './src/platform/wsSensorSource';
 import {createWsSenderSource, WsSenderSource} from './src/platform/wsSenderSource';
 import {DashboardState} from './src/posture/types';
-import {Locale, LocaleProvider, tr, useT} from './src/ui/i18n';
+import {Locale, LocaleProvider, tr, useT} from './src/design/i18n';
 import * as Device from 'expo-device';
 
 function buildInitialState(locale: Locale): DashboardState {

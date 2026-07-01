@@ -36,19 +36,20 @@ import App from '../App';
 it('renders in zh locale without throwing', async () => {
   jest.useFakeTimers();
   let tree: renderer.ReactTestRenderer | null = null;
-  await act(async () => {
-    tree = renderer.create(<App />);
-  });
-  // 等 memory.ready.then(...) 跑完（microtask）
-  await act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
-  });
-  // 跑完所有 fake timers（adviceOrchestrator / growth / reminder 的 setInterval）
-  await act(async () => {
-    jest.runOnlyPendingTimers();
-  });
-  expect(tree).not.toBeNull();
-  jest.clearAllTimers();
-  jest.useRealTimers();
+  try {
+    await act(async () => {
+      tree = renderer.create(<App />);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(tree).not.toBeNull();
+  } finally {
+    if (tree) {
+      act(() => {
+        tree?.unmount();
+      });
+    }
+    jest.clearAllTimers();
+    jest.useRealTimers();
+  }
 });

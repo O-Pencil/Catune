@@ -5,11 +5,11 @@
  *   sanitize 当前默认 en；多语言场景下由调用方传入 locale。
  *
  * [WHO] 导出 `AssessService`/`createAssessService`
- * [FROM] 依赖 ./config、./preset、./cloudClient、./localVlClient、./types、../posture/engine(sanitize)、../ui/i18n(Locale)
+ * [FROM] 依赖 ./config、./preset、./cloudClient、./localVlClient、./types、../posture/engine(sanitize)、../design/i18n(Locale)
  * [TO] 被 AssessScreen 调用（拍/选图 → assess）
  * [HERE] src/assess/service.ts · 评估分派服务
  */
-import {type Locale} from '../ui/i18n';
+import {type Locale} from '../design/i18n';
 import {sanitize} from '../posture/engine';
 import {loadAssessConfig} from './config';
 import {pickPreset} from './preset';

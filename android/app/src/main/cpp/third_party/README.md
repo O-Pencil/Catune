@@ -16,6 +16,4 @@ third_party/MNN/
 
 缺失时 CMake 会直接报 `FATAL_ERROR` 并提示本路径。
 
-也可不放这里，用 `-DMNN_SOURCE_ROOT=<绝对路径>` 指定外部 MNN 源码目录。
-
-详见 [`docs/端侧模型对接计划.md`](../../../../../../docs/端侧模型对接计划.md)。
+也可不放这里，用 `-DMNN_SOURCE_ROOT=<绝对路径>` 指定外部 MNN 源码目录。默认 App 构建不需要 MNN 源码；只有 `-PenableMnn=true` 时才会进入该路径。

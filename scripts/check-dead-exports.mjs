@@ -1,15 +1,14 @@
 #!/usr/bin/env node
 /**
- * 死导出检测：扫 src/posture src/mnn src/assess src/ui 各模块的 export，
- * 检查是否被项目内任何文件 import。排除 re-export（export {X} from './Y'）。
- * 排除 web/ 下文件（web 是另一构建）和 .test.tsx（测试自身会引用）。
+ * 死导出检测：扫 src/posture src/mnn src/assess src/design 各模块的 export，
+ * 检查是否被项目内任何文件 import。排除 re-export（export {X} from './Y'）和 .test.tsx（测试自身会引用）。
  */
 import {readFileSync, readdirSync, statSync} from 'node:fs';
 import {join, extname, relative} from 'node:path';
 
 const ROOT = 'src';
 const EXTS = new Set(['.ts', '.tsx']);
-const ROOTS = ['src/posture', 'src/mnn', 'src/assess', 'src/ui'];
+const ROOTS = ['src/posture', 'src/mnn', 'src/assess', 'src/design'];
 const TEST_FILE = /\.test\.tsx?$/;
 
 function walk(d, out) {
@@ -53,7 +52,7 @@ walkTests('__tests__', allFiles);
 walkTests('src/posture/__tests__', allFiles);
 walkTests('src/mnn/__tests__', allFiles);
 walkTests('src/assess/__tests__', allFiles);
-walkTests('src/ui/__tests__', allFiles);
+walkTests('src/design/__tests__', allFiles);
 
 for (const f of allFiles) {
   const src = readFileSync(f, 'utf8');

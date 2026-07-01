@@ -11,7 +11,7 @@
 import {NativeModules} from 'react-native';
 import {AssessmentResult} from './types';
 import {buildAssessUser, parseAssessJson} from './parse';
-import type {Locale} from '../ui/i18n';
+import type {Locale} from '../design/i18n';
 
 type CatuneMnnVl = {
   analyzeImage?: (imageBase64: string, prompt: string) => Promise<{rawOutput?: string}>;

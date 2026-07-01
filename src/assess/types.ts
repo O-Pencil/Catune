@@ -1,6 +1,6 @@
 /**
  * @file types.ts
- * @description AI 体态评估数据契约。后端可插拔：端侧 VL / 云端(BYO Key) / 预置兜底。详见 docs/模型与记忆个性化设计.md。
+ * @description AI 体态评估数据契约。后端可插拔：端侧 VL / 云端(BYO Key) / 预置兜底。
  *
  * [WHO] 导出 `AssessBackend`/`CloudConfig`/`AssessConfig`/`AssessObservation`/`AssessmentResult`/`DEFAULT_ASSESS_CONFIG`
  * [FROM] 无依赖（纯类型）

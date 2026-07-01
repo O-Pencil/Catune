@@ -7,7 +7,7 @@ import {DeviceMotion} from 'expo-sensors';
 import type {PostureEngine} from '../posture/engine';
 import {orientationToNodes} from '../posture/postureMapping';
 import {loadWsConfig} from './wsConfig';
-import {readDevicePitchRoll} from './deviceMotionReader';
+import {DeviceMotionData, readDevicePitchRoll} from './deviceMotionReader';
 import type {WsStatus} from './wsSensorSource';
 
 const NODE_ID = 1;
@@ -21,7 +21,7 @@ export type WsSenderSource = {
   getLastAngles: () => {pitch: number; roll: number};
 };
 
-function readPitchRoll(data: DeviceMotion.DeviceMotionMeasurement): {pitch: number; roll: number} | null {
+function readPitchRoll(data: DeviceMotionData): {pitch: number; roll: number} | null {
   return readDevicePitchRoll(data);
 }
 

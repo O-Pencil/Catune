@@ -1,9 +1,9 @@
 /**
  * @file bleSensorSource.ts
  * @description 硬件数据源：通过 BLE 连接 ESP32-S3 + BNO085 姿态带，订阅 notify 特征，解析四元数 → 颈/胸/腰角度，喂 engine.update。
- *   与 sensorSource(手机 IMU)/mock 并列；连接成功后取代手机 IMU。协议见 docs/BLE协议与固件.md（App 与固件必须一致）。
+ *   与 sensorSource(手机 IMU)/mock 并列；连接成功后取代手机 IMU。BLE UUID 与固件必须一致。
  *   纪律：1 节点（胸 Node-T）时，该节点 pitch→胸、roll→腰；3 节点时各算。校准记基线四元数，角度相对基线。
- *   依赖 react-native-ble-plx（原生，需 dev build）；用 require 懒加载，web/缺库时 start() 返回 false 不崩。
+ *   依赖 react-native-ble-plx（原生，需 dev build）；用 require 懒加载，RNW/缺库时 start() 返回 false 不崩。
  *
  * [WHO] 导出 `BleStatus`/`BleSensorSource`/`CATUNE_BLE`/`createBleSensorSource`
  * [FROM] 依赖 `react-native`(PermissionsAndroid/Platform)、`react-native-ble-plx`(懒加载)、./engine(PostureEngine 类型)
@@ -33,7 +33,7 @@ export type BleSensorSource = {
   onStatus: (cb: (s: BleStatus, info?: string) => void) => void;
 };
 
-// react-native-ble-plx 懒加载（原生才有；web/缺库时为 null）
+// react-native-ble-plx 懒加载（原生才有；RNW/缺库时为 null）
 let BleManagerCtor: (new () => any) | null = null;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires

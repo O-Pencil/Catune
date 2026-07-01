@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Theme token usage: 扫描 src/ui 下 .tsx/.ts 中 StyleSheet.create 或样式对象，
+ * Theme token usage: 扫描 src/design 下 .tsx/.ts 中 StyleSheet.create 或样式对象，
  * 统计 token field（padding/margin/gap/borderRadius/fontSize 等）的"硬编码 vs 引用 token"占比。
  * 判定规则：
  *   - tokenized: 字段值为 theme.X / theme.spacing.X / spacing.X / radius.X / font.sizeX 等命名空间引用
@@ -9,7 +9,7 @@
 import {readFileSync, readdirSync, statSync} from 'node:fs';
 import {join, extname} from 'node:path';
 
-const ROOT = 'src/ui';
+const ROOT = 'src/design';
 const EXTS = new Set(['.ts', '.tsx']);
 const TOKEN_FIELDS = new Set([
   'padding', 'paddingHorizontal', 'paddingVertical', 'paddingTop', 'paddingBottom', 'paddingLeft', 'paddingRight',
