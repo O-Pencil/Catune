@@ -14,6 +14,7 @@
 | `i18n/` | 国际化（en.ts / zh.ts / LocaleContext / types / format） |
 | `primitives/` | 基础组件（Card / Button / IconButton / Badge / Chip / SegmentedControl / Field / SwitchRow / ListItem / Section / ProgressBar / Stack） |
 | `motion/` | Android/RN 动效入口（MotionView / FadeInView / ScalePressable，底层 Reanimated） |
+| `preview/` | 固定状态预览沙盒（PreviewApp + states），用于 vibe UI/UX |
 | `icons/` | 自绘 SVG 图标（DeviceIcon / BatteryIcon / ...） |
 | `assets/` | 静态资源（catAnchors / leanAtlas） |
 
@@ -24,6 +25,7 @@
 - **P3 头部**：每个 .tsx/.ts 都有 `[WHO/FROM/TO/HERE]` 头部（55/55，见 `doc-p3-header-coverage`）。
 - **零业务逻辑**：状态/打分在 `src/posture/`；UI 只渲染 `DashboardState`。
 - **动效入口**：Android 主线动效统一从 `src/design/motion` 引入；不要在页面里散落 Reanimated worklet。
+- **预览入口**：调 UI 状态先跑 `npm run preview`；新增可视状态时同步补 `src/design/preview/states.ts`。
 
 ## 关键页面
 

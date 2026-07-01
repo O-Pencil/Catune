@@ -32,7 +32,7 @@ npm run dev        # Expo Web，日常 UI/交互 vibe coding
 npm run dev:mobile # Expo Go / 真机
 npm run dev:android
 npm run dev:ios
-npm run preview    # W2 后可用，单页组件预览（URL ?preview=1）
+npm run preview    # 固定状态沙盒：坐姿/离线/模型状态/中英切换
 ```
 
 ### 2.2 验证命令
@@ -53,7 +53,7 @@ node scripts/check-no-color-literal.mjs  # 色值字面量（warn-only，W1 7-04
 ## 3. 目录边界
 
 ```text
-src/design/      # UI 层：组件库、screens、theme、i18n、primitives、motion
+src/design/      # UI 层：组件库、screens、theme、i18n、primitives、motion、preview
 src/posture/     # 纯 TS 业务核心：姿态规则、打分、建议、训练、成长、日报
 src/platform/    # 平台适配：DeviceMotion、BLE、WS、Vibration、FileSystem、memory
 src/mnn/         # 端侧模型：下载、设备推荐、推理流式客户端、原生调试边界
@@ -89,11 +89,12 @@ docs/            # 联调 / 硬件 / API 等工程文档（8 份已恢复）
 ## 5. UI 工作流
 
 1. 用 `npm run dev` 打开 Expo Web。
-2. 按 `.agents/skills/catune-product-design/SKILL.md` 确认这次是 Shape / Implement / Review / Copy / Harden。
-3. 改 `src/design/screens/*` 或 `src/design/components/*`；优先复用 `src/design/primitives/*`。
-4. 抽出重复视觉模式到 `src/design/components/` 或 `src/design/primitives/`。
-5. 需要跨屏统一的视觉变量时，先加到 `src/design/theme/`；需要动画时先看 `src/design/motion/`。
-6. 完成后跑 `npm run tsc:rn`、`npm test -- --runInBand`、`npm run lint`、`npm run design:check`。
+2. 需要固定状态调 UI 时，用 `npm run preview` 进入 Preview Sandbox。
+3. 按 `.agents/skills/catune-product-design/SKILL.md` 确认这次是 Shape / Implement / Review / Copy / Harden。
+4. 改 `src/design/screens/*` 或 `src/design/components/*`；优先复用 `src/design/primitives/*`。
+5. 抽出重复视觉模式到 `src/design/components/` 或 `src/design/primitives/`。
+6. 需要跨屏统一的视觉变量时，先加到 `src/design/theme/`；需要动画时先看 `src/design/motion/`。
+7. 完成后跑 `npm run tsc:rn`、`npm test -- --runInBand`、`npm run lint`、`npm run design:check`。
 
 ---
 

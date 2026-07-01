@@ -32,6 +32,7 @@ import {createWsSensorSource, WsSensorSource, WsStatus} from './src/platform/wsS
 import {createWsSenderSource, WsSenderSource} from './src/platform/wsSenderSource';
 import {DashboardState} from './src/posture/types';
 import {Locale, LocaleProvider, tr, useT} from './src/design/i18n';
+import {PreviewApp} from './src/design/preview';
 import * as Device from 'expo-device';
 
 function buildInitialState(locale: Locale): DashboardState {
@@ -52,6 +53,16 @@ function buildInitialState(locale: Locale): DashboardState {
 
 type Mode = 'loading' | 'sensor' | 'mock' | 'ble' | 'ws' | 'ws-send';
 
+function isPreviewMode(): boolean {
+  const envPreview =
+    typeof process !== 'undefined' && process.env && process.env.EXPO_PUBLIC_CATUNE_PREVIEW === '1';
+  const queryPreview =
+    Platform.OS === 'web' &&
+    typeof globalThis.location !== 'undefined' &&
+    new URLSearchParams(globalThis.location.search).get('preview') === '1';
+  return envPreview || queryPreview;
+}
+
 function App(): React.JSX.Element {
   // 加载 Fredoka 字体（圆润可爱标题字体）
   const [fontsLoaded] = useFonts({
@@ -67,6 +78,7 @@ function App(): React.JSX.Element {
   });
 
   const [launchSeen, setLaunchSeen] = useState<boolean | null>(null);
+  const previewMode = isPreviewMode();
 
   // locale state 独立于 useRef 容器，让 engine / growth 通过 getter 拿到当前值
   const [locale, setLocaleState] = useState<Locale>('en');
@@ -183,8 +195,11 @@ function App(): React.JSX.Element {
   };
 
   useEffect(() => {
+    if (previewMode) {
+      return;
+    }
     loadLaunchSeen().then(setLaunchSeen);
-  }, []);
+  }, [previewMode]);
 
   useEffect(() => {
     if (launchSeen !== true) {
@@ -241,10 +256,12 @@ function App(): React.JSX.Element {
 
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
-      {!fontsLoaded || launchSeen === null ? (
+      {!fontsLoaded || (!previewMode && launchSeen === null) ? (
         <View style={styles.loading}>
           <ActivityIndicator size="small" color="#141414" />
         </View>
+      ) : previewMode ? (
+        <PreviewApp />
       ) : !launchSeen ? (
         <LocaleProvider locale={locale} onChange={handleLocaleChange}>
           <LaunchScreen onStart={handleLaunchStart} />

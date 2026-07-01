@@ -51,6 +51,7 @@ type Props = {
   onUseWsSend?: () => void;
   onCalibrate?: () => void;
   onScenario: (s: MockScenario) => void;
+  disableOnboarding?: boolean;
 };
 
 export function AppShell({
@@ -70,6 +71,7 @@ export function AppShell({
   onUseWsSend,
   onCalibrate,
   onScenario,
+  disableOnboarding = false,
 }: Props): React.JSX.Element {
   const t = useT();
   const TABS: Tab[] = useMemo(
@@ -110,8 +112,12 @@ export function AppShell({
 
   useEffect(() => {
     resumePendingDownloadIfNeeded();
+    if (disableOnboarding) {
+      setOnboarded(true);
+      return;
+    }
     memory.ready.then(() => setOnboarded(memory.isOnboarded()));
-  }, [memory]);
+  }, [disableOnboarding, memory]);
 
   const shellBg = shellBackgroundForTab(tab);
 

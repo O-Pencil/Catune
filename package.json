@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "expo start --web",
+    "preview": "EXPO_PUBLIC_CATUNE_PREVIEW=1 expo start --web",
     "dev:mobile": "expo start",
     "dev:android": "expo run:android",
     "dev:ios": "expo run:ios",
