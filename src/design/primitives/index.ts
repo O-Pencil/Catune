@@ -39,4 +39,7 @@ export * from './toggle-group';
 export * from './tooltip';
 
 // Catune 老 API 兼容层（运行时映射到 reusables）
-export {Button, Chip, Field, SegmentedControl} from './compat';
+// 不从 barrel export Button 避免覆盖 reusables 原生 Button
+// 老 screen 直接从 '@/design/primitives/compat' import 旧 API
+export * from './button';
+export {Chip, Field, SegmentedControl} from './compat';

@@ -12,7 +12,8 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {Platform, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {theme} from '../theme';
-import {Button, Card, Chip, Field, SegmentedControl} from '../primitives';
+import {Button as LegacyButton} from '../primitives/compat';
+import {Card, Chip, Field, SegmentedControl} from '../primitives';
 import {ModelDownloadCard} from '../components/ModelDownloadCard';
 import {BenchmarkPanel} from './BenchmarkScreen';
 import {MockScenario, SCENARIOS} from '../../posture/mock';
@@ -140,7 +141,7 @@ function AssessConfigCard(): React.JSX.Element {
         </View>
       ) : null}
 
-      <Button
+      <LegacyButton
         style={styles.saveButton}
         loading={saveState === 'saving'}
         disabled={saveState === 'saving'}
@@ -254,16 +255,16 @@ function WsConfigCard({
         <Text style={[styles.hint, {marginTop: theme.spacing.sm}]}>{WS_MAPPING_HINT[cfg.mapping]}</Text>
       ) : null}
       {isSender && onUseWsSend ? (
-        <Button style={styles.saveButton} label={connected ? '重新发送' : '开始发送'} onPress={onUseWsSend} />
+        <LegacyButton style={styles.saveButton} label={connected ? '重新发送' : '开始发送'} onPress={onUseWsSend} />
       ) : onUseWs ? (
-        <Button style={styles.saveButton} label={connected ? '重新连接' : '连接'} onPress={onUseWs} />
+        <LegacyButton style={styles.saveButton} label={connected ? '重新连接' : '连接'} onPress={onUseWs} />
       ) : null}
       <Text style={styles.hint}>
         状态：{WS_STATUS_LABEL[activeStatus ?? 'idle']}
         {isSender && activeStatus === 'error' && wsSendInfo ? `（${wsSendInfo}）` : ''}
       </Text>
       {!isSender && mode === 'ws' && wsStatus === 'connected' && onCalibrate ? (
-        <Button style={styles.saveButton} label="坐直校准" onPress={onCalibrate} />
+        <LegacyButton style={styles.saveButton} label="坐直校准" onPress={onCalibrate} />
       ) : null}
     </Card>
   );
@@ -502,7 +503,7 @@ export function SettingsScreen({
           <View>
             <Text style={styles.hint}>{t('settings.ble.hint', {status: t(BLE_STATUS_KEY[bleStatus ?? 'idle'])})}</Text>
             {bleStatus === 'connected' && onCalibrate ? (
-              <Button style={styles.saveButton} label={t('settings.ble.calibrate')} onPress={onCalibrate} />
+              <LegacyButton style={styles.saveButton} label={t('settings.ble.calibrate')} onPress={onCalibrate} />
             ) : null}
           </View>
         ) : (

@@ -4,36 +4,79 @@
 
 @layer base {
   :root {
-    /* Catune 品牌橙 primary → HSL: #FB4B00 ≈ 18°, 100%, 49% */
-    --background: 0 0% 100%;
+    /* ============================================================
+     * Catune 浅色 Haptic 主题 — 完整对齐 src/design/theme/colors.ts
+     * 所有色值都来自 Catune 原 hex，HSL 由 hex 精确转换
+     * ============================================================ */
+
+    /* 背景 / 表面 — 对齐 colors.ts 14 个 token */
+    /* background: #F2F0EC (暖中性 canvas) ≈ 30 14% 94% */
+    --background: 30 14% 94%;
+    /* foreground: #141414 ≈ 0 0% 8% (textPrimary) */
     --foreground: 0 0% 8%;
+    /* card: #FFFFFF */
     --card: 0 0% 100%;
     --card-foreground: 0 0% 8%;
+    /* popover: #FFFFFF */
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 8%;
-    --primary: 18 100% 49%;
-    --primary-foreground: 0 0% 100%;
+    /* secondary: 24 33% 95% (近似 #FBF1ED,reusables 默认) */
     --secondary: 24 33% 95%;
+    /* secondary-foreground: #141414 */
     --secondary-foreground: 0 0% 8%;
+    /* muted: #F5F5F5 ≈ 0 0% 96% (≈ surfaceMuted) */
     --muted: 0 0% 96%;
+    /* muted-foreground: #666666 (textSecondary) */
     --muted-foreground: 0 0% 40%;
+    /* accent: 同 primary */
     --accent: 18 100% 49%;
     --accent-foreground: 0 0% 100%;
+
+    /* 品牌橙 — #FB4B00 ≈ 18° 100% 49% */
+    --primary: 18 100% 49%;
+    /* primaryLight: #FFA060 ≈ 22° 100% 68% */
+    --primary-light: 22 100% 68%;
+    /* primaryFg: #FFF0EA ≈ 18° 100% 96% (primary 上的文字背景色) */
+    --primary-foreground: 18 100% 96%;
+
+    /* destructive = statusAlert #C75348 ≈ 5° 56% 53% */
     --destructive: 5 56% 53%;
     --destructive-foreground: 0 0% 100%;
+
+    /* 边框 / 输入框 — #E5E5E5 ≈ 0 0% 90% */
     --border: 0 0% 90%;
     --input: 0 0% 90%;
+    /* ring — 同 primary */
     --ring: 18 100% 49%;
 
-    /* Catune 扩展语义 token */
+    /* ============================================================
+     * Catune 扩展语义 token（保留品牌橙 + 姿态状态色）
+     * ============================================================ */
+    /* surfaceMuted: #F5F5F5 ≈ 0 0% 96% */
     --surface-muted: 0 0% 96%;
+    /* neutralStart: #FFFFFF（渐变起始） */
+    --neutral-start: 0 0% 100%;
+    /* neutralEnd: #E5E5E5（渐变结束）≈ 0 0% 90% */
+    --neutral-end: 0 0% 90%;
+    /* textSecondary: #666666 ≈ 0 0% 40% */
     --text-secondary: 0 0% 40%;
+    /* textMuted: #9B9590 ≈ 20° 7% 60% */
     --text-muted: 20 7% 60%;
+
+    /* 姿态状态色 — 对齐 DeskPage STATUS_COLORS */
+    /* statusNormal: #7BA05B ≈ 87° 27% 49% (healthy 暖鼠尾草绿) */
     --status-normal: 87 27% 49%;
+    /* statusWarning: #FB4B00 = primary */
     --status-warning: 18 100% 49%;
+    /* statusAlert: #C75348 ≈ 5° 56% 53% (alert 黏土红) */
     --status-alert: 5 56% 53%;
+    /* statusOffline: #AFA8A0 ≈ 30° 7% 65% */
     --status-offline: 30 7% 65%;
 
+    /* ============================================================
+     * 圆角 — 对齐 colors.radius（sm=8 / md=12 / lg=16 / pill）
+     * ============================================================ */
+    /* radius 默认 lg = 16px */
     --radius: 1rem;
   }
 }
