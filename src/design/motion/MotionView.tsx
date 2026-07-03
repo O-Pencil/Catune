@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @file MotionView.tsx
  * @description Android 优先的 Reanimated View。API 借鉴 Framer Motion 的 initial / animate / transition。

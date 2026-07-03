@@ -1,144 +1,106 @@
-/**
- * @file Button.tsx
- * @description 移动端命令按钮：主按钮 / 次按钮 / 轻按钮 / 危险按钮，支持 loading、disabled、图标与全宽。
- *
- * [WHO] 导出 `Button`、`ButtonVariant`、`ButtonSize`
- * [FROM] 依赖 `react`、`react-native`、`../theme`
- * [TO] 被 src/design screens/components 作为通用操作按钮复用
- * [HERE] src/design/primitives/Button.tsx · 基础按钮
- */
-import React from 'react';
-import {
-  ActivityIndicator,
-  GestureResponderEvent,
-  Pressable,
-  StyleProp,
-  StyleSheet,
-  Text,
-  TextStyle,
-  View,
-  ViewStyle,
-} from 'react-native';
-import {theme} from '../theme';
+import { TextClassContext } from '@/design/primitives/text';
+import { cn } from '@/lib/utils';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { Platform, Pressable } from 'react-native';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
-export type ButtonSize = 'sm' | 'md' | 'lg';
+const buttonVariants = cva(
+  cn(
+    'group shrink-0 flex-row items-center justify-center gap-2 rounded-md shadow-none',
+    Platform.select({
+      web: "focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive whitespace-nowrap outline-none transition-all focus-visible:ring-[3px] disabled:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0",
+    })
+  ),
+  {
+    variants: {
+      variant: {
+        default: cn(
+          'bg-primary active:bg-primary/90 shadow-sm shadow-black/5',
+          Platform.select({ web: 'hover:bg-primary/90' })
+        ),
+        destructive: cn(
+          'bg-destructive active:bg-destructive/90 dark:bg-destructive/60 shadow-sm shadow-black/5',
+          Platform.select({
+            web: 'hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40',
+          })
+        ),
+        outline: cn(
+          'border-border bg-background active:bg-accent dark:bg-input/30 dark:border-input dark:active:bg-input/50 border shadow-sm shadow-black/5',
+          Platform.select({
+            web: 'hover:bg-accent dark:hover:bg-input/50',
+          })
+        ),
+        secondary: cn(
+          'bg-secondary active:bg-secondary/80 shadow-sm shadow-black/5',
+          Platform.select({ web: 'hover:bg-secondary/80' })
+        ),
+        ghost: cn(
+          'active:bg-accent dark:active:bg-accent/50',
+          Platform.select({ web: 'hover:bg-accent dark:hover:bg-accent/50' })
+        ),
+        link: '',
+      },
+      size: {
+        default: cn('h-10 px-4 py-2 sm:h-9', Platform.select({ web: 'has-[>svg]:px-3' })),
+        sm: cn('h-9 gap-1.5 rounded-md px-3 sm:h-8', Platform.select({ web: 'has-[>svg]:px-2.5' })),
+        lg: cn('h-11 rounded-md px-6 sm:h-10', Platform.select({ web: 'has-[>svg]:px-4' })),
+        icon: 'h-10 w-10 sm:h-9 sm:w-9',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+      size: 'default',
+    },
+  }
+);
 
-type Props = {
-  label: string;
-  onPress?: (event: GestureResponderEvent) => void;
-  variant?: ButtonVariant;
-  size?: ButtonSize;
-  disabled?: boolean;
-  loading?: boolean;
-  fullWidth?: boolean;
-  leftIcon?: React.ReactNode;
-  rightIcon?: React.ReactNode;
-  accessibilityLabel?: string;
-  style?: StyleProp<ViewStyle>;
-  textStyle?: StyleProp<TextStyle>;
-};
+const buttonTextVariants = cva(
+  cn(
+    'text-foreground text-sm font-medium',
+    Platform.select({ web: 'pointer-events-none transition-colors' })
+  ),
+  {
+    variants: {
+      variant: {
+        default: 'text-primary-foreground',
+        destructive: 'text-white',
+        outline: cn(
+          'group-active:text-accent-foreground',
+          Platform.select({ web: 'group-hover:text-accent-foreground' })
+        ),
+        secondary: 'text-secondary-foreground',
+        ghost: 'group-active:text-accent-foreground',
+        link: cn(
+          'text-primary group-active:underline',
+          Platform.select({ web: 'underline-offset-4 hover:underline group-hover:underline' })
+        ),
+      },
+      size: {
+        default: '',
+        sm: '',
+        lg: '',
+        icon: '',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+      size: 'default',
+    },
+  }
+);
 
-const VARIANT_STYLE: Record<ButtonVariant, {container: ViewStyle; text: TextStyle; loader: string}> = {
-  primary: {
-    container: {backgroundColor: theme.colors.primary, borderColor: theme.colors.primary},
-    text: {color: '#FFFFFF'},
-    loader: '#FFFFFF',
-  },
-  secondary: {
-    container: {backgroundColor: theme.colors.surfaceMuted, borderColor: theme.colors.border},
-    text: {color: theme.colors.textPrimary},
-    loader: theme.colors.primary,
-  },
-  ghost: {
-    container: {backgroundColor: 'transparent', borderColor: 'transparent'},
-    text: {color: theme.colors.primary},
-    loader: theme.colors.primary,
-  },
-  danger: {
-    container: {backgroundColor: '#FFF1EF', borderColor: '#F2C8C3'},
-    text: {color: theme.colors.statusAlert},
-    loader: theme.colors.statusAlert,
-  },
-};
+type ButtonProps = React.ComponentProps<typeof Pressable> & React.RefAttributes<typeof Pressable> & VariantProps<typeof buttonVariants>;
 
-const SIZE_STYLE: Record<ButtonSize, {container: ViewStyle; text: TextStyle; icon: number}> = {
-  sm: {
-    container: {minHeight: 36, paddingHorizontal: theme.spacing.md2, paddingVertical: theme.spacing.sm},
-    text: {fontSize: theme.font.sizeXs},
-    icon: 16,
-  },
-  md: {
-    container: {minHeight: 44, paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.sm2},
-    text: {fontSize: theme.font.sizeSm},
-    icon: 18,
-  },
-  lg: {
-    container: {minHeight: 52, paddingHorizontal: theme.spacing.xl, paddingVertical: theme.spacing.md},
-    text: {fontSize: theme.font.sizeMd},
-    icon: 20,
-  },
-};
-
-export function Button({
-  label,
-  onPress,
-  variant = 'primary',
-  size = 'md',
-  disabled = false,
-  loading = false,
-  fullWidth = false,
-  leftIcon,
-  rightIcon,
-  accessibilityLabel,
-  style,
-  textStyle,
-}: Props): React.JSX.Element {
-  const stateDisabled = disabled || loading;
-  const variantStyle = VARIANT_STYLE[variant];
-  const sizeStyle = SIZE_STYLE[size];
-
+function Button({ className, variant, size, ...props }: ButtonProps) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{disabled: stateDisabled, busy: loading}}
-      disabled={stateDisabled}
-      onPress={onPress}
-      style={({pressed}) => [
-        styles.button,
-        variantStyle.container,
-        sizeStyle.container,
-        fullWidth && styles.fullWidth,
-        stateDisabled && styles.disabled,
-        pressed && !stateDisabled && styles.pressed,
-        style,
-      ]}>
-      {loading ? <ActivityIndicator size="small" color={variantStyle.loader} /> : leftIcon ? <View style={styles.icon}>{leftIcon}</View> : null}
-      <Text style={[styles.label, variantStyle.text, sizeStyle.text, textStyle]} numberOfLines={1}>
-        {label}
-      </Text>
-      {!loading && rightIcon ? <View style={styles.icon}>{rightIcon}</View> : null}
-    </Pressable>
+    <TextClassContext.Provider value={buttonTextVariants({ variant, size })}>
+      <Pressable
+        className={cn(props.disabled && 'opacity-50', buttonVariants({ variant, size }), className)}
+        role="button"
+        {...props}
+      />
+    </TextClassContext.Provider>
   );
 }
 
-const styles = StyleSheet.create({
-  button: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-    borderWidth: 1,
-    borderRadius: theme.radius.md,
-  },
-  fullWidth: {alignSelf: 'stretch'},
-  disabled: {opacity: 0.5},
-  pressed: {opacity: 0.78},
-  label: {
-    fontFamily: theme.font.bodyBold,
-    fontWeight: theme.font.weightBold,
-    flexShrink: 1,
-  },
-  icon: {alignItems: 'center', justifyContent: 'center'},
-});
+export { Button, buttonTextVariants, buttonVariants };
+export type { ButtonProps };

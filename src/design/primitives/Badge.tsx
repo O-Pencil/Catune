@@ -1,60 +1,66 @@
-/**
- * @file Badge.tsx
- * @description 状态徽章：用于 ready/warning/error/muted 等短状态，不承担主要操作。
- *
- * [WHO] 导出 `Badge`、`BadgeTone`
- * [FROM] 依赖 `react`、`react-native`、`../theme`
- * [TO] 被 src/design screens/components 展示状态与标签
- * [HERE] src/design/primitives/Badge.tsx · 状态徽章
- */
-import React from 'react';
-import {StyleProp, StyleSheet, Text, View, ViewStyle} from 'react-native';
-import {theme} from '../theme';
+import { TextClassContext } from '@/design/primitives/text';
+import { cn } from '@/lib/utils';
+import { Slot } from '@rn-primitives/slot';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { Platform, View } from 'react-native';
 
-export type BadgeTone = 'neutral' | 'brand' | 'success' | 'warning' | 'danger';
+const badgeVariants = cva(
+  cn(
+    'border-border group shrink-0 flex-row items-center justify-center gap-1 overflow-hidden rounded-full border px-2 py-0.5',
+    Platform.select({
+      web: 'focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive w-fit whitespace-nowrap transition-[color,box-shadow] focus-visible:ring-[3px] [&>svg]:pointer-events-none [&>svg]:size-3',
+    })
+  ),
+  {
+    variants: {
+      variant: {
+        default: cn(
+          'bg-primary border-transparent',
+          Platform.select({ web: '[a&]:hover:bg-primary/90' })
+        ),
+        secondary: cn(
+          'bg-secondary border-transparent',
+          Platform.select({ web: '[a&]:hover:bg-secondary/90' })
+        ),
+        destructive: cn(
+          'bg-destructive border-transparent',
+          Platform.select({ web: '[a&]:hover:bg-destructive/90' })
+        ),
+        outline: Platform.select({ web: '[a&]:hover:bg-accent [a&]:hover:text-accent-foreground' }),
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+    },
+  }
+);
 
-type Props = {
-  label: string;
-  tone?: BadgeTone;
-  icon?: React.ReactNode;
-  style?: StyleProp<ViewStyle>;
-};
+const badgeTextVariants = cva('text-xs font-medium', {
+  variants: {
+    variant: {
+      default: 'text-primary-foreground',
+      secondary: 'text-secondary-foreground',
+      destructive: 'text-white',
+      outline: 'text-foreground',
+    },
+  },
+  defaultVariants: {
+    variant: 'default',
+  },
+});
 
-const TONE: Record<BadgeTone, {bg: string; fg: string}> = {
-  neutral: {bg: theme.colors.surfaceMuted, fg: theme.colors.textSecondary},
-  brand: {bg: '#FCEAE0', fg: theme.colors.primary},
-  success: {bg: '#E9F8EE', fg: '#1B7A3E'},
-  warning: {bg: '#FFF4DC', fg: '#9A6400'},
-  danger: {bg: '#FFF1EF', fg: theme.colors.statusAlert},
-};
+type BadgeProps = React.ComponentProps<typeof View> & React.RefAttributes<View> & {
+  asChild?: boolean;
+} & VariantProps<typeof badgeVariants>;
 
-export function Badge({label, tone = 'neutral', icon, style}: Props): React.JSX.Element {
-  const colors = TONE[tone];
+function Badge({ className, variant, asChild, ...props }: BadgeProps) {
+  const Component = asChild ? Slot : View;
   return (
-    <View style={[styles.badge, {backgroundColor: colors.bg}, style]}>
-      {icon}
-      <Text style={[styles.text, {color: colors.fg}]} numberOfLines={1}>
-        {label}
-      </Text>
-    </View>
+    <TextClassContext.Provider value={badgeTextVariants({ variant })}>
+      <Component className={cn(badgeVariants({ variant }), className)} {...props} />
+    </TextClassContext.Provider>
   );
 }
 
-const styles = StyleSheet.create({
-  badge: {
-    alignSelf: 'flex-start',
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: theme.spacing.xs,
-    borderRadius: theme.radius.pill,
-    paddingHorizontal: theme.spacing.sm2,
-    paddingVertical: theme.spacing.xxs,
-    maxWidth: '100%',
-  },
-  text: {
-    fontSize: theme.font.sizeXs,
-    fontFamily: theme.font.bodyBold,
-    fontWeight: theme.font.weightBold,
-    flexShrink: 1,
-  },
-});
+export { Badge, badgeTextVariants, badgeVariants };
+export type { BadgeProps };

@@ -1,27 +1,55 @@
-/**
- * @file Card.tsx
- * @description Haptic 卡片：白底、柔和阴影、圆角、细边（对齐 web shadcn Card 的拟物质感）。
- *
- * [WHO] 导出 `Card`
- * [FROM] 依赖 `react`、`react-native`(View)、`../theme`
- * [TO] 被各屏/组件包内容
- * [HERE] src/design/primitives/Card.tsx · 卡片
- */
-import React from 'react';
-import {StyleProp, StyleSheet, View, ViewStyle} from 'react-native';
-import {theme} from '../theme';
+import { Text, TextClassContext } from '@/design/primitives/text';
+import { cn } from '@/lib/utils';
+import { View } from 'react-native';
 
-export function Card({children, style}: {children: React.ReactNode; style?: StyleProp<ViewStyle>}): React.JSX.Element {
-  return <View style={[styles.card, style]}>{children}</View>;
+function Card({ className, ...props }: React.ComponentProps<typeof View> & React.RefAttributes<View>) {
+  return (
+    <TextClassContext.Provider value="text-card-foreground">
+      <View
+        className={cn(
+          'bg-card border-border flex flex-col gap-6 rounded-xl border py-6 shadow-sm shadow-black/5',
+          className
+        )}
+        {...props}
+      />
+    </TextClassContext.Provider>
+  );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.lg,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    ...theme.shadow.card,
-  },
-});
+function CardHeader({ className, ...props }: React.ComponentProps<typeof View> & React.RefAttributes<View>) {
+  return <View className={cn('flex flex-col gap-1.5 px-6', className)} {...props} />;
+}
+
+function CardTitle({
+  className,
+  ref,
+  ...props
+}: React.ComponentProps<typeof Text> & React.RefAttributes<typeof Text>) {
+
+  return (
+    <Text
+      ref={ref}
+      role="heading"
+      aria-level={3}
+      className={cn('font-semibold leading-none', className)}
+      {...props}
+    />
+  );
+}
+
+function CardDescription({
+  className,
+  ...props
+}: React.ComponentProps<typeof Text> & React.RefAttributes<typeof Text>) {
+  return <Text className={cn('text-muted-foreground text-sm', className)} {...props} />;
+}
+
+function CardContent({ className, ...props }: React.ComponentProps<typeof View> & React.RefAttributes<View>) {
+  return <View className={cn('px-6', className)} {...props} />;
+}
+
+function CardFooter({ className, ...props }: React.ComponentProps<typeof View> & React.RefAttributes<View>) {
+  return <View className={cn('flex flex-row items-center px-6', className)} {...props} />;
+}
+
+export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle };

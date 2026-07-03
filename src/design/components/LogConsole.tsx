@@ -13,7 +13,7 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {theme} from '../theme';
-import {Card} from '../primitives/Card';
+import {Card} from '@/design/primitives';
 import {clearLog, LogCategory, LogEntry, subscribeLog} from '../../debug/logBus';
 import {useT} from '../i18n';
 

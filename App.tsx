@@ -10,9 +10,11 @@
  * UI 全在 src/design（RN 原语，RNW 兼容）；逻辑全在 src/posture。web(RNW) 无本机 IMU → 优先 WS 接收，失败回退 mock。
  * 端侧 Qwen+MNN 为安卓原生支线，默认不编 native。
  */
+import './global.css';
 import React, {useEffect, useRef, useState} from 'react';
 import {ActivityIndicator, Platform, StyleSheet, View} from 'react-native';
 import {SafeAreaProvider, initialWindowMetrics} from 'react-native-safe-area-context';
+import {PortalHost} from '@rn-primitives/portal';
 import {useFonts, Fredoka_400Regular, Fredoka_500Medium, Fredoka_600SemiBold, Fredoka_700Bold} from '@expo-google-fonts/fredoka';
 import {Geist_400Regular, Geist_500Medium, Geist_700Bold} from '@expo-google-fonts/geist';
 import {Quicksand_600SemiBold, Quicksand_700Bold} from '@expo-google-fonts/quicksand';
@@ -256,6 +258,7 @@ function App(): React.JSX.Element {
 
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <PortalHost />
       {!fontsLoaded || (!previewMode && launchSeen === null) ? (
         <View style={styles.loading}>
           <ActivityIndicator size="small" color="#141414" />

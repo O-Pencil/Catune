@@ -20,7 +20,7 @@ import {
   runMnnBenchmark,
 } from '../../mnn/nativeDebugClient';
 import {colors, theme} from '../theme';
-import {Card} from '../primitives/Card';
+import {Card} from '@/design/primitives';
 import {useT} from '../i18n';
 
 type MetricScope = 'idle' | 'infer' | 'bench';

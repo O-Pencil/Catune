@@ -12,7 +12,7 @@
 import React from 'react';
 import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import {theme} from '../theme';
-import {Card} from '../primitives/Card';
+import {Card} from '@/design/primitives';
 import {LogConsole} from '../components/LogConsole';
 import {DashboardState} from '../../posture/types';
 import {DataMode} from './SettingsScreen';

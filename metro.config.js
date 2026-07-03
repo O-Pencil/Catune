@@ -1,4 +1,10 @@
-// Expo SDK 54 标准 metro 配置（iOS / Android / Web 通用）。
+// Expo SDK 54 + NativeWind + react-native-reusables
 const {getDefaultConfig} = require('expo/metro-config');
+const {withNativeWind} = require('nativewind/metro');
 
-module.exports = getDefaultConfig(__dirname);
+const config = getDefaultConfig(__dirname);
+
+module.exports = withNativeWind(config, {
+  input: './global.css',
+  inlineRem: 16,
+});

@@ -1,0 +1,39 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Catune 品牌橙 primary → HSL: #FB4B00 ≈ 18°, 100%, 49% */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 8%;
+    --primary: 18 100% 49%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 24 33% 95%;
+    --secondary-foreground: 0 0% 8%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 18 100% 49%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 5 56% 53%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 18 100% 49%;
+
+    /* Catune 扩展语义 token */
+    --surface-muted: 0 0% 96%;
+    --text-secondary: 0 0% 40%;
+    --text-muted: 20 7% 60%;
+    --status-normal: 87 27% 49%;
+    --status-warning: 18 100% 49%;
+    --status-alert: 5 56% 53%;
+    --status-offline: 30 7% 65%;
+
+    --radius: 1rem;
+  }
+}

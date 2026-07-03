@@ -1,21 +1,42 @@
 /**
- * @file index.ts
- * @description primitives 桶文件：移动端基础组件统一入口。
+ * Primitives barrel：react-native-reusables 组件库统一入口 + Catune 老 API 兼容层。
  *
- * [WHO] 导出 Card / Button / IconButton / Badge / Chip / SegmentedControl / Field / SwitchRow / ListItem / Section / ProgressBar / Stack
- * [FROM] 依赖同目录基础组件
- * [TO] 被 src/design screens/components 作为设计系统 primitives 入口
- * [HERE] src/design/primitives/index.ts · 基础组件统一导出
+ * - 上面 export * from './xxx' 是 reusables 32 个组件
+ * - 下面从 './compat' 导出 Catune 老 API（Button/Chip/Field/SegmentedControl），
+ *   内部包装到 reusables，screen 暂时不需要改 import。
  */
-export {Card} from './Card';
-export {Button, type ButtonSize, type ButtonVariant} from './Button';
-export {IconButton} from './IconButton';
-export {Badge, type BadgeTone} from './Badge';
-export {Chip} from './Chip';
-export {SegmentedControl, type SegmentedOption} from './SegmentedControl';
-export {Field} from './Field';
-export {SwitchRow} from './SwitchRow';
-export {ListItem} from './ListItem';
-export {Section} from './Section';
-export {ProgressBar} from './ProgressBar';
-export {Stack, Inline} from './Stack';
+export * from './accordion';
+export * from './alert';
+export * from './alert-dialog';
+export * from './aspect-ratio';
+export * from './avatar';
+export * from './badge';
+export * from './button';
+export * from './card';
+export * from './checkbox';
+export * from './collapsible';
+export * from './context-menu';
+export * from './dialog';
+export * from './dropdown-menu';
+export * from './hover-card';
+export * from './icon';
+export * from './input';
+export * from './label';
+export * from './menubar';
+export * from './native-only-animated-view';
+export * from './popover';
+export * from './progress';
+export * from './radio-group';
+export * from './select';
+export * from './separator';
+export * from './skeleton';
+export * from './switch';
+export * from './tabs';
+export * from './text';
+export * from './textarea';
+export * from './toggle';
+export * from './toggle-group';
+export * from './tooltip';
+
+// Catune 老 API 兼容层（运行时映射到 reusables）
+export {Button, Chip, Field, SegmentedControl} from './compat';

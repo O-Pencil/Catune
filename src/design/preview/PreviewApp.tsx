@@ -8,11 +8,10 @@
  * [HERE] src/design/preview/PreviewApp.tsx · Agent/vibe coding 预览入口
  */
 import React, {useMemo, useRef, useState} from 'react';
-import {ScrollView, StyleSheet, Text, View} from 'react-native';
+import {ScrollView, StyleSheet, Text, View, Pressable} from 'react-native';
 
 import {AppShell} from '../AppShell';
 import {Locale, LocaleProvider} from '../i18n';
-import {SegmentedControl} from '../primitives';
 import {theme} from '../theme';
 import {createMemoryService} from '../../platform/memory/service';
 import {MockScenario} from '../../posture/mock';
@@ -38,6 +37,41 @@ const SCENARIO_TO_MOCK: Record<PreviewScenarioId, MockScenario> = {
   streaming: 'SLUMPED',
   fallback: 'TECH_NECK',
 };
+
+/** Inline 轻量 SegmentedControl（reusables 没现成的，保留 Catune API 兼容）。 */
+function SegmentedControl<T extends string>({
+  options,
+  value,
+  onChange,
+}: {
+  options: Array<{value: T; label: string}>;
+  value: T;
+  onChange: (v: T) => void;
+}): React.JSX.Element {
+  return (
+    <View className="bg-muted flex h-9 flex-row items-center rounded-lg p-[3px]">
+      {options.map(opt => {
+        const active = opt.value === value;
+        return (
+          <Pressable
+            key={opt.value}
+            onPress={() => onChange(opt.value)}
+            className={
+              'h-[calc(100%-1px)] flex-row items-center justify-center rounded-md px-2 py-1 ' +
+              (active ? 'bg-background' : '')
+            }>
+            <Text
+              className={
+                'text-sm ' + (active ? 'text-foreground font-semibold' : 'text-muted-foreground')
+              }>
+              {opt.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
 
 export function PreviewApp(): React.JSX.Element {
   const memory = useRef(createMemoryService()).current;

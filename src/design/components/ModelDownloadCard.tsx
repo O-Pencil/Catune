@@ -33,7 +33,7 @@ import {
   recommendModel,
 } from '../../mnn/deviceProfile';
 import {theme} from '../theme';
-import {Card} from '../primitives/Card';
+import {Card} from '@/design/primitives';
 import {useLocale, useT} from '../i18n';
 
 type Props = {

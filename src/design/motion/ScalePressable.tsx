@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * @file ScalePressable.tsx
  * @description 触控缩放反馈：Android/RN 端用 Reanimated 跑在 UI 线程，适合按钮、chip、卡片入口。

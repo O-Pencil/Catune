@@ -13,7 +13,7 @@
 import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {GrowthState} from '../../posture/growth';
-import {Card} from '../primitives/Card';
+import {Card} from '@/design/primitives';
 import {theme} from '../theme';
 import {useT} from '../i18n';
 import {DailyReportPanel} from './DailyReportPanel';
