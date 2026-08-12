@@ -27,9 +27,18 @@ DerivedData
 build/
 .idea
 .gradle
+.gradle-local/
 local.properties
 *.iml
 *.hprof
+
+# Local Android/MNN validation artifacts (too large for regular Git).
+output/*.apk
+output/mnn-repair-*.bin
+output/mnn-embedding-chunks/
+output/mnn-direct-prompt.txt
+output/*PPT*-预览/
+android/hs_err_pid*.log
 .cxx/
 *.keystore
 !debug.keystore

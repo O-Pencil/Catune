@@ -58,6 +58,12 @@ describe('actionTag.parse', () => {
     expect(r.text).toBe('Hi');
   });
 
+  it('strips full-width and repeated action tags', () => {
+    const r = parseActionTag('抬起胸口。【动作：胸椎后凸】 [动作:胸椎伸展]', 'zh');
+    expect(r.action).toBe('THORACIC_EXTENSION');
+    expect(r.text).toBe('抬起胸口。');
+  });
+
   it('handles English colon `:` and full-width colon `：`', () => {
     expect(parseActionTag('hi [Action:Tuck chin]', 'en').action).toBe('NECK_RETRACTION');
     expect(parseActionTag('hi [Action：Tuck chin]', 'en').action).toBe('NECK_RETRACTION');

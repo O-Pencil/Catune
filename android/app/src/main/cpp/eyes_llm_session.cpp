@@ -319,7 +319,17 @@ std::string EyesLlmSession::infer(
         partial_.append(s, n);
     });
     std::ostream stream_os(&stream_buffer);
-    llm->response(prompt, &stream_os);
+    constexpr int kMaxNewTokens = 64;
+    llm->response(prompt, &stream_os, nullptr, 0);
+    auto* generating_context = llm->getContext();
+    while (!llm->stoped() &&
+           generating_context != nullptr &&
+           generating_context->gen_seq_len < kMaxNewTokens) {
+        llm->generate(1);
+        if (generating_context->status == LlmStatus::INTERNAL_ERROR) {
+            break;
+        }
+    }
 
     const auto* context = llm->getContext();
     if (context != nullptr) {

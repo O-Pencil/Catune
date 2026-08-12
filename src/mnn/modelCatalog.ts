@@ -17,6 +17,8 @@ export type MnnModelDef = {
   subdir: string;
   baseUrl: string;
   files: readonly string[];
+  /** 文件最小字节数；用于拒绝下载中断后留下的错误页或截断文件。 */
+  minimumFileBytes?: Readonly<Record<string, number>>;
   /** emulator=模拟器联调；device=真机推荐；sme2=SME2 验收用大模型 */
   tags: readonly ('emulator' | 'device' | 'sme2')[];
   /** 视觉模型（VL）：走 analyzeImage 图像路径用于体态评估；不作为文本教练默认。 */
@@ -48,17 +50,26 @@ const MNN_FILE_SET = [
 // ⚠ 下载前务必核对所选 HF 仓库实际文件名（不同导出可能为 visual.mnn 单文件或含 .weight），否则下载会 404。
 const VL_FILE_SET = [...MNN_FILE_SET, 'visual.mnn', 'visual.mnn.weight'] as const;
 
-// 注：之前这里有 'embeddings_bf16.bin'。Qwen3-1.7B 仓库没有该文件（404），
-// 0.5B / VL 的 llm.mnn.weight 已包含全部 embedding 权重，单独下载反而浪费 265MB+ 流量。已移除。
+const QWEN25_05B_FILE_SET = [...MNN_FILE_SET, 'embeddings_bf16.bin'] as const;
+
+const QWEN25_05B_MINIMUM_BYTES: Readonly<Record<string, number>> = {
+  'config.json': 100,
+  'llm_config.json': 200,
+  'llm.mnn': 500_000,
+  'llm.mnn.weight': 270_000_000,
+  'tokenizer.txt': 3_000_000,
+  'embeddings_bf16.bin': 270_000_000,
+};
 
 export const MODEL_CATALOG: readonly MnnModelDef[] = [
   {
     id: 'qwen2.5-0.5b',
     label: 'Qwen2.5-0.5B',
-    sizeHint: '~290MB',
+    sizeHint: '~557MB',
     subdir: `${MNN_MODELS_ROOT}qwen2.5-0.5b/`,
     baseUrl: 'https://huggingface.co/taobao-mnn/Qwen2.5-0.5B-Instruct-MNN/resolve/main/',
-    files: MNN_FILE_SET,
+    files: QWEN25_05B_FILE_SET,
+    minimumFileBytes: QWEN25_05B_MINIMUM_BYTES,
     tags: ['emulator', 'device'],
     emulatorNote: '模拟器可跑通下载与 UI；INT4 推理易出现乱码，中文质量以真机为准。',
     emulatorNoteKey: 'device.model.emulatorNote.qwen25_05b',

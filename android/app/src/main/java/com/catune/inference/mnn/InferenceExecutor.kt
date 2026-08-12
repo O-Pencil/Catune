@@ -20,6 +20,16 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Serializes native MNN load/infer on a single background thread.
  */
 object InferenceExecutor {
+    private const val CACHE_PREFIX = "mnn_infer-"
+    private val cacheFingerprintFiles = listOf(
+        "config.json",
+        "llm_config.json",
+        "llm.mnn",
+        "llm.mnn.weight",
+        "tokenizer.txt",
+        "embeddings_bf16.bin",
+    )
+
     private val dispatcher = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "eyes-mnn-infer").apply { isDaemon = true }
     }.asCoroutineDispatcher()
@@ -70,7 +80,7 @@ object InferenceExecutor {
             return@run false
         }
 
-        val cacheDir = File(context.cacheDir, "mnn_infer").apply { mkdirs() }
+        val cacheDir = resolveModelCacheDir(context, modelDir)
         val ok = MnnPerceptionEngine.nativeInit(configFile.absolutePath, cacheDir.absolutePath)
         if (!ok) {
             loadError = MnnPerceptionEngine.getLastError() ?: "nativeInit failed"
@@ -82,6 +92,23 @@ object InferenceExecutor {
         loadedConfigPath = configPath
         loadError = null
         true
+    }
+
+    private fun resolveModelCacheDir(context: Context, modelDir: File): File {
+        val signature = cacheFingerprintFiles.joinToString("|") { name ->
+            val file = File(modelDir, name)
+            "$name:${file.length()}:${file.lastModified()}"
+        }
+        val fingerprint = Integer.toUnsignedString(signature.hashCode(), 16)
+        val activeDir = File(context.cacheDir, "$CACHE_PREFIX$fingerprint")
+
+        context.cacheDir.listFiles()
+            ?.filter { it.isDirectory && (it.name == "mnn_infer" || it.name.startsWith(CACHE_PREFIX)) }
+            ?.filterNot { it == activeDir }
+            ?.forEach(File::deleteRecursively)
+
+        activeDir.mkdirs()
+        return activeDir
     }
 
     suspend fun release() = run {

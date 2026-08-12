@@ -86,13 +86,13 @@ export const zh: Dict = {
   'action.HOLD': '保持',
 
   // ── engine advice templates (ruleFallback) ──────────────────────────────
-  'advice.action.neck_retraction': '头部有些前倾，试着收下巴、让耳朵回到肩膀正上方，做几次颈部回缩。',
-  'advice.action.thoracic_extension': '上背有点含胸驼背，挺一下胸椎、打开肩膀，做几次胸椎伸展。',
-  'advice.action.scapular_retraction': '身体向一侧偏，把重心摆正、肩胛骨向后向下收一收。',
-  'advice.action.weight_centering': '身体偏了，骨盆摆正，让两侧坐骨均匀受力。',
-  'advice.normal': '坐姿不错，保持脊柱自然中立，继续加油。',
-  'advice.fallback': '注意调整坐姿，让脊柱回到自然中立位，必要时起身活动一下。',
-  'advice.severitySuffix': '久坐挺久啦，起来走两步。',
+  'advice.action.neck_retraction': '头有点往前探啦，轻轻收下巴，让耳朵回到肩膀上方。',
+  'advice.action.thoracic_extension': '上背有点塌下来啦，把胸口轻轻抬起，肩膀放松。',
+  'advice.action.scapular_retraction': '身子有点偏啦，把重心移回中间，两边坐稳。',
+  'advice.action.weight_centering': '身子有点偏啦，把重心移回中间，两边坐稳。',
+  'advice.normal': '现在坐得很稳，肩膀放松，继续保持就好。',
+  'advice.fallback': '稍微坐高一点，肩膀放松，让身体回到舒服的位置。',
+  'advice.severitySuffix': '坐得有点久啦，也可以起来走两步。',
 
   // ── exercise routines (TrainingScreen) ─────────────────────────────────
   'exercise.NECK_RETRACTION.title': '颈部回缩',

@@ -126,4 +126,26 @@ describe('engine.locale-emits', () => {
     expect(engine.getState().inferenceSource).toBe('MODEL');
     expect(engine.getState().advice).toContain('Hello from model');
   });
+
+  it('falls back when final model advice exposes internal action metadata', () => {
+    const engine = createPostureEngine({getLocale: () => 'zh'});
+    engine.update(0, 20, 0);
+    engine.setModelAdvice(
+      '建议动作：调整坐姿（SIT）；【动作：胸椎后凸】；建议动作调整坐姿。',
+      {streaming: false},
+    );
+
+    expect(engine.getState().inferenceSource).toBe('RULE_FALLBACK');
+    expect(engine.getState().advice).toBe('上背有点塌下来啦，把胸口轻轻抬起，肩膀放松。');
+    expect(engine.getState().advice).not.toContain('SIT');
+  });
+
+  it('keeps concise natural model advice after stripping its action tag', () => {
+    const engine = createPostureEngine({getLocale: () => 'zh'});
+    engine.update(25, 0, 0);
+    engine.setModelAdvice('脑袋有点探出去啦，轻轻收下巴哦～ [动作:颈部回缩]', {streaming: false});
+
+    expect(engine.getState().inferenceSource).toBe('MODEL');
+    expect(engine.getState().advice).toBe('脑袋有点探出去啦，轻轻收下巴哦～');
+  });
 });

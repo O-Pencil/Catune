@@ -16,16 +16,20 @@ import {tr, type Locale} from '../design/i18n';
 import {PostureAction, PostureName, SpineNode} from './types';
 
 /** 标签前缀（接受中英文 + 中英冒号），与训练 prompt 中 `[动作:xxx]` / `[Action:xxx]` 兼容。 */
-const TAG_RE = /\[(动作|Action)[:：]\s*([^\]]+?)\s*\]/u;
+// Escapes keep ASCII brackets unambiguous next to their full-width variants.
+// eslint-disable-next-line no-useless-escape
+const TAG_RE = /[\[【](动作|Action)[:：]\s*([^\]】]+?)\s*[\]】]/gu;
 
 /** 未闭合碎片：`[动作:xxx`（流式中只到一半）需要截掉，避免显示半截标签。 */
-const UNCLOSED_TAG_RE = /\s*\[(动作|Action)[:：]?[^\]]*$/u;
+// eslint-disable-next-line no-useless-escape
+const UNCLOSED_TAG_RE = /\s*[\[【](动作|Action)[:：]?[^\]】]*$/u;
 
 /** zh 同义词词典（容错）。仅模型输出解析使用。 */
 const ACTION_BY_LABEL_ZH: Record<string, PostureAction> = {
   颈部回缩: 'NECK_RETRACTION',
   收下巴: 'NECK_RETRACTION',
   胸椎伸展: 'THORACIC_EXTENSION',
+  胸椎后凸: 'THORACIC_EXTENSION',
   挺胸: 'THORACIC_EXTENSION',
   肩胛收紧: 'SCAPULAR_RETRACTION',
   重心摆正: 'WEIGHT_CENTERING',
@@ -103,12 +107,10 @@ export function parseActionTag(raw: string, locale: Locale = 'en'): {text: strin
   const dict = ACTION_BY_LABEL_BY_LOCALE[locale] ?? ACTION_BY_LABEL_EN;
   let action: PostureAction | null = null;
   let text = raw;
-  const full = raw.match(TAG_RE);
-  if (full) {
-    const label = full[2].trim();
-    action = dict[label] ?? null;
-    text = raw.replace(full[0], '');
-  }
+  text = raw.replace(TAG_RE, (_tag, _prefix: string, rawLabel: string) => {
+    action = action ?? dict[rawLabel.trim()] ?? null;
+    return '';
+  });
   // 流式中标签可能只到一半，截掉尾部未闭合碎片
   text = text.replace(UNCLOSED_TAG_RE, '');
   return {text: text.trim(), action};

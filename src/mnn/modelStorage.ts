@@ -80,6 +80,10 @@ function fileSizeBytes(info: FileSystem.FileInfo): number {
 
 export {modelDir, fileSizeBytes};
 
+export function minimumModelFileBytes(model: MnnModelDef, fileName: string): number {
+  return model.minimumFileBytes?.[fileName] ?? 1;
+}
+
 export async function getModelInstallState(docDir: string, model: MnnModelDef): Promise<ModelInstallState> {
   const dir = modelDir(docDir, model);
   const config = await FileSystem.getInfoAsync(dir + 'config.json');
@@ -88,7 +92,7 @@ export async function getModelInstallState(docDir: string, model: MnnModelDef): 
   }
   for (const file of model.files) {
     const info = await FileSystem.getInfoAsync(dir + file);
-    if (!info.exists || fileSizeBytes(info) < 1) {
+    if (!info.exists || fileSizeBytes(info) < minimumModelFileBytes(model, file)) {
       return 'partial';
     }
   }

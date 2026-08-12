@@ -47,6 +47,16 @@
         }
       ],
       "expo-font",
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": false,
+          "modes": [
+            "central"
+          ],
+          "bluetoothAlwaysPermission": "用于连接 Catune 姿态带并读取坐姿传感器数据。"
+        }
+      ],
       "./plugins/withCatuneMnn.js",
       "expo-asset"
     ]

@@ -51,7 +51,7 @@ export function AssessScreen({onClose, onGoSettings}: {onClose: () => void; onGo
       if (!perm.granted) {
         return;
       }
-      const opts = {mediaTypes: ImagePicker.MediaTypeOptions.Images, base64: true, quality: 0.6} as const;
+      const opts = {mediaTypes: ImagePicker.MediaTypeOptions.Images, base64: true, quality: 0.9} as const;
       const res = fromCamera
         ? await ImagePicker.launchCameraAsync(opts)
         : await ImagePicker.launchImageLibraryAsync(opts);
@@ -114,7 +114,7 @@ export function AssessScreen({onClose, onGoSettings}: {onClose: () => void; onGo
 
         {phase === 'loading' ? (
           <View style={styles.loading}>
-            {imageUri ? <Image source={{uri: imageUri}} style={styles.preview} resizeMode="cover" /> : null}
+            {imageUri ? <Image source={{uri: imageUri}} style={styles.preview} resizeMode="contain" /> : null}
             <ActivityIndicator color={theme.colors.primary} style={{marginTop: theme.spacing.xl}} />
             <Text style={styles.loadingText}>{t('assess.loading.hint')}</Text>
           </View>

@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Catune 决赛演讲稿</title>
+  <style>
+    :root {
+      --blue: #2046f5;
+      --blue-deep: #142ea8;
+      --ink: #14182b;
+      --muted: #5f6781;
+      --line: #dfe5f7;
+      --green: #18a66a;
+      --orange: #ff7a24;
+      --surface: rgba(255, 255, 255, 0.94);
+    }
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif; color: var(--ink); background: #0c1022; }
+    button { font: inherit; }
+    .stage { position: relative; width: 100%; height: 100%; display: grid; place-items: center; }
+    .deck { position: relative; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9; overflow: hidden; background: #f6f8ff; box-shadow: 0 24px 80px rgba(0,0,0,.45); }
+    .slide { position: absolute; inset: 0; display: none; padding: 5.4% 7.3% 5.7%; background: #f7f8ff url("pitch-assets/template-bg.png") center/cover no-repeat; }
+    .slide.active { display: block; }
+    .cover { padding: 0; background: #eef1ff url("pitch-assets/template-cover.png") center/cover no-repeat; }
+    .cover-panel { position: absolute; left: 9.2%; bottom: 8.5%; width: 39%; padding: 2.1% 2.4%; color: white; background: rgba(20,46,168,.94); border-left: 10px solid var(--orange); }
+    .cover-panel h1 { margin: 0; font-size: clamp(28px, 4.2vw, 78px); line-height: 1; }
+    .cover-panel p { margin: 1.2% 0 0; font-size: clamp(12px, 1.55vw, 28px); line-height: 1.45; }
+    .eyebrow { margin: 0 0 1.1% 27%; color: var(--blue); font-size: clamp(12px, 1.2vw, 23px); font-weight: 800; }
+    h2 { margin: 0; max-width: 78%; font-size: clamp(28px, 3.2vw, 60px); line-height: 1.12; }
+    .lead { margin: 1.2% 0 0; max-width: 76%; color: var(--muted); font-size: clamp(14px, 1.35vw, 25px); line-height: 1.45; }
+    .content { position: absolute; left: 7.3%; right: 7.3%; top: 26%; bottom: 8%; }
+    .grid-2 { display: grid; grid-template-columns: 1.05fr .95fr; gap: 4.2%; align-items: center; height: 100%; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.3%; align-items: stretch; height: 38%; }
+    .content.grid-3 { bottom: auto; }
+    .point { padding: 4.6% 0; border-top: 2px solid var(--line); }
+    .point:first-child { border-top: 0; }
+    .point strong { display: block; margin-bottom: 1.2%; font-size: clamp(17px, 1.65vw, 31px); }
+    .point span { color: var(--muted); font-size: clamp(12px, 1.15vw, 22px); line-height: 1.55; }
+    .band { position: relative; padding: 6.8% 6%; background: var(--surface); border-top: 7px solid var(--blue); box-shadow: 0 12px 36px rgba(34,57,137,.11); }
+    .band.orange { border-color: var(--orange); }
+    .band.green { border-color: var(--green); }
+    .band .num { color: var(--blue); font-size: clamp(26px, 3vw, 56px); font-weight: 900; }
+    .band h3 { margin: 4% 0 3%; font-size: clamp(16px, 1.55vw, 29px); }
+    .band p { margin: 0; color: var(--muted); font-size: clamp(11px, 1.05vw, 20px); line-height: 1.5; }
+    .flow { display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; gap: 1.1%; height: 65%; }
+    .flow-item { min-height: 58%; padding: 8% 7%; display: flex; flex-direction: column; justify-content: center; background: white; border-top: 6px solid var(--blue); box-shadow: 0 12px 30px rgba(34,57,137,.1); }
+    .flow-item strong { font-size: clamp(15px, 1.45vw, 27px); }
+    .flow-item small { margin-top: 9%; color: var(--muted); font-size: clamp(10px, .9vw, 17px); line-height: 1.4; }
+    .arrow { color: var(--blue); text-align: center; font-size: clamp(18px, 2vw, 36px); font-weight: 900; }
+    .architecture { display: grid; grid-template-columns: 1fr 1.25fr 1fr; gap: 2%; align-items: center; height: 100%; }
+    .layer { padding: 7%; background: white; border: 2px solid var(--line); }
+    .layer.core { border: 3px solid var(--blue); box-shadow: 0 14px 40px rgba(32,70,245,.15); }
+    .layer h3 { margin: 0 0 6%; font-size: clamp(16px, 1.55vw, 29px); }
+    .layer p { margin: 3% 0; color: var(--muted); font-size: clamp(11px, 1vw, 19px); line-height: 1.45; }
+    .terminal { padding: 5%; color: #eaf0ff; background: #111a3a; border-left: 8px solid var(--green); font-family: Consolas, monospace; font-size: clamp(12px, 1.05vw, 20px); line-height: 1.65; }
+    .terminal b { color: #75f0b8; }
+    .proof-list { display: grid; gap: 7%; }
+    .proof { display: grid; grid-template-columns: 5.2rem 1fr; align-items: start; gap: 3%; }
+    .proof .status { color: var(--blue); font-weight: 900; font-size: clamp(15px, 1.3vw, 25px); }
+    .proof strong { font-size: clamp(14px, 1.35vw, 25px); }
+    .proof p { margin: 1% 0 0; color: var(--muted); font-size: clamp(11px, 1vw, 19px); line-height: 1.45; }
+    .phone-shot { height: 100%; display: flex; align-items: center; justify-content: center; }
+    .phone-shot img { max-height: 96%; max-width: 100%; object-fit: contain; filter: drop-shadow(0 22px 32px rgba(20,30,80,.2)); }
+    .hardware { display: grid; grid-template-columns: .9fr 1.15fr; gap: 5%; align-items: center; height: 100%; }
+    .sensor { padding: 7%; background: white; border: 2px solid var(--line); }
+    .sensor h3 { margin: 0 0 4%; font-size: clamp(18px, 1.7vw, 32px); }
+    .sensor code { display: block; margin: 4% 0; color: var(--blue-deep); font-size: clamp(12px, 1.1vw, 20px); }
+    .sensor p { margin: 0; color: var(--muted); font-size: clamp(11px, 1vw, 19px); line-height: 1.5; }
+    .demo { display: grid; grid-template-columns: 1.1fr .9fr; gap: 4%; height: 100%; align-items: center; }
+    .demo-steps { counter-reset: demo; display: grid; gap: 4%; }
+    .demo-step { counter-increment: demo; display: grid; grid-template-columns: 3.5rem 1fr; align-items: center; padding: 2.5% 0; border-bottom: 2px solid var(--line); }
+    .demo-step::before { content: counter(demo, decimal-leading-zero); color: var(--blue); font-size: clamp(18px, 2vw, 36px); font-weight: 900; }
+    .demo-step strong { font-size: clamp(14px, 1.35vw, 25px); }
+    .demo-step span { display: block; margin-top: 1%; color: var(--muted); font-size: clamp(10px, .95vw, 18px); }
+    .final-line { margin-top: 5%; padding-left: 4%; border-left: 10px solid var(--orange); font-size: clamp(22px, 2.6vw, 48px); font-weight: 900; line-height: 1.25; }
+    .tag { display: inline-block; margin: 2.5% 1% 0 0; padding: 1.1% 2%; color: white; background: var(--blue); font-size: clamp(11px, 1vw, 19px); font-weight: 800; }
+    .tag.green { background: var(--green); }
+    .tag.orange { background: var(--orange); }
+    .slide-no { position: absolute; right: 5.2%; bottom: 3.6%; color: #8b93ad; font-size: clamp(10px, .8vw, 15px); font-weight: 700; }
+    .time { position: absolute; right: 7.3%; top: 7.3%; color: var(--blue); font-size: clamp(10px, .9vw, 17px); font-weight: 800; }
+    .controls { position: fixed; left: 50%; bottom: 16px; z-index: 20; display: flex; align-items: center; gap: 8px; transform: translateX(-50%); padding: 7px; background: rgba(8,12,28,.82); }
+    .controls button { width: 40px; height: 36px; border: 0; color: white; background: transparent; cursor: pointer; font-size: 24px; }
+    .controls button:hover { background: rgba(255,255,255,.15); }
+    .counter { min-width: 70px; color: white; text-align: center; font-size: 13px; }
+    .notes { position: fixed; top: 0; right: 0; bottom: 0; z-index: 30; width: min(430px, 92vw); display: none; padding: 28px; overflow: auto; color: #eef2ff; background: rgba(10,14,35,.97); box-shadow: -20px 0 50px rgba(0,0,0,.35); }
+    .notes.open { display: block; }
+    .notes h3 { margin: 0 0 18px; font-size: 20px; }
+    .notes p { white-space: pre-line; color: #c7cfea; font-size: 15px; line-height: 1.7; }
+    @media print {
+      html, body { height: auto; overflow: visible; background: white; }
+      .stage, .deck { display: block; width: 100%; height: auto; box-shadow: none; }
+      .slide { position: relative; display: block; width: 100%; aspect-ratio: 16/9; page-break-after: always; }
+      .controls, .notes { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="stage">
+    <div class="deck" id="deck">
+      <section class="slide cover active" data-note="20 秒。开场只说一句：Catune 是一个不依赖摄像头、在手机本地完成判断和反馈的坐姿教练。不要在封面展开技术。">
+        <div class="cover-panel">
+          <h1>Catune</h1>
+          <p>让坐姿问题从“事后发现”变成“发生时即可纠正”</p>
+        </div>
+      </section>
+
+      <section class="slide" data-note="55 秒。用户不是不知道正确坐姿，而是不知道自己何时开始前倾。对比定时站立提醒和持续摄像头：前者不知道坐姿质量，后者有隐私压力。Catune 只采集 IMU 姿态，不拍人。">
+        <p class="eyebrow">01 · 痛点与创意</p>
+        <h2>久坐真正的问题，是坏姿态发生时没人提醒</h2>
+        <p class="lead">不使用持续摄像头，用轻量 IMU 感知前倾、含胸和侧倾，在本地完成判断与反馈。</p>
+        <div class="content grid-3">
+          <div class="band"><div class="num">01</div><h3>定时提醒不懂姿态</h3><p>知道坐了多久，却不知道此刻坐得怎么样。</p></div>
+          <div class="band orange"><div class="num">02</div><h3>摄像头不适合办公室</h3><p>持续拍摄带来隐私压力，也增加网络依赖。</p></div>
+          <div class="band green"><div class="num">03</div><h3>反馈必须立刻可做</h3><p>提醒发生在姿态变差的当下，并给出 30 秒动作。</p></div>
+        </div>
+        <span class="time">0:55</span><span class="slide-no">02 / 09</span>
+      </section>
+
+      <section class="slide" data-note="70 秒。强调闭环，而不是单点识别。规则引擎决定姿态、分数、阈值和冷却；Qwen 只把确定结果翻译成自然语言。模型失败，监测和提醒仍工作。">
+        <p class="eyebrow">02 · 产品闭环</p>
+        <h2>从一个四元数，到一次可执行的纠正</h2>
+        <p class="lead">数据、判断、提醒、行动和复盘形成离线可用的完整链路。</p>
+        <div class="content flow">
+          <div class="flow-item"><strong>姿态采样</strong><small>BNO085 / 手机 IMU / mock</small></div><div class="arrow">→</div>
+          <div class="flow-item"><strong>规则判断</strong><small>状态、分数、持续时间</small></div><div class="arrow">→</div>
+          <div class="flow-item"><strong>温和提醒</strong><small>猫姿态、震动、短文案</small></div><div class="arrow">→</div>
+          <div class="flow-item"><strong>30 秒跟练</strong><small>动作标签驱动训练</small></div><div class="arrow">→</div>
+          <div class="flow-item"><strong>成长复盘</strong><small>植物、日报与周报</small></div>
+        </div>
+        <span class="time">1:10</span><span class="slide-no">03 / 09</span>
+      </section>
+
+      <section class="slide" data-note="65 秒。讲清三层边界：平台层接硬件和原生能力，纯 TS 规则层负责确定性，设计层负责交互。Qwen + MNN 是表达增强，不覆盖规则。MCP 不在 Catune 主链，不要为了模板硬讲。">
+        <p class="eyebrow">03 · 技术架构</p>
+        <h2>规则负责确定性，端侧 Qwen 负责表达</h2>
+        <p class="lead">一套 TypeScript 跑 Android、iOS 与 Web；硬件和 MNN 通过平台适配层隔离。</p>
+        <div class="content architecture">
+          <div class="layer"><h3>数据与平台</h3><p>ESP32-S3 + BNO085</p><p>BLE / WS / DeviceMotion</p><p>Vibration / FileSystem</p></div>
+          <div class="layer core"><h3>确定性核心</h3><p>姿态状态机与评分</p><p>异常持续与冷却</p><p>动作标签、安全过滤、规则兜底</p><p><strong>模型不可用，核心闭环仍然运行</strong></p></div>
+          <div class="layer"><h3>端侧智能与体验</h3><p>Qwen + MNN 流式生成</p><p>设备分级与模型管理</p><p>Desk / Plant / Training / Report</p></div>
+        </div>
+        <span class="time">1:05</span><span class="slide-no">04 / 09</span>
+      </section>
+
+      <section class="slide" data-note="65 秒。左边讲已经有的工程证据，右边讲决赛验收标准。不要把历史 NEON 数据说成新 SME2 手机成绩。完成实测后，把右侧三行替换成真实截图或 logcat。">
+        <p class="eyebrow">04 · 端侧证明</p>
+        <h2>端侧 AI 不是口号，证据分成“库、硬件、运行时”三层</h2>
+        <p class="lead">只有 `hw=true`、`lib=true`、运行日志 `sme2:1` 同时成立，才对外声称 SME2 加速。</p>
+        <div class="content grid-2">
+          <div class="proof-list">
+            <div class="proof"><div class="status">已完成</div><div><strong>MNN 原生文本与流式桥</strong><p>模型下载、切换、Benchmark、规则兜底已接入 App。</p></div></div>
+            <div class="proof"><div class="status">已完成</div><div><strong>LoRA 场景训练与对比</strong><p>动作标签 100%，7/7 测试样例发生有效变化。</p></div></div>
+            <div class="proof"><div class="status">待复验</div><div><strong>新 SME2 手机中文与性能</strong><p>当前 APK 输出非中文，决赛口径以新实测为准。</p></div></div>
+          </div>
+          <div class="terminal">$ catune benchmark<br><br>model&nbsp;&nbsp;&nbsp; Qwen2.5-0.5B<br>hw_sme2&nbsp; <b>待真机截图</b><br>lib_sme2 <b>true</b><br>backend&nbsp;&nbsp; <b>待真机截图</b><br>output&nbsp;&nbsp;&nbsp; <b>待中文复验</b><br>decode&nbsp;&nbsp;&nbsp; <b>待 3 次均值</b></div>
+        </div>
+        <span class="time">1:05</span><span class="slide-no">05 / 09</span>
+      </section>
+
+      <section class="slide" data-note="55 秒。展示面包板和串口/蓝牙实物时放这一页。单节点不是妥协：协议原生支持 nodeId 0/1/2，先用胸节点闭环，App 用胸椎 pitch、腰部 roll，并推算颈部角度。完成后替换右侧“待验收”为实拍。">
+        <p class="eyebrow">05 · 真实硬件</p>
+        <h2>先把单节点闭环做实，再扩展到颈、胸、腰三节点</h2>
+        <p class="lead">同一份 17 字节 BLE 协议，把 BNO085 四元数稳定送进姿态引擎。</p>
+        <div class="content hardware">
+          <div class="sensor"><h3>ESP32-S3 + BNO085</h3><code>VIN→3V3 · SDA→GPIO8 · SCL→GPIO9</code><p>固件 50Hz 采样，默认胸椎 Node-T；断连后重新广播，App 自动降级。</p></div>
+          <div class="terminal">I2C scan<br><b>0x4A &lt;- BNO085</b><br>BNO085 OK<br>Catune-Node advertising<br><br>BLE notify: [nodeId][qw qx qy qz]<br>App: calibrate → engine.update<br><br><b>现场证据位：待接线与录屏</b></div>
+        </div>
+        <span class="time">0:55</span><span class="slide-no">06 / 09</span>
+      </section>
+
+      <section class="slide" data-note="55 秒。产品价值不是把模型参数展示给用户，而是让人一眼知道现在怎么坐、下一步做什么、长期有没有改善。这里展示当前 App 视觉。">
+        <p class="eyebrow">06 · 用户价值</p>
+        <h2>低打扰、可执行、能坚持</h2>
+        <p class="lead">黑猫把抽象角度变成直觉反馈，植物把长期改善变成看得见的积累。</p>
+        <div class="content grid-2">
+          <div>
+            <div class="point"><strong>当下看得懂</strong><span>猫的姿态跟随传感器变化，异常时才震动。</span></div>
+            <div class="point"><strong>下一步做得到</strong><span>每次只给一个 30 秒动作，不打断工作节奏。</span></div>
+            <div class="point"><strong>长期愿意坚持</strong><span>日报、周报和植物成长形成非惩罚式反馈。</span></div>
+          </div>
+          <div class="phone-shot"><img src="../public/design.png" alt="Catune App 仪表盘"></div>
+        </div>
+        <span class="time">0:55</span><span class="slide-no">07 / 09</span>
+      </section>
+
+      <section class="slide" data-note="120 秒现场 Demo。步骤不要临场发挥：1 连接；2 坐直校准；3 身体前倾；4 展示猫、角度、震动、建议；5 恢复坐直；6 点进跟练。任何一步超过 10 秒，直接切录屏或 Preview Sandbox。">
+        <p class="eyebrow">07 · 现场 Demo</p>
+        <h2>两分钟，只证明一件事：真实姿态变化能闭环</h2>
+        <p class="lead">现场主线用真实单节点；录屏与 Preview Sandbox 是无缝兜底。</p>
+        <div class="content demo">
+          <div class="demo-steps">
+            <div class="demo-step"><div><strong>连接 Catune-Node</strong><span>Settings 显示 BLE connected</span></div></div>
+            <div class="demo-step"><div><strong>坐直并校准</strong><span>当前四元数记为零点</span></div></div>
+            <div class="demo-step"><div><strong>身体前倾</strong><span>Monitor 角度与 Desk 猫同步变化</span></div></div>
+            <div class="demo-step"><div><strong>触发提醒与跟练</strong><span>规则瞬时反馈，Qwen 异步改写文案</span></div></div>
+          </div>
+          <div class="phone-shot"><img src="../public/cat-center.png" alt="Catune 黑猫主视觉"></div>
+        </div>
+        <span class="time">2:00</span><span class="slide-no">08 / 09</span>
+      </section>
+
+      <section class="slide" data-note="55 秒。收束为三件事：隐私友好的真实传感器、确定性规则闭环、端侧 Qwen 表达。下一步只讲三节点和经过真机验证的 SME2/VL，不再扩散新功能。最后停在一句话上。">
+        <p class="eyebrow">08 · 总结</p>
+        <h2>Catune 把硬件感知、确定性规则和端侧 Qwen 合成一个可用产品</h2>
+        <p class="lead">核心闭环默认离线，模型失败可降级，隐私和可用性不互相牺牲。</p>
+        <div class="content grid-2">
+          <div>
+            <span class="tag">真实 IMU</span><span class="tag green">本地规则</span><span class="tag orange">端侧 Qwen</span>
+            <div class="final-line">让坐姿问题从“事后发现”变成“发生时即可纠正”。</div>
+          </div>
+          <div class="phone-shot"><img src="../public/plant.png" alt="Catune 植物成长"></div>
+        </div>
+        <span class="time">0:55</span><span class="slide-no">09 / 09</span>
+      </section>
+    </div>
+  </main>
+
+  <nav class="controls" aria-label="演讲控制">
+    <button id="prev" title="上一页" aria-label="上一页">‹</button>
+    <span class="counter" id="counter">1 / 9</span>
+    <button id="next" title="下一页" aria-label="下一页">›</button>
+    <button id="notesButton" title="讲稿" aria-label="讲稿">≡</button>
+    <button id="fullButton" title="全屏" aria-label="全屏">□</button>
+  </nav>
+  <aside class="notes" id="notes"><h3 id="noteTitle">第 1 页讲稿</h3><p id="noteText"></p></aside>
+
+  <script>
+    const slides = [...document.querySelectorAll('.slide')];
+    const counter = document.getElementById('counter');
+    const notes = document.getElementById('notes');
+    const noteTitle = document.getElementById('noteTitle');
+    const noteText = document.getElementById('noteText');
+    let index = 0;
+    function show(next) {
+      index = (next + slides.length) % slides.length;
+      slides.forEach((slide, i) => slide.classList.toggle('active', i === index));
+      counter.textContent = `${index + 1} / ${slides.length}`;
+      noteTitle.textContent = `第 ${index + 1} 页讲稿`;
+      noteText.textContent = slides[index].dataset.note || '';
+      history.replaceState(null, '', `#${index + 1}`);
+    }
+    document.getElementById('prev').addEventListener('click', () => show(index - 1));
+    document.getElementById('next').addEventListener('click', () => show(index + 1));
+    document.getElementById('notesButton').addEventListener('click', () => notes.classList.toggle('open'));
+    document.getElementById('fullButton').addEventListener('click', () => document.documentElement.requestFullscreen?.());
+    document.addEventListener('keydown', (event) => {
+      if (['ArrowRight', 'PageDown', ' '].includes(event.key)) show(index + 1);
+      if (['ArrowLeft', 'PageUp'].includes(event.key)) show(index - 1);
+      if (event.key.toLowerCase() === 'n') notes.classList.toggle('open');
+      if (event.key === 'Escape') notes.classList.remove('open');
+    });
+    const initial = Number(location.hash.slice(1));
+    show(Number.isFinite(initial) && initial > 0 ? initial - 1 : 0);
+  </script>
+</body>
+</html>

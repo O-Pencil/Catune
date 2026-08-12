@@ -15,6 +15,7 @@ import {getDefaultModel, getModelById, MnnModelDef} from './modelCatalog';
 import {
   deleteModelFiles,
   fileSizeBytes,
+  minimumModelFileBytes,
   formatBytes,
   modelDir,
   readDownloadState,
@@ -161,7 +162,8 @@ async function downloadModelFiles(
     const target = dir + fileName;
     const existing = await FileSystem.getInfoAsync(target);
     const existingSize = existing.exists ? fileSizeBytes(existing) : 0;
-    if (existingSize > 0 && fileName !== 'llm.mnn.weight') {
+    const minimumBytes = minimumModelFileBytes(model, fileName);
+    if (existingSize >= minimumBytes) {
       setSnapshot({
         progress: (i + 1) / fileCount,
         currentFile: fileName,
@@ -171,6 +173,9 @@ async function downloadModelFiles(
       pending = {modelId: model.id, fileIndex: i + 1, inProgress: true, updatedAt: Date.now()};
       await writeDownloadState(docDir, i + 1 >= fileCount ? null : pending);
       continue;
+    }
+    if (existingSize > 0) {
+      await FileSystem.deleteAsync(target, {idempotent: true});
     }
 
     setSnapshot({currentFile: fileName, speedBps: 0, bytesWritten: 0, totalBytes: 0});
@@ -197,6 +202,12 @@ async function downloadModelFiles(
       }
       if (!result) {
         throw new Error(`下载失败：${fileName}`);
+      }
+      const downloaded = await FileSystem.getInfoAsync(target);
+      const downloadedSize = downloaded.exists ? fileSizeBytes(downloaded) : 0;
+      if (downloadedSize < minimumBytes) {
+        await FileSystem.deleteAsync(target, {idempotent: true});
+        throw new Error(`下载文件不完整：${fileName} (${downloadedSize}/${minimumBytes})`);
       }
     } catch (downloadErr) {
       if (abortRequested || (downloadErr instanceof Error && downloadErr.message === 'DOWNLOAD_CANCELLED')) {

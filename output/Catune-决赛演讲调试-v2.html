@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Catune 决赛演讲调试</title>
+  <style>
+    :root { color-scheme: dark; font-family: "Microsoft YaHei", system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #151515; color: #f7f7f7; }
+    header { height: 56px; padding: 0 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #3d3d3d; }
+    .brand { font-weight: 700; }
+    .timers { display: flex; gap: 22px; font-variant-numeric: tabular-nums; }
+    main { min-height: calc(100vh - 112px); display: grid; grid-template-columns: minmax(0, 1fr) 360px; }
+    .stage { display: grid; place-items: center; padding: 24px; background: #090909; }
+    .stage img { display: block; width: 100%; max-height: calc(100vh - 160px); object-fit: contain; }
+    aside { padding: 24px; border-left: 1px solid #3d3d3d; overflow: auto; }
+    .eyebrow { margin: 0 0 14px; color: #ff7a24; font-size: 13px; font-weight: 700; }
+    h1 { margin: 0 0 20px; font-size: 24px; line-height: 1.35; }
+    #note { margin: 0; color: #d7d7d7; font-size: 17px; line-height: 1.75; }
+    .target { margin-top: 24px; padding-top: 18px; border-top: 1px solid #3d3d3d; color: #a9a9a9; }
+    footer { height: 56px; display: flex; align-items: center; justify-content: center; gap: 14px; border-top: 1px solid #3d3d3d; }
+    button { width: 44px; height: 36px; border: 1px solid #555; background: #262626; color: #fff; font-size: 18px; cursor: pointer; }
+    button:hover { border-color: #ff7a24; }
+    #count { min-width: 80px; text-align: center; font-variant-numeric: tabular-nums; }
+    @media (max-width: 900px) {
+      main { grid-template-columns: 1fr; }
+      aside { border-left: 0; border-top: 1px solid #3d3d3d; }
+      .stage img { max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">CATUNE · 8 月 15 日决赛</div>
+    <div class="timers"><span>本页 <b id="slideTime">00:00</b></span><span>总计 <b id="totalTime">00:00</b></span></div>
+  </header>
+  <main>
+    <section class="stage"><img id="slide" alt="当前幻灯片" /></section>
+    <aside>
+      <p class="eyebrow" id="section"></p>
+      <h1 id="title"></h1>
+      <p id="note"></p>
+      <p class="target" id="target"></p>
+    </aside>
+  </main>
+  <footer>
+    <button id="prev" title="上一页">←</button>
+    <span id="count"></span>
+    <button id="next" title="下一页">→</button>
+    <button id="reset" title="重置计时">↺</button>
+  </footer>
+  <script>
+    const slides = [
+      ["开场", "Catune：端侧坐姿教练", "Catune 面向久坐办公人群，用轻量 IMU 感知坐姿，在手机本地完成判断、提醒和个性化表达。", 20],
+      ["定位", "不拍人，也能实时看见坐姿变化", "不是事后报告，也不是持续摄像头，而是发生时即可纠正的端侧坐姿教练。", 35],
+      ["问题", "问题不在于不知道正确坐姿", "用户通常知道怎么坐，但工作时不会察觉姿态逐渐变差。现有方案要么只计时，要么持续拍摄。", 45],
+      ["产品形态", "三块界面连接当下反馈与长期改善", "Desk 看猫和三个角度，Plant 看长期积累，Settings 管硬件、提醒和模型。", 45],
+      ["完整闭环", "规则先给结果，Qwen 再自然表达", "姿态分类、分数、阈值和冷却由规则负责；Qwen 只生成 30 字以内的自然建议。", 45],
+      ["交互", "猫负责现在，植物负责长期", "没有高频警报和重度游戏化：猫给即时直觉，植物给非惩罚的长期反馈。", 35],
+      ["技术判断", "规则与模型双轨", "模型不覆盖姿态结论；模型超时、缺失或输出异常，都不会让核心产品失效。", 45],
+      ["端侧模型", "按设备能力推荐并切换模型", "设备分级和模型管理已经实现。只有拿到 sme2:1 与对照数据后，才声称 SME2 加速。", 50],
+      ["个性化", "LoRA 与本地记忆", "微调证明了语气和格式有效，但不把训练结果包装成已部署；真机仍使用正式 MNN 模型。", 45],
+      ["架构", "业务纯 TS，能力走平台适配", "BLE、传感器和原生模块在平台层隔离；姿态业务保持纯 TS；设计层三端复用。", 50],
+      ["可靠性", "四层降级保证核心闭环", "断连显示离线，模型失败切规则，断网不影响监测，超长或禁词输出直接替换。", 40],
+      ["证据", "展示能复验的工程事实", "展示 79 项测试、原生库、历史真机记录和五种固定状态，不用功能数量替代证据。", 50],
+      ["价值", "价值不在多一个模型", "与定时提醒相比 Catune 懂姿态；与摄像头相比更适合办公室；它在问题发生时行动。", 40],
+      ["收束", "决赛前只做三件事", "进入现场 Demo：连接姿态带、坐直校准、前倾触发反馈，再展示中文推理与 SME2 证据。", 55]
+    ];
+    let index = 0;
+    let started = Date.now();
+    let slideStarted = started;
+    const $ = id => document.getElementById(id);
+    const clock = ms => `${String(Math.floor(ms / 60000)).padStart(2, "0")}:${String(Math.floor(ms / 1000) % 60).padStart(2, "0")}`;
+    function render(nextIndex) {
+      index = Math.max(0, Math.min(slides.length - 1, nextIndex));
+      slideStarted = Date.now();
+      const [section, title, note, seconds] = slides[index];
+      $("slide").src = `Catune-决赛PPT-v2-预览/幻灯片${index + 1}.PNG`;
+      $("section").textContent = section;
+      $("title").textContent = title;
+      $("note").textContent = note;
+      $("target").textContent = `建议本页：${seconds} 秒`;
+      $("count").textContent = `${index + 1} / ${slides.length}`;
+    }
+    $("prev").onclick = () => render(index - 1);
+    $("next").onclick = () => render(index + 1);
+    $("reset").onclick = () => { started = Date.now(); slideStarted = started; };
+    addEventListener("keydown", event => {
+      if (["ArrowRight", " ", "PageDown"].includes(event.key)) render(index + 1);
+      if (["ArrowLeft", "PageUp"].includes(event.key)) render(index - 1);
+    });
+    setInterval(() => {
+      $("slideTime").textContent = clock(Date.now() - slideStarted);
+      $("totalTime").textContent = clock(Date.now() - started);
+    }, 250);
+    render(0);
+  </script>
+</body>
+</html>
