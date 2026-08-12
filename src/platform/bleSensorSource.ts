@@ -13,6 +13,7 @@
 import {PermissionsAndroid, Platform} from 'react-native';
 import type {PostureEngine} from '../posture/engine';
 import {inferNeckFromThor} from '../posture/spineKinematics';
+import {Quaternion, relativePitchRoll} from './orientationMath';
 
 /** BLE 协议常量（App 与 ESP32 固件必须一致）。 */
 export const CATUNE_BLE = {
@@ -63,16 +64,6 @@ function base64ToBytes(b64: string): Uint8Array {
   return out;
 }
 
-const RAD2DEG = 180 / Math.PI;
-/** 四元数(w,x,y,z) → 前后俯仰 pitch / 左右翻滚 roll（度）。 */
-function quatToPitchRoll(w: number, x: number, y: number, z: number): {pitch: number; roll: number} {
-  const roll = Math.atan2(2 * (w * x + y * z), 1 - 2 * (x * x + y * y)) * RAD2DEG;
-  let sinp = 2 * (w * y - z * x);
-  sinp = Math.max(-1, Math.min(1, sinp));
-  const pitch = Math.asin(sinp) * RAD2DEG;
-  return {pitch, roll};
-}
-
 async function requestAndroidPerms(): Promise<boolean> {
   if (Platform.OS !== 'android') {
     return true;
@@ -99,14 +90,34 @@ export function createBleSensorSource(engine: PostureEngine): BleSensorSource {
   let sub: {remove: () => void} | null = null;
   let status: BleStatus = 'idle';
   let statusCb: ((s: BleStatus, info?: string) => void) | null = null;
+  let session = 0;
 
   const latest = {neck: 0, thor: 0, lumbar: 0};
-  const baseline: Record<number, {pitch: number; roll: number}> = {};
-  const lastRaw: Record<number, {pitch: number; roll: number}> = {};
+  const baseline: Record<number, Quaternion> = {};
+  const lastRaw: Record<number, Quaternion> = {};
 
   const setStatus = (s: BleStatus, info?: string) => {
     status = s;
     statusCb?.(s, info);
+  };
+
+  /** 清理当前原生会话；递增 session 后，旧异步回调会自动失效。 */
+  const cleanup = () => {
+    try {
+      sub?.remove();
+    } catch {}
+    try {
+      device?.cancelConnection();
+    } catch {}
+    try {
+      manager?.stopDeviceScan();
+    } catch {}
+    try {
+      manager?.destroy();
+    } catch {}
+    sub = null;
+    device = null;
+    manager = null;
   };
 
   const handlePacket = (bytes: Uint8Array) => {
@@ -119,11 +130,11 @@ export function createBleSensorSource(engine: PostureEngine): BleSensorSource {
     const x = dv.getFloat32(5, true);
     const y = dv.getFloat32(9, true);
     const z = dv.getFloat32(13, true);
-    const {pitch, roll} = quatToPitchRoll(w, x, y, z);
-    lastRaw[nodeId] = {pitch, roll};
-    const b = baseline[nodeId] ?? {pitch: 0, roll: 0};
-    const relP = pitch - b.pitch;
-    const relR = roll - b.roll;
+    const q = {w, x, y, z};
+    lastRaw[nodeId] = q;
+    // 首包先作为安全零位；用户点击「坐直校准」时会用当时姿态覆盖。
+    baseline[nodeId] ??= {...q};
+    const {pitch: relP, roll: relR} = relativePitchRoll(baseline[nodeId], q);
     if (nodeId === 0) {
       latest.neck = relP; // 颈 C7
     } else if (nodeId === 1) {
@@ -152,6 +163,10 @@ export function createBleSensorSource(engine: PostureEngine): BleSensorSource {
       latest.lumbar = 0;
     },
     async start() {
+      // 重复点击代表重新连接：先让旧 scan/device/manager 退出，避免旧断连回调覆盖新状态。
+      session += 1;
+      const currentSession = session;
+      cleanup();
       if (!BleManagerCtor) {
         setStatus('error', 'BLE 不可用（需原生构建 / 非 web）');
         return false;
@@ -164,7 +179,7 @@ export function createBleSensorSource(engine: PostureEngine): BleSensorSource {
       return new Promise<boolean>(resolve => {
         let settled = false;
         const timeout = setTimeout(() => {
-          if (!settled) {
+          if (!settled && currentSession === session) {
             settled = true;
             try {
               manager?.stopDeviceScan();
@@ -175,6 +190,9 @@ export function createBleSensorSource(engine: PostureEngine): BleSensorSource {
         }, 12000);
         setStatus('scanning');
         manager.startDeviceScan([CATUNE_BLE.service], null, async (err: any, dev: any) => {
+          if (currentSession !== session) {
+            return;
+          }
           if (err) {
             if (!settled) {
               settled = true;
@@ -196,13 +214,20 @@ export function createBleSensorSource(engine: PostureEngine): BleSensorSource {
               CATUNE_BLE.service,
               CATUNE_BLE.characteristic,
               (e: any, c: any) => {
+                if (currentSession !== session) {
+                  return;
+                }
                 if (e || !c?.value) {
                   return;
                 }
                 handlePacket(base64ToBytes(c.value));
               },
             );
-            device.onDisconnected(() => setStatus('idle', '已断开'));
+            device.onDisconnected(() => {
+              if (currentSession === session) {
+                setStatus('idle', '已断开');
+              }
+            });
             clearTimeout(timeout);
             settled = true;
             setStatus('connected', dev.name ?? dev.id);
@@ -217,21 +242,8 @@ export function createBleSensorSource(engine: PostureEngine): BleSensorSource {
       });
     },
     stop() {
-      try {
-        sub?.remove();
-      } catch {}
-      try {
-        device?.cancelConnection();
-      } catch {}
-      try {
-        manager?.stopDeviceScan();
-      } catch {}
-      try {
-        manager?.destroy();
-      } catch {}
-      sub = null;
-      device = null;
-      manager = null;
+      session += 1;
+      cleanup();
       setStatus('idle');
     },
   };

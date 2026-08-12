@@ -19,6 +19,7 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <math.h>
 #include <string.h>
 
 #define NODE_ID 1  // 0=颈 1=胸 2=腰（多节点各烧一个不同 NODE_ID）
@@ -31,19 +32,29 @@
 Adafruit_BNO08x bno08x;
 sh2_SensorValue_t sensorValue;
 BLECharacteristic *pChar = nullptr;
-bool connected = false;
+volatile bool connected = false;
+uint32_t rotationEvents = 0;
+uint32_t notifyPackets = 0;
+uint32_t lastRotationMs = 0;
+uint32_t lastHealthMs = 0;
+float latestQ[4] = {1.0f, 0.0f, 0.0f, 0.0f};
 
 class ServerCb : public BLEServerCallbacks {
-  void onConnect(BLEServer *) override { connected = true; }
+  void onConnect(BLEServer *) override {
+    connected = true;
+    Serial.println("BLE_CONNECTED");
+  }
   void onDisconnect(BLEServer *s) override {
     connected = false;
+    Serial.println("BLE_DISCONNECTED advertising=restart");
     s->getAdvertising()->start();  // 断开后重新广播，便于重连
   }
 };
 
 static void enableReports() {
   // 旋转向量（含传感器融合的四元数）；周期 ~20ms ≈ 50Hz
-  bno08x.enableReport(SH2_ROTATION_VECTOR, 20000);
+  const bool ok = bno08x.enableReport(SH2_ROTATION_VECTOR, 20000);
+  Serial.printf("BNO_REPORT rotation_vector=%s interval_us=20000\n", ok ? "ok" : "failed");
 }
 
 // I2C 扫描自检：开机打印总线上探测到的地址，确认 BNO085（默认 0x4A，ADR 拉高=0x4B）。
@@ -67,12 +78,19 @@ void setup() {
   Serial.begin(115200);
   delay(300);  // 等串口稳定
   Wire.begin(I2C_SDA, I2C_SCL);
+  Wire.setClock(100000);  // BNO08x + ESP32-S3 首次闭环优先稳定性
   scanI2C();
-  if (!bno08x.begin_I2C()) {
-    Serial.println("BNO085 未找到，检查 I2C 接线/地址（看上面扫描结果是否有 0x4A/0x4B）");
+  bool bnoReady = bno08x.begin_I2C(0x4A, &Wire);
+  uint8_t bnoAddress = 0x4A;
+  if (!bnoReady) {
+    bnoReady = bno08x.begin_I2C(0x4B, &Wire);
+    bnoAddress = 0x4B;
+  }
+  if (!bnoReady) {
+    Serial.println("BNO08x 未找到，检查 I2C 接线/地址（看上面扫描结果是否有 0x4A/0x4B）");
     while (true) delay(100);
   }
-  Serial.println("BNO085 OK");
+  Serial.printf("BNO08X_READY address=0x%02X\n", bnoAddress);
   enableReports();
 
   BLEDevice::init("Catune-Node");
@@ -91,10 +109,11 @@ void setup() {
 
 void loop() {
   if (bno08x.wasReset()) {
+    Serial.println("BNO_RESET reports=reenable");
     enableReports();
   }
   if (bno08x.getSensorEvent(&sensorValue)) {
-    if (sensorValue.sensorId == SH2_ROTATION_VECTOR && connected && pChar) {
+    if (sensorValue.sensorId == SH2_ROTATION_VECTOR) {
       // ESP32 小端 → float 内存布局即小端字节，直接 memcpy
       float q[4] = {
         sensorValue.un.rotationVector.real,  // w
@@ -102,12 +121,34 @@ void loop() {
         sensorValue.un.rotationVector.j,     // y
         sensorValue.un.rotationVector.k,     // z
       };
-      uint8_t pkt[17];
-      pkt[0] = (uint8_t)NODE_ID;
-      memcpy(pkt + 1, q, 16);
-      pChar->setValue(pkt, sizeof(pkt));
-      pChar->notify();
+      const float norm = sqrtf(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]);
+      if (isfinite(norm) && norm > 0.5f && norm < 1.5f) {
+        memcpy(latestQ, q, sizeof(latestQ));
+        rotationEvents++;
+        lastRotationMs = millis();
+        if (connected && pChar) {
+          uint8_t pkt[17];
+          pkt[0] = (uint8_t)NODE_ID;
+          memcpy(pkt + 1, q, 16);
+          pChar->setValue(pkt, sizeof(pkt));
+          pChar->notify();
+          notifyPackets++;
+        }
+      }
     }
+  }
+
+  const uint32_t now = millis();
+  if (now - lastHealthMs >= 1000) {
+    lastHealthMs = now;
+    const float norm = sqrtf(latestQ[0] * latestQ[0] + latestQ[1] * latestQ[1] +
+                             latestQ[2] * latestQ[2] + latestQ[3] * latestQ[3]);
+    Serial.printf(
+        "BNO_Q w=%.5f x=%.5f y=%.5f z=%.5f norm=%.4f events=%lu age_ms=%lu ble=%u notify=%lu\n",
+        latestQ[0], latestQ[1], latestQ[2], latestQ[3], norm,
+        (unsigned long)rotationEvents,
+        (unsigned long)(lastRotationMs == 0 ? now : now - lastRotationMs),
+        connected ? 1 : 0, (unsigned long)notifyPackets);
   }
   delay(20);  // ~50Hz 上限，省电
 }

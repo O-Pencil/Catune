@@ -157,10 +157,10 @@ function App(): React.JSX.Element {
   // 连硬件姿态带（BLE）；连上取代手机 IMU，连不上回退手机 IMU
   const useBle = async () => {
     stopOthers('ble');
+    // 扫描/连接过程也属于 BLE 模式：立即给用户可见反馈，避免按钮看似无响应。
+    setMode('ble');
     const ok = await bleRef.current.start();
-    if (ok) {
-      setMode('ble');
-    } else {
+    if (!ok) {
       useSensor();
     }
   };
