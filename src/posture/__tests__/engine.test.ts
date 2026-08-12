@@ -148,4 +148,24 @@ describe('engine.locale-emits', () => {
     expect(engine.getState().inferenceSource).toBe('MODEL');
     expect(engine.getState().advice).toBe('脑袋有点探出去啦，轻轻收下巴哦～');
   });
+
+  it('does not expose partial control tokens while the model is streaming', () => {
+    const engine = createPostureEngine({getLocale: () => 'zh'});
+    engine.update(0, 20, 0);
+    const fallback = engine.getState().advice;
+
+    engine.setModelAdvice('[MOMENT][MOMENT]', {streaming: true});
+
+    expect(engine.getState().advice).toBe(fallback);
+    expect(engine.getState().streaming).toBe(true);
+  });
+
+  it('falls back when final model advice repeats a phrase three times', () => {
+    const engine = createPostureEngine({getLocale: () => 'zh'});
+    engine.update(0, 20, 0);
+    engine.setModelAdvice('坐正！身体舒服！坐正！身体舒服！坐正！身体舒服！', {streaming: false});
+
+    expect(engine.getState().inferenceSource).toBe('RULE_FALLBACK');
+    expect(engine.getState().advice).toBe('上背有点塌下来啦，把胸口轻轻抬起，肩膀放松。');
+  });
 });

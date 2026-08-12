@@ -75,12 +75,29 @@ export function sanitize(text: string, locale: Locale = 'en'): string {
 
 const INTERNAL_MODEL_MARKERS =
   // eslint-disable-next-line no-useless-escape
-  /\b(?:SIT|TECH_NECK|SLUMPED|LEFT_LEAN|RIGHT_LEAN|NORMAL|OFFLINE|THORACIC_EXTENSION|NECK_RETRACTION)\b|建议动作\s*[:：]?|姿态\s*[:：]|[\[【](?:动作|Action)[:：]/iu;
+  /\b(?:SIT|TECH_NECK|SLUMPED|LEFT_LEAN|RIGHT_LEAN|NORMAL|OFFLINE|THORACIC_EXTENSION|NECK_RETRACTION)\b|建议动作\s*[:：]?|姿态\s*[:：]|\[[A-Z_]{2,}\]|[\[【](?:动作|Action)[:：]/iu;
+
+function hasRepeatedPhrase(text: string): boolean {
+  for (let size = 4; size <= Math.min(16, Math.floor(text.length / 3)); size += 1) {
+    for (let start = 0; start + size * 3 <= text.length; start += 1) {
+      const phrase = text.slice(start, start + size);
+      if (phrase.trim().length >= 3 && text.indexOf(phrase, start + size) >= 0 && text.indexOf(phrase, start + size * 2) >= 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 
 /** Rejects model-shaped metadata and rambling copy before it reaches Desk. */
 export function isDisplayableModelAdvice(text: string, locale: Locale): boolean {
   const normalized = text.replace(/\s+/g, ' ').trim();
-  if (normalized.length < 4 || normalized.length > 60 || INTERNAL_MODEL_MARKERS.test(normalized)) {
+  if (
+    normalized.length < 4 ||
+    normalized.length > 60 ||
+    INTERNAL_MODEL_MARKERS.test(normalized) ||
+    hasRepeatedPhrase(normalized)
+  ) {
     return false;
   }
   if (locale === 'zh' && !/[\u3400-\u9fff]/u.test(normalized)) {
@@ -281,7 +298,16 @@ export function createPostureEngine(opts: EngineOptions = {}): PostureEngine {
       // 解析尾部 [动作:xxx]：正文给用户看，动作驱动点位高亮；流式未出标签时保留按姿态推导的动作
       const {text, action} = parseActionTag(advice, getLocale());
       const locale = getLocale();
-      const useModelText = modelOptions.streaming || isDisplayableModelAdvice(text, locale);
+      if (modelOptions.streaming) {
+        state = {
+          ...state,
+          action: action ?? state.action,
+          streaming: true,
+        };
+        emit();
+        return;
+      }
+      const useModelText = isDisplayableModelAdvice(text, locale);
       const fallback = ruleFallback(signalsFrom(state), locale);
       state = {
         ...state,
