@@ -423,6 +423,7 @@ export const zh: Dict = {
   'settings.group.dataSource': '数据源',
   'settings.group.intelligence': 'AI 与记忆',
   'settings.group.general': '通用',
+  'settings.demo.action': '演示初始化',
   'settings.model.status': '状态',
   'settings.model.download': '下载',
   'settings.model.delete': '删除',

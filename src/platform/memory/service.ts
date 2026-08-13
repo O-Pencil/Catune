@@ -33,6 +33,7 @@ export type MemoryService = {
   clearAll: () => void;
   /** 首启问卷是否已完成。 */
   isOnboarded: () => boolean;
+  restartOnboarding: () => void;
   /** 完成问卷：批量写入记忆并标记 onboarded。 */
   completeOnboarding: (inputs: RememberInput[]) => void;
   /** 当前 locale（同步读取；ready 之后才有值）。 */
@@ -166,6 +167,10 @@ export function createMemoryService(): MemoryService {
     },
     isOnboarded() {
       return onboarded;
+    },
+    restartOnboarding() {
+      onboarded = false;
+      saveOnboarded(false);
     },
     completeOnboarding(inputs) {
       inputs.forEach(remember);

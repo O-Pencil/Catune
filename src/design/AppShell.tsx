@@ -51,6 +51,7 @@ type Props = {
   onUseWsSend?: () => void;
   onCalibrate?: () => void;
   onScenario: (s: MockScenario) => void;
+  onDemoInitialize?: () => void;
   disableOnboarding?: boolean;
 };
 
@@ -71,6 +72,7 @@ export function AppShell({
   onUseWsSend,
   onCalibrate,
   onScenario,
+  onDemoInitialize,
   disableOnboarding = false,
 }: Props): React.JSX.Element {
   const t = useT();
@@ -164,6 +166,7 @@ export function AppShell({
           onUseWsSend={onUseWsSend}
           onCalibrate={onCalibrate}
           onScenario={onScenario}
+          onDemoInitialize={disableOnboarding ? undefined : onDemoInitialize}
         />
       )}
       {onboarded !== false && !assessOpen && !trainingAction ? (

@@ -256,6 +256,11 @@ function App(): React.JSX.Element {
     saveLaunchSeen(true).then(() => setLaunchSeen(true));
   };
 
+  const handleDemoInitialize = () => {
+    memoryRef.current.restartOnboarding();
+    saveLaunchSeen(false).then(() => setLaunchSeen(false));
+  };
+
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <PortalHost />
@@ -287,6 +292,7 @@ function App(): React.JSX.Element {
             onUseWsSend={useWsSend}
             onCalibrate={calibrate}
             onScenario={pinScenario}
+            onDemoInitialize={handleDemoInitialize}
           />
         </LocaleProvider>
       )}
@@ -310,6 +316,7 @@ function AppContent({
   onUseWsSend,
   onCalibrate,
   onScenario,
+  onDemoInitialize,
 }: {
   state: DashboardState;
   growth: GrowthState;
@@ -326,6 +333,7 @@ function AppContent({
   onUseWsSend: () => Promise<void>;
   onCalibrate: () => void;
   onScenario: (s: MockScenario) => void;
+  onDemoInitialize: () => void;
 }): React.JSX.Element {
   const t = useT();
   const subtitle =
@@ -357,6 +365,7 @@ function AppContent({
       onUseWsSend={onUseWsSend}
       onCalibrate={onCalibrate}
       onScenario={onScenario}
+      onDemoInitialize={onDemoInitialize}
     />
   );
 }

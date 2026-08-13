@@ -2,7 +2,6 @@
  * @file appMeta.ts
  * @description CATUNE 应用品牌与版本元数据（单一来源，供 UI / 关于页引用）。
  */
-import {Platform} from 'react-native';
 import packageJson from '../../package.json';
 import nativeVersion from '../../version.native.json';
 
@@ -17,9 +16,8 @@ export const ANDROID_VERSION_CODE = nativeVersion.androidVersionCode;
 
 /** 用户可见的完整版本文案 */
 export function formatAppVersion(build?: string | number): string {
-  const code = build ?? (Platform.OS === 'android' ? ANDROID_VERSION_CODE : undefined);
-  if (code == null || code === '') {
-    return `v${APP_VERSION}`;
+  if (build == null || build === '') {
+    return `V${APP_VERSION}`;
   }
-  return `v${APP_VERSION} (${code})`;
+  return `V${APP_VERSION} (${build})`;
 }

@@ -428,6 +428,7 @@ export const en: Dict = {
   'settings.group.dataSource': 'DATA SOURCE',
   'settings.group.intelligence': 'AI & MEMORY',
   'settings.group.general': 'GENERAL',
+  'settings.demo.action': 'Demo initialization',
   'settings.model.status': 'Status',
   'settings.model.download': 'Download',
   'settings.model.delete': 'Delete',

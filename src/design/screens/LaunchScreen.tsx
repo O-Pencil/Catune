@@ -22,7 +22,7 @@ export function LaunchScreen({onStart}: Props): React.JSX.Element {
   const t = useT();
 
   return (
-    <AppSafeArea style={styles.root}>
+    <AppSafeArea style={styles.root} edges={['top', 'bottom', 'left', 'right']}>
       <View style={styles.bgWrap}>
         <Image source={WELCOME_BG} style={styles.bg} resizeMode="cover" accessibilityIgnoresInvertColors />
         <WelcomeBreathOverlay />
@@ -83,13 +83,16 @@ const styles = StyleSheet.create({
     maxWidth: 300,
   },
   footer: {
+    flexShrink: 0,
     paddingHorizontal: theme.spacing.xxl,
     paddingBottom: theme.spacing.xxl,
   },
   cta: {
+    minHeight: 56,
     backgroundColor: '#141414',
     borderRadius: theme.radius.pill,
-    paddingVertical: 18,
+    paddingHorizontal: theme.spacing.xl,
+    paddingVertical: theme.spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
   },

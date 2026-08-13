@@ -48,6 +48,7 @@ type Props = {
   onUseWsSend?: () => void;
   onCalibrate?: () => void;
   onScenario: (s: MockScenario) => void;
+  onDemoInitialize?: () => void;
 };
 
 const MEMORY_TAG_KEY: Record<MemoryType, string> = {
@@ -426,6 +427,7 @@ const styles = StyleSheet.create({
   },
   aboutLabel: {color: theme.colors.textMuted, fontSize: theme.font.sizeSm},
   aboutValue: {color: theme.colors.textPrimary, fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
+  demoButton: {marginTop: theme.spacing.sm},
 });
 
 export function SettingsScreen({
@@ -443,6 +445,7 @@ export function SettingsScreen({
   onUseWsSend,
   onCalibrate,
   onScenario,
+  onDemoInitialize,
 }: Props): React.JSX.Element {
   const t = useT();
   const [mnnRefreshKey, setMnnRefreshKey] = useState(0);
@@ -584,6 +587,14 @@ export function SettingsScreen({
         </View>
         <Text style={[styles.hint, {marginTop: theme.spacing.md2}]}>{t('settings.about.body')}</Text>
       </Card>
+
+      {onDemoInitialize ? (
+        <LegacyButton
+          style={styles.demoButton}
+          label={t('settings.demo.action')}
+          onPress={onDemoInitialize}
+        />
+      ) : null}
     </ScrollView>
   );
 }
