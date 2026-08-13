@@ -12,7 +12,13 @@
 import {tr, type Locale} from '../design/i18n';
 import type {PostureEngine} from './engine';
 import {PostureName} from './types';
-import {rolloverIfNewDay, upsertTodaySnapshot} from '../platform/dailyHistory';
+import {
+  getCachedHistory,
+  loadDailyHistory,
+  rolloverIfNewDay,
+  todayKey,
+  upsertTodaySnapshot,
+} from '../platform/dailyHistory';
 import {pad} from './utils';
 
 /** 5 个成长阶段（与 PlantScreen 一致）。 */
@@ -33,13 +39,24 @@ export type GrowthState = {
   stage: number; // 0..4
   stageName: string;
   log: GrowthEvent[]; // 最新在前，封顶 LOG_CAP
+  today: DailyGrowthSummary;
+};
+
+export type DailyGrowthSummary = {
+  date: string;
+  hasData: boolean;
+  score: number;
+  effectiveMinutes: number;
+  goodMinutes: number;
+  abnormalCount: number;
+  goodCount: number;
 };
 
 export type GrowthTracker = {
   getState: () => GrowthState;
   subscribe: (cb: (s: GrowthState) => void) => () => void;
   /** 开始订阅引擎 + 启动良好坐姿计时心跳。 */
-  start: () => void;
+  start: () => Promise<void>;
   stop: () => void;
 };
 
@@ -50,6 +67,8 @@ export type GrowthOptions = {
   tickMs?: number;
   /** 当前 locale getter：用于 event.action 文案 / stageName。 */
   getLocale?: () => Locale;
+  /** 测试注入时钟；生产默认当前本地时间。 */
+  now?: () => Date;
 };
 
 const INITIAL_POINTS = 50;
@@ -77,8 +96,7 @@ function stageOf(points: number): number {
   return stage;
 }
 
-function nowLabel(): string {
-  const d = new Date();
+function nowLabel(d: Date): string {
   return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
@@ -92,44 +110,91 @@ export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions =
   const goodAwardIntervalMs = opts.goodAwardIntervalMs ?? 60_000;
   const tickMs = opts.tickMs ?? 5_000;
   const getLocale = opts.getLocale ?? ((): Locale => 'en');
+  const now = opts.now ?? (() => new Date());
 
   let points = INITIAL_POINTS;
   let log: GrowthEvent[] = [];
   let nextId = 1;
+  let activeDate = todayKey(now());
 
   let currentPosture: PostureName = 'NORMAL';
   let goodAccumMs = 0; // 当前连续良好坐姿累计（满一档发分后扣回）
   let totalGoodMs = 0; // 仅用于日志文案展示「累计 N 分钟」
+  let effectiveMs = 0;
+  let abnormalCount = 0;
+  let goodCount = 0;
+  let hasReceivedSample = false;
+  let lastTickAt = now().getTime();
 
   let unsubEngine: (() => void) | null = null;
   let timer: ReturnType<typeof setInterval> | null = null;
+  let starting: Promise<void> | null = null;
 
   const listeners = new Set<(s: GrowthState) => void>();
 
-  const snapshot = (): GrowthState => ({
-    points,
-    stage: stageOf(points),
-    stageName: stageNameAt(stageOf(points), getLocale()),
-    log,
-  });
+  const dailyScore = () => (effectiveMs > 0 ? Math.round((totalGoodMs * 100) / effectiveMs) : 0);
+  const snapshot = (): GrowthState => {
+    const stage = stageOf(points);
+    return {
+      points,
+      stage,
+      stageName: stageNameAt(stage, getLocale()),
+      log,
+      today: {
+        date: activeDate,
+        hasData: effectiveMs > 0,
+        score: dailyScore(),
+        effectiveMinutes: Math.floor(effectiveMs / 60_000),
+        goodMinutes: Math.floor(totalGoodMs / 60_000),
+        abnormalCount,
+        goodCount,
+      },
+    };
+  };
   const emit = () => {
     const s = snapshot();
     listeners.forEach(cb => cb(s));
   };
 
-  const pushEvent = (delta: number, action: string) => {
-    points = clampPoints(points + delta);
-    const event: GrowthEvent = {id: nextId++, time: nowLabel(), action, delta, score: points};
-    log = [event, ...log].slice(0, LOG_CAP);
-    // 落每日快照（异常入态 good=0 / abnormal=1；良好发分 good=1 / abnormal=0）
-    const abnormalCount = delta < 0 ? 1 : 0;
-    const goodCount = delta > 0 ? 1 : 0;
+  const persistToday = () => {
+    if (effectiveMs <= 0) return;
     upsertTodaySnapshot({
-      points,
-      goodMinutes: goodCount,
+      score: dailyScore(),
+      growthPoints: points,
+      effectiveMs,
+      goodMs: totalGoodMs,
+      goodMinutes: Math.floor(totalGoodMs / 60_000),
       abnormalCount,
       goodCount,
-    });
+    }, now()).catch(() => {});
+  };
+
+  const resetForNewDay = (date: Date) => {
+    activeDate = todayKey(date);
+    points = INITIAL_POINTS;
+    log = [];
+    goodAccumMs = 0;
+    totalGoodMs = 0;
+    effectiveMs = 0;
+    abnormalCount = 0;
+    goodCount = 0;
+    lastTickAt = date.getTime();
+    rolloverIfNewDay(date).catch(() => {});
+  };
+
+  const ensureCurrentDay = (date: Date) => {
+    if (todayKey(date) !== activeDate) resetForNewDay(date);
+  };
+
+  const pushEvent = (delta: number, action: string) => {
+    const date = now();
+    ensureCurrentDay(date);
+    points = clampPoints(points + delta);
+    const event: GrowthEvent = {id: nextId++, time: nowLabel(date), action, delta, score: points};
+    log = [event, ...log].slice(0, LOG_CAP);
+    if (delta < 0) abnormalCount += 1;
+    if (delta > 0) goodCount += 1;
+    persistToday();
     emit();
   };
 
@@ -149,16 +214,29 @@ export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions =
   };
 
   const onTick = () => {
-    if (currentPosture !== 'NORMAL') {
+    const date = now();
+    ensureCurrentDay(date);
+    const elapsedMs = Math.min(Math.max(0, date.getTime() - lastTickAt), tickMs * 2);
+    lastTickAt = date.getTime();
+    if (!hasReceivedSample || currentPosture === 'OFFLINE') {
       return;
     }
-    goodAccumMs += tickMs;
-    totalGoodMs += tickMs;
+    effectiveMs += elapsedMs;
+    if (currentPosture !== 'NORMAL') {
+      persistToday();
+      emit();
+      return;
+    }
+    goodAccumMs += elapsedMs;
+    totalGoodMs += elapsedMs;
     if (goodAccumMs >= goodAwardIntervalMs) {
       goodAccumMs -= goodAwardIntervalMs;
       const minutes = Math.max(1, Math.round(totalGoodMs / 60_000));
       pushEvent(GOOD_AWARD_POINTS, tr(getLocale(), 'plant.event.goodPosture', {min: minutes}));
+      return;
     }
+    persistToday();
+    emit();
   };
 
   return {
@@ -169,14 +247,36 @@ export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions =
       return () => listeners.delete(cb);
     },
     start() {
-      if (unsubEngine) {
-        return;
-      }
-      // 启动时检查是否跨天，标 finalized
-      rolloverIfNewDay();
-      unsubEngine = engine.subscribe(s => onSample(s.posture));
-      timer = setInterval(onTick, tickMs);
-      emit();
+      if (starting) return starting;
+      starting = (async () => {
+        await loadDailyHistory();
+        const date = now();
+        await rolloverIfNewDay(date);
+        activeDate = todayKey(date);
+        const saved = getCachedHistory().days.find(day => day.date === activeDate);
+        if (saved) {
+          points = saved.growthPoints;
+          effectiveMs = saved.effectiveMs;
+          totalGoodMs = saved.goodMs;
+          abnormalCount = saved.abnormalCount;
+          goodCount = saved.goodCount;
+        }
+        currentPosture = engine.getState().posture;
+        lastTickAt = date.getTime();
+        let initialEmission = true;
+        unsubEngine = engine.subscribe(s => {
+          if (initialEmission) {
+            initialEmission = false;
+            currentPosture = s.posture;
+            return;
+          }
+          hasReceivedSample = true;
+          onSample(s.posture);
+        });
+        timer = setInterval(onTick, tickMs);
+        emit();
+      })();
+      return starting;
     },
     stop() {
       unsubEngine?.();
@@ -185,6 +285,8 @@ export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions =
         clearInterval(timer);
         timer = null;
       }
+      persistToday();
+      starting = null;
     },
   };
 }

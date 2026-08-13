@@ -114,7 +114,7 @@ function SummaryView({
         })}
       </View>
 
-      {summary === 'daily' ? <DailyReportPanel growth={growth} /> : <WeeklyReportPanel />}
+      {summary === 'daily' ? <DailyReportPanel growth={growth} /> : <WeeklyReportPanel growth={growth} />}
     </View>
   );
 }

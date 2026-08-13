@@ -1,6 +1,6 @@
 /**
  * @file DailyReportPanel.tsx
- * @description 日报视图：今日分 / 不驼背时长 / Streak / AI 评论（规则兜底）。无数据态用纯文字。
+ * @description 日报视图：今日不驼背分 / 有效记录 / 不驼背时长 / Streak / AI 评论。无数据态用纯文字。
  *
  * [WHO] 导出 `DailyReportPanel`
  * [FROM] 依赖 `react`、`react-native`、`../../posture/growth`(GrowthState)、`../../posture/dailyReport`(buildDailyReport)、`../theme`、`../i18n`
@@ -35,9 +35,12 @@ export function DailyReportPanel({growth}: Props): React.JSX.Element {
   return (
     <View style={styles.root}>
       <View style={styles.scoreBlock}>
-        <Text style={styles.scoreNum}>{report.points}</Text>
+        <Text style={styles.scoreNum}>{report.score}</Text>
         <Text style={styles.scoreLabel}>{t('report.daily.points')}</Text>
       </View>
+      <Text style={styles.effectiveTime}>
+        {t('report.daily.effectiveMinutes', {min: report.effectiveMinutes})}
+      </Text>
 
       <View style={styles.statsRow}>
         <View style={styles.statCell}>
@@ -77,6 +80,11 @@ const styles = StyleSheet.create({
     fontWeight: theme.font.weightHeavy,
   },
   scoreLabel: {color: theme.colors.textMuted, fontSize: theme.font.sizeMd, fontWeight: theme.font.weightBold},
+  effectiveTime: {
+    color: theme.colors.textMuted,
+    fontSize: theme.font.sizeXs,
+    textAlign: 'center',
+  },
   statsRow: {flexDirection: 'row', gap: theme.spacing.sm2, marginTop: theme.spacing.xs, marginBottom: theme.spacing.md2},
   statCell: {
     flex: 1,

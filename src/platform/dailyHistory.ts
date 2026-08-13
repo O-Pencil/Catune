@@ -1,6 +1,6 @@
 /**
  * @file dailyHistory.ts
- * @description 每日快照持久化：把"今日分 / 不驼背时长 / 异常次数 / 良好次数"按天存到本地 FS，
+ * @description 每日快照持久化：把"姿态分 / 有效时长 / 不驼背时长 / 异常次数"按天存到本地 FS，
  *   给周报（日趋势）提供真实历史。每日 0 点 + 首次启动时落 1 个快照。
  *   轻量：纯 JSON，expo-file-system 存到 documentDirectory/daily_history.json。
  *
@@ -16,9 +16,15 @@ import {pad} from '../posture/utils';
 export type DailySnapshot = {
   /** 'YYYY-MM-DD'，作为 key。 */
   date: string;
-  /** 今日结束时的累计积分。 */
-  points: number;
-  /** 不驼背累计时长（分钟，向上取整）。 */
+  /** 有效监测时间内正常坐姿占比，0..100。 */
+  score: number;
+  /** 当日植物成长积分，用于重启后恢复 Plant 状态。 */
+  growthPoints: number;
+  /** 有效监测累计时长（毫秒）；OFFLINE 不计入。 */
+  effectiveMs: number;
+  /** 正常坐姿累计时长（毫秒）。 */
+  goodMs: number;
+  /** 不驼背累计时长（分钟，向下取整）。 */
   goodMinutes: number;
   /** 异常入态次数。 */
   abnormalCount: number;
@@ -69,6 +75,33 @@ export function getWeekSnapshots(history: DailyHistory, today: Date = new Date()
 
 /** 进程内缓存：避免每次日报读取都打一次 FS（UI 端 useSyncExternalStore 不便 await） */
 let cache: DailyHistory | null = null;
+let writeQueue: Promise<void> = Promise.resolve();
+
+function finiteNonNegative(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? Math.max(0, value) : 0;
+}
+
+function normalizeSnapshot(value: unknown): DailySnapshot | null {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Partial<DailySnapshot> & {points?: number};
+  if (typeof raw.date !== 'string') return null;
+  const goodMinutes = Math.floor(finiteNonNegative(raw.goodMinutes));
+  const goodMs = finiteNonNegative(raw.goodMs) || goodMinutes * 60_000;
+  const effectiveMs = Math.max(goodMs, finiteNonNegative(raw.effectiveMs));
+  const legacyScore = Math.min(100, finiteNonNegative(raw.points));
+  const score = Math.min(100, finiteNonNegative(raw.score ?? legacyScore));
+  return {
+    date: raw.date,
+    score: Math.round(score),
+    growthPoints: Math.round(finiteNonNegative(raw.growthPoints ?? raw.points ?? 50)),
+    effectiveMs,
+    goodMs,
+    goodMinutes: Math.floor(goodMs / 60_000),
+    abnormalCount: Math.floor(finiteNonNegative(raw.abnormalCount)),
+    goodCount: Math.floor(finiteNonNegative(raw.goodCount)),
+    finalized: raw.finalized === true,
+  };
+}
 
 export function getCachedHistory(): DailyHistory {
   if (cache) return cache;
@@ -91,7 +124,9 @@ export async function loadDailyHistory(): Promise<DailyHistory> {
       cache = {days: []};
       return cache;
     }
-    cache = parsed;
+    cache = {
+      days: parsed.days.map(normalizeSnapshot).filter((day): day is DailySnapshot => day !== null),
+    };
     return cache;
   } catch {
     cache = {days: []};
@@ -105,18 +140,24 @@ async function writeDailyHistory(history: DailyHistory): Promise<void> {
   // 截断到 MAX_DAYS
   const days = history.days.slice(0, MAX_DAYS);
   const trimmed: DailyHistory = {days};
-  cache = trimmed; // 先更新缓存，再写盘
   await FileSystem.writeAsStringAsync(uri, JSON.stringify(trimmed), {
     encoding: 'utf8',
   });
 }
 
+function enqueueWrite(history: DailyHistory): Promise<void> {
+  const copy: DailyHistory = {days: history.days.map(day => ({...day}))};
+  cache = copy;
+  writeQueue = writeQueue.then(() => writeDailyHistory(copy), () => writeDailyHistory(copy));
+  return writeQueue;
+}
+
 /**
- * 写入/更新今日快照。若已存在则合并 goodCount / abnormalCount（累加），points 取最新值。
+ * 写入/更新今日快照。调用方传入当日累计绝对值，因此重复落盘是幂等的。
  * 异步；调用方无需 await。
  */
 export async function upsertTodaySnapshot(
-  partial: Omit<DailySnapshot, 'date' | 'finalized'>,
+  snapshot: Omit<DailySnapshot, 'date' | 'finalized'>,
   today: Date = new Date(),
 ): Promise<void> {
   const date = todayKey(today);
@@ -124,18 +165,17 @@ export async function upsertTodaySnapshot(
   const idx = history.days.findIndex(s => s.date === date);
   if (idx >= 0) {
     const prev = history.days[idx];
-    // 同日多次调用：goodCount / abnormalCount 累加，points 取最后值
+    // 调用方传入当日累计绝对值，重复写入不会重复累计。
     history.days[idx] = {
       ...prev,
-      ...partial,
+      ...snapshot,
       date,
-      goodCount: prev.goodCount + partial.goodCount,
-      abnormalCount: prev.abnormalCount + partial.abnormalCount,
+      finalized: false,
     };
   } else {
-    history.days = [{date, ...partial, finalized: false}, ...history.days];
+    history.days = [{date, ...snapshot, finalized: false}, ...history.days];
   }
-  await writeDailyHistory(history);
+  await enqueueWrite(history);
 }
 
 /** 00:00 切换时把昨天标 finalized（不修改数值），同时插入新的今日占位。 */
@@ -153,5 +193,5 @@ export async function rolloverIfNewDay(today: Date = new Date()): Promise<void> 
     // 同日重复进入：去掉 finalized 标记（因为是新会话）
     history.days[idx] = {...history.days[idx], finalized: false};
   }
-  await writeDailyHistory(history);
+  await enqueueWrite(history);
 }

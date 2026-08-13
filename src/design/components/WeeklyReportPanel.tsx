@@ -1,6 +1,6 @@
 /**
  * @file WeeklyReportPanel.tsx
- * @description 周报视图：最近 7 天每日积分柱图 + AI 周总结。柱高按本周最高分归一化；缺数据态用纯文字。
+ * @description 周报视图：最近 7 天每日不驼背分柱图 + 周均分 + AI 周总结。缺数据态用纯文字。
  *
  * [WHO] 导出 `WeeklyReportPanel`
  * [FROM] 依赖 `react`、`react-native`、`../../posture/dailyReport`(buildWeeklyReport/WeekDay)、`../theme`、`../i18n`
@@ -10,6 +10,7 @@
 import React, {useMemo} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {buildWeeklyReport, WeekDay} from '../../posture/dailyReport';
+import {GrowthState} from '../../posture/growth';
 import {theme} from '../theme';
 import {useLocale, useT} from '../i18n';
 
@@ -23,10 +24,10 @@ const LABEL_TO_KEY: Record<string, string> = {
   Sat: 'report.weekday.sat',
 };
 
-export function WeeklyReportPanel(): React.JSX.Element {
+export function WeeklyReportPanel({growth}: {growth: GrowthState}): React.JSX.Element {
   const {locale} = useLocale();
   const t = useT();
-  const report = useMemo(() => buildWeeklyReport(locale), [locale]);
+  const report = useMemo(() => buildWeeklyReport(growth, locale), [growth, locale]);
 
   if (!report.hasData) {
     return (
@@ -38,7 +39,7 @@ export function WeeklyReportPanel(): React.JSX.Element {
   }
 
   const week = report.week;
-  const maxPoints = Math.max(1, ...week.map(d => d.snapshot?.points ?? 0));
+  const maxPoints = 100;
 
   return (
     <View style={styles.root}>
@@ -54,8 +55,8 @@ export function WeeklyReportPanel(): React.JSX.Element {
           <Text style={styles.summaryLabel}>{t('report.weekly.recordedDays')}</Text>
         </View>
         <View style={styles.summaryCell}>
-          <Text style={styles.summaryValue}>{report.weekPoints}</Text>
-          <Text style={styles.summaryLabel}>{t('report.weekly.weekPoints')}</Text>
+          <Text style={styles.summaryValue}>{report.averageScore}</Text>
+          <Text style={styles.summaryLabel}>{t('report.weekly.averageScore')}</Text>
         </View>
       </View>
 
@@ -70,7 +71,7 @@ export function WeeklyReportPanel(): React.JSX.Element {
 type T = (key: string, vars?: Record<string, string | number>) => string;
 
 function Bar({day, maxPoints, t}: {day: WeekDay; maxPoints: number; t: T}): React.JSX.Element {
-  const points = day.snapshot?.points ?? 0;
+  const points = day.snapshot?.score ?? 0;
   const heightPct = maxPoints > 0 ? Math.max(0.04, points / maxPoints) : 0.04;
   const recorded = day.snapshot !== null;
   const labelKey = LABEL_TO_KEY[day.label];

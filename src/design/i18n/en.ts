@@ -199,6 +199,7 @@ export const en: Dict = {
   'report.daily.emptyTitle': 'No data today',
   'report.daily.emptyHint': 'Sit well to start tracking',
   'report.daily.points': 'pts',
+  'report.daily.effectiveMinutes': '{min} min valid monitoring',
   'report.daily.goodMinutes': 'Good sitting (min)',
   'report.daily.abnormal': 'Abnormal entries',
   'report.daily.streak': 'Streak days',
@@ -206,7 +207,7 @@ export const en: Dict = {
   'report.weekly.emptyTitle': 'No data this week',
   'report.weekly.emptyHint': 'A few days of data to see trends',
   'report.weekly.recordedDays': 'Recorded days',
-  'report.weekly.weekPoints': 'Week points',
+  'report.weekly.averageScore': 'Average score',
   'report.weekly.aiLabel': 'AI Weekly Summary',
   // daily comment templates
   'report.daily.continue': 'Keep going.',

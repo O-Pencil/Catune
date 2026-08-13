@@ -216,7 +216,7 @@ function App(): React.JSX.Element {
       setWsSendInfo(info);
     });
     adviceRef.current.start();
-    growthRef.current.start();
+    growthRef.current.start().catch(() => {});
     reminderRef.current.start();
     // Web / 安卓模拟器：WS 接收；iPhone 真机：本机 IMU（发送方在 Settings 手动切）
     const boot =

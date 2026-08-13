@@ -171,6 +171,15 @@ export function createPreviewGrowthState(locale: Locale): GrowthState {
     points: 118,
     stage: 3,
     stageName: tr(locale, 'plant.stageNames.bud'),
+    today: {
+      date: '2026-07-02',
+      hasData: true,
+      score: 86,
+      effectiveMinutes: 42,
+      goodMinutes: 36,
+      abnormalCount: 1,
+      goodCount: 8,
+    },
     log: [
       {
         id: 3,

@@ -1,8 +1,8 @@
 /**
  * @file dailyReport.ts
  * @description 日报 / 周报聚合：基于 growth（今日实时）+ dailyHistory（持久化历史）推导报告。
- *   - 日报：今日分（growth.points）、不驼背时长、异常次数、Streak、AI 评论
- *   - 周报：最近 7 天每日积分 + AI 周总结
+ *   - 日报：有效监测时间内的不驼背分、不驼背时长、异常次数、Streak、AI 评论
+ *   - 周报：最近 7 天每日不驼背分 + AI 周总结
  *   - 全部真实数据，无假数据；缺数据时返回 hasData=false 让 UI 显示无数据态。
  *
  * [WHO] 导出 `buildDailyReport` / `buildWeeklyReport` / `DailyReport` / `WeeklyReport`
@@ -22,7 +22,8 @@ import {
 
 export type DailyReport = {
   hasData: boolean;
-  points: number;
+  score: number;
+  effectiveMinutes: number;
   goodMinutes: number;
   abnormalCount: number;
   goodCount: number;
@@ -35,8 +36,8 @@ export type WeeklyReport = {
   week: WeekDay[];
   /** 本周已存在快照的天数（0..7）。 */
   recordedDays: number;
-  /** 本周总积分。 */
-  weekPoints: number;
+  /** 有记录日期的平均姿态评分。 */
+  averageScore: number;
   /** AI 周总结。 */
   aiSummary: string;
 };
@@ -53,48 +54,48 @@ const WEEKLY_GOOD_DOMINANCE_RATIO = 2;
 // ─── 日报 ──────────────────────────────────────────────────────────────────
 
 /**
- * 日报：今日分 + 异常次数 + 不驼背时长 + Streak + AI 评论。
+ * 日报：今日不驼背分 + 异常次数 + 有效监测时长 + Streak + AI 评论。
  * 数据源：growth（今日实时）+ dailyHistory（昨日及更早 → 计算 Streak）。
  */
-export function buildDailyReport(growth: GrowthState, locale: Locale = 'en'): DailyReport {
-  const history = getCachedHistory();
-  const today = todayKey();
+export function buildDailyReport(
+  growth: GrowthState,
+  locale: Locale = 'en',
+  history: DailyHistory = getCachedHistory(),
+  currentDate: Date = new Date(),
+): DailyReport {
+  const today = todayKey(currentDate);
 
   // 今日事件从 growth.log 推
   const todayLog = growth.log.filter(e => {
     // growth.log.time 形如 'MM-DD HH:mm'，无年份 → 用月份+日期匹配
     const m = /^(\d{2})-(\d{2}) \d{2}:\d{2}$/.exec(e.time);
     if (!m) return false;
-    const key = `${new Date().getFullYear()}-${m[1]}-${m[2]}`;
+    const key = `${currentDate.getFullYear()}-${m[1]}-${m[2]}`;
     return key === today;
   });
 
-  const goodCount = todayLog.filter(e => e.delta > 0).length;
-  const abnormalCount = todayLog.filter(e => e.delta < 0).length;
-  const goodMinutes = goodCount * 1; // 一次 goodAward = 默认 60s 心跳 ≈ 1min（与 growth 心跳一致）
-
   // Streak：从今天往回数连续"有事件"的天数（包含今天）
-  const streakDays = computeStreak(history, today);
+  const streakDays = computeStreak(history, today, growth.today.hasData);
 
   // AI 评论：规则兜底，根据异常事件时段分布生成
   const aiComment = generateDailyComment(todayLog, locale);
 
   return {
-    hasData: growth.log.length > 0,
-    points: growth.points,
-    goodMinutes,
-    abnormalCount,
-    goodCount,
+    hasData: growth.today.hasData,
+    score: growth.today.score,
+    effectiveMinutes: growth.today.effectiveMinutes,
+    goodMinutes: growth.today.goodMinutes,
+    abnormalCount: growth.today.abnormalCount,
+    goodCount: growth.today.goodCount,
     streakDays,
     aiComment,
   };
 }
 
-function computeStreak(history: DailyHistory, today: string): number {
-  if (history.days.length === 0 && !hasAnyLogToday(history)) return 0;
-  const map = new Set(history.days.map(s => s.date));
-  // 把今天也算上（growth 实时数据）
-  map.add(today);
+function computeStreak(history: DailyHistory, today: string, hasDataToday: boolean): number {
+  if (!hasDataToday && !hasAnyValidHistory(history)) return 0;
+  const map = new Set(history.days.filter(s => s.effectiveMs > 0).map(s => s.date));
+  if (hasDataToday) map.add(today);
 
   let streak = 0;
   const d = new Date(today);
@@ -111,9 +112,9 @@ function computeStreak(history: DailyHistory, today: string): number {
   return streak;
 }
 
-function hasAnyLogToday(_history: DailyHistory): boolean {
+function hasAnyValidHistory(history: DailyHistory): boolean {
   // 简化：判断当今日志（growth）有事件即可，调用方已传入 growth
-  return false;
+  return history.days.some(day => day.effectiveMs > 0);
 }
 
 function generateDailyComment(
@@ -127,7 +128,7 @@ function generateDailyComment(
   // 找"异常入态"事件的高发时段
   const abnormalByHour: Record<number, number> = {};
   todayLog.filter(e => e.delta < 0).forEach(e => {
-    const m = /\d{2}:(\d{2})$/.exec(e.time);
+    const m = / (\d{2}):\d{2}$/.exec(e.time);
     if (m) {
       const h = parseInt(m[1], 10);
       abnormalByHour[h] = (abnormalByHour[h] ?? 0) + 1;
@@ -154,20 +155,42 @@ function generateDailyComment(
 // ─── 周报 ──────────────────────────────────────────────────────────────────
 
 /**
- * 周报：最近 7 天每日积分 + AI 周总结。
+ * 周报：最近 7 天每日不驼背分 + AI 周总结。
  * 数据源：dailyHistory。
  */
-export function buildWeeklyReport(locale: Locale = 'en'): WeeklyReport {
-  const history = getCachedHistory();
-  const week = getWeekSnapshots(history);
+export function buildWeeklyReport(
+  growth: GrowthState,
+  locale: Locale = 'en',
+  history: DailyHistory = getCachedHistory(),
+  currentDate: Date = new Date(),
+): WeeklyReport {
+  const week = getWeekSnapshots(history, currentDate);
+  week.forEach(day => {
+    if (day.snapshot && day.snapshot.effectiveMs <= 0) day.snapshot = null;
+  });
+  const currentKey = todayKey(currentDate);
+  const today = week.find(day => day.date === currentKey);
+  if (today && growth.today.hasData) {
+    today.snapshot = {
+      date: currentKey,
+      score: growth.today.score,
+      growthPoints: growth.points,
+      effectiveMs: growth.today.effectiveMinutes * 60_000,
+      goodMs: growth.today.goodMinutes * 60_000,
+      goodMinutes: growth.today.goodMinutes,
+      abnormalCount: growth.today.abnormalCount,
+      goodCount: growth.today.goodCount,
+      finalized: false,
+    };
+  }
   const recordedDays = week.filter(d => d.snapshot !== null).length;
-  const weekPoints = week.reduce((sum, d) => sum + (d.snapshot?.points ?? 0), 0);
+  const totalScore = week.reduce((sum, d) => sum + (d.snapshot?.score ?? 0), 0);
 
   return {
     hasData: recordedDays > 0,
     week,
     recordedDays,
-    weekPoints,
+    averageScore: recordedDays > 0 ? Math.round(totalScore / recordedDays) : 0,
     aiSummary: generateWeeklySummary(week, locale),
   };
 }
