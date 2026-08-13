@@ -23,6 +23,15 @@ export function DailyReportPanel({growth}: Props): React.JSX.Element {
   const t = useT();
   const report = useMemo(() => buildDailyReport(growth, locale), [growth, locale]);
 
+  if (report.isDemo) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyTitle}>{t('report.daily.demoTitle')}</Text>
+        <Text style={styles.emptyHint}>{t('report.daily.demoHint')}</Text>
+      </View>
+    );
+  }
+
   if (!report.hasData) {
     return (
       <View style={styles.empty}>
@@ -39,21 +48,21 @@ export function DailyReportPanel({growth}: Props): React.JSX.Element {
         <Text style={styles.scoreLabel}>{t('report.daily.points')}</Text>
       </View>
       <Text style={styles.effectiveTime}>
-        {t('report.daily.effectiveMinutes', {min: report.effectiveMinutes})}
+        {t('report.daily.quality', {score: report.postureScore, min: report.effectiveMinutes})}
       </Text>
 
       <View style={styles.statsRow}>
         <View style={styles.statCell}>
-          <Text style={styles.statValue}>{report.goodMinutes}</Text>
-          <Text style={styles.statLabel}>{t('report.daily.goodMinutes')}</Text>
+          <Text style={styles.statValue}>+{report.goodPoints}</Text>
+          <Text style={styles.statLabel}>{t('report.daily.goodPoints')}</Text>
         </View>
         <View style={styles.statCell}>
-          <Text style={styles.statValue}>{report.abnormalCount}</Text>
-          <Text style={styles.statLabel}>{t('report.daily.abnormal')}</Text>
+          <Text style={styles.statValue}>-{report.penaltyPoints}</Text>
+          <Text style={styles.statLabel}>{t('report.daily.penaltyPoints')}</Text>
         </View>
         <View style={styles.statCell}>
-          <Text style={styles.statValue}>{report.streakDays}</Text>
-          <Text style={styles.statLabel}>{t('report.daily.streak')}</Text>
+          <Text style={styles.statValue}>+{report.trainingPoints}</Text>
+          <Text style={styles.statLabel}>{t('report.daily.trainingPoints')}</Text>
         </View>
       </View>
 

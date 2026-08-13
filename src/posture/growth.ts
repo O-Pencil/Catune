@@ -20,11 +20,18 @@ import {
   upsertTodaySnapshot,
 } from '../platform/dailyHistory';
 import {pad} from './utils';
+import type {PostureAction} from './types';
+import {
+  PRODUCTION_GROWTH_SCHEMA,
+  type GrowthScoringSchema,
+  type GrowthSchemaId,
+  validateGrowthScoringSchema,
+} from './growthScoringSchema';
 
 /** 5 个成长阶段（与 PlantScreen 一致）。 */
 export const STAGE_NAMES = ['Seed', 'Sprout', 'Sapling', 'Bud', 'Fruit'] as const;
 /** 积分达到该档即进入对应阶段下标（升序）。起始 50 分 → Sapling。 */
-export const STAGE_THRESHOLDS = [0, 20, 50, 90, 140] as const;
+export const STAGE_THRESHOLDS = PRODUCTION_GROWTH_SCHEMA.stages;
 
 export type GrowthEvent = {
   id: number;
@@ -40,6 +47,7 @@ export type GrowthState = {
   stageName: string;
   log: GrowthEvent[]; // 最新在前，封顶 LOG_CAP
   today: DailyGrowthSummary;
+  schemaId: GrowthSchemaId;
 };
 
 export type DailyGrowthSummary = {
@@ -50,6 +58,10 @@ export type DailyGrowthSummary = {
   goodMinutes: number;
   abnormalCount: number;
   goodCount: number;
+  goodPoints: number;
+  penaltyPoints: number;
+  trainingPoints: number;
+  trainingCount: number;
 };
 
 export type GrowthTracker = {
@@ -58,6 +70,9 @@ export type GrowthTracker = {
   /** 开始订阅引擎 + 启动良好坐姿计时心跳。 */
   start: () => Promise<void>;
   stop: () => void;
+  setSchema: (schema: GrowthScoringSchema) => void;
+  getSchema: () => GrowthScoringSchema;
+  recordTraining: (action: PostureAction) => boolean;
 };
 
 export type GrowthOptions = {
@@ -69,27 +84,35 @@ export type GrowthOptions = {
   getLocale?: () => Locale;
   /** 测试注入时钟；生产默认当前本地时间。 */
   now?: () => Date;
+  schema?: GrowthScoringSchema;
 };
 
-const INITIAL_POINTS = 50;
-const GOOD_AWARD_POINTS = 5;
+type GrowthRuntime = {
+  activeDate: string;
+  points: number;
+  log: GrowthEvent[];
+  goodAccumMs: number;
+  totalGoodMs: number;
+  effectiveMs: number;
+  abnormalCount: number;
+  goodCount: number;
+  goodPoints: number;
+  penaltyPoints: number;
+  trainingPoints: number;
+  trainingCount: number;
+  trainingCredits: Array<[PostureAction, number]>;
+};
+
 const LOG_CAP = 12;
 
-/** 异常入态扣分 + 日志文案 i18n key。 */
-const PENALTY: Partial<Record<PostureName, {delta: number; key: string}>> = {
-  SLUMPED: {delta: -5, key: 'plant.event.slumping'},
-  TECH_NECK: {delta: -4, key: 'plant.event.forwardHead'},
-  LEFT_LEAN: {delta: -3, key: 'plant.event.leaning'},
-};
-
-function clampPoints(p: number): number {
-  return Math.max(0, Math.min(999, Math.round(p)));
+function clampPoints(p: number, schema: GrowthScoringSchema): number {
+  return Math.max(schema.score.min, Math.min(schema.score.max, Math.round(p)));
 }
 
-function stageOf(points: number): number {
+function stageOf(points: number, thresholds: readonly number[]): number {
   let stage = 0;
-  for (let i = 0; i < STAGE_THRESHOLDS.length; i += 1) {
-    if (points >= STAGE_THRESHOLDS[i]) {
+  for (let i = 0; i < thresholds.length; i += 1) {
+    if (points >= thresholds[i]) {
       stage = i;
     }
   }
@@ -107,12 +130,22 @@ function stageNameAt(stage: number, locale: Locale): string {
 }
 
 export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions = {}): GrowthTracker {
-  const goodAwardIntervalMs = opts.goodAwardIntervalMs ?? 60_000;
-  const tickMs = opts.tickMs ?? 5_000;
   const getLocale = opts.getLocale ?? ((): Locale => 'en');
   const now = opts.now ?? (() => new Date());
+  let schema = validateGrowthScoringSchema(opts.schema ?? {
+    ...PRODUCTION_GROWTH_SCHEMA,
+    goodPosture: {
+      ...PRODUCTION_GROWTH_SCHEMA.goodPosture,
+      intervalMs: opts.goodAwardIntervalMs ?? PRODUCTION_GROWTH_SCHEMA.goodPosture.intervalMs,
+    },
+    timing: {
+      ...PRODUCTION_GROWTH_SCHEMA.timing,
+      tickMs: opts.tickMs ?? PRODUCTION_GROWTH_SCHEMA.timing.tickMs,
+      maxCatchUpMs: (opts.tickMs ?? PRODUCTION_GROWTH_SCHEMA.timing.tickMs) * 2,
+    },
+  });
 
-  let points = INITIAL_POINTS;
+  let points = schema.score.initial;
   let log: GrowthEvent[] = [];
   let nextId = 1;
   let activeDate = todayKey(now());
@@ -123,6 +156,14 @@ export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions =
   let effectiveMs = 0;
   let abnormalCount = 0;
   let goodCount = 0;
+  let goodPoints = 0;
+  let penaltyPoints = 0;
+  let trainingPoints = 0;
+  let trainingCount = 0;
+  let abnormalEpisodeMs = 0;
+  let abnormalAccumMs = 0;
+  const trainingCredits = new Map<PostureAction, number>();
+  let productionBackup: GrowthRuntime | null = null;
   let hasReceivedSample = false;
   let lastTickAt = now().getTime();
 
@@ -134,20 +175,25 @@ export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions =
 
   const dailyScore = () => (effectiveMs > 0 ? Math.round((totalGoodMs * 100) / effectiveMs) : 0);
   const snapshot = (): GrowthState => {
-    const stage = stageOf(points);
+    const stage = stageOf(points, schema.stages);
     return {
       points,
       stage,
       stageName: stageNameAt(stage, getLocale()),
       log,
+      schemaId: schema.id,
       today: {
         date: activeDate,
-        hasData: effectiveMs > 0,
+        hasData: effectiveMs > 0 || trainingCount > 0,
         score: dailyScore(),
         effectiveMinutes: Math.floor(effectiveMs / 60_000),
         goodMinutes: Math.floor(totalGoodMs / 60_000),
         abnormalCount,
         goodCount,
+        goodPoints,
+        penaltyPoints,
+        trainingPoints,
+        trainingCount,
       },
     };
   };
@@ -157,7 +203,7 @@ export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions =
   };
 
   const persistToday = () => {
-    if (effectiveMs <= 0) return;
+    if (schema.id === 'demo' || (effectiveMs <= 0 && trainingCount <= 0)) return;
     upsertTodaySnapshot({
       score: dailyScore(),
       growthPoints: points,
@@ -166,18 +212,29 @@ export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions =
       goodMinutes: Math.floor(totalGoodMs / 60_000),
       abnormalCount,
       goodCount,
+      goodPoints,
+      penaltyPoints,
+      trainingPoints,
+      trainingCount,
     }, now()).catch(() => {});
   };
 
   const resetForNewDay = (date: Date) => {
     activeDate = todayKey(date);
-    points = INITIAL_POINTS;
+    points = schema.score.initial;
     log = [];
     goodAccumMs = 0;
     totalGoodMs = 0;
     effectiveMs = 0;
     abnormalCount = 0;
     goodCount = 0;
+    goodPoints = 0;
+    penaltyPoints = 0;
+    trainingPoints = 0;
+    trainingCount = 0;
+    abnormalEpisodeMs = 0;
+    abnormalAccumMs = 0;
+    trainingCredits.clear();
     lastTickAt = date.getTime();
     rolloverIfNewDay(date).catch(() => {});
   };
@@ -186,14 +243,29 @@ export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions =
     if (todayKey(date) !== activeDate) resetForNewDay(date);
   };
 
-  const pushEvent = (delta: number, action: string) => {
+  const captureRuntime = (): GrowthRuntime => ({
+    activeDate, points, log, goodAccumMs, totalGoodMs, effectiveMs, abnormalCount, goodCount,
+    goodPoints, penaltyPoints, trainingPoints, trainingCount,
+    trainingCredits: [...trainingCredits.entries()],
+  });
+
+  const restoreRuntime = (runtime: GrowthRuntime) => {
+    ({activeDate, points, log, goodAccumMs, totalGoodMs, effectiveMs, abnormalCount, goodCount,
+      goodPoints, penaltyPoints, trainingPoints, trainingCount} = runtime);
+    trainingCredits.clear();
+    runtime.trainingCredits.forEach(([action, timestamp]) => trainingCredits.set(action, timestamp));
+    abnormalEpisodeMs = 0;
+    abnormalAccumMs = 0;
+  };
+
+  const pushEvent = (delta: number, action: string, kind: 'good' | 'penalty' | 'training') => {
     const date = now();
     ensureCurrentDay(date);
-    points = clampPoints(points + delta);
+    points = clampPoints(points + delta, schema);
     const event: GrowthEvent = {id: nextId++, time: nowLabel(date), action, delta, score: points};
     log = [event, ...log].slice(0, LOG_CAP);
-    if (delta < 0) abnormalCount += 1;
-    if (delta > 0) goodCount += 1;
+    if (kind === 'penalty') abnormalCount += 1;
+    if (kind === 'good') goodCount += 1;
     persistToday();
     emit();
   };
@@ -204,35 +276,56 @@ export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions =
       return;
     }
     currentPosture = posture;
-    if (posture !== 'NORMAL') {
-      goodAccumMs = 0; // 中断良好连击
-      const pen = PENALTY[posture];
-      if (pen) {
-        pushEvent(pen.delta, tr(getLocale(), pen.key));
-      }
+    if (posture === 'NORMAL') {
+      abnormalEpisodeMs = 0;
+      abnormalAccumMs = 0;
+    } else {
+      goodAccumMs = 0;
     }
   };
 
   const onTick = () => {
     const date = now();
     ensureCurrentDay(date);
-    const elapsedMs = Math.min(Math.max(0, date.getTime() - lastTickAt), tickMs * 2);
+    const elapsedMs = Math.min(Math.max(0, date.getTime() - lastTickAt), schema.timing.maxCatchUpMs);
     lastTickAt = date.getTime();
     if (!hasReceivedSample || currentPosture === 'OFFLINE') {
       return;
     }
     effectiveMs += elapsedMs;
     if (currentPosture !== 'NORMAL') {
+      if (schema.abnormalPosture.postures.includes(currentPosture)) {
+        const before = abnormalEpisodeMs;
+        abnormalEpisodeMs += elapsedMs;
+        abnormalAccumMs += Math.max(0, abnormalEpisodeMs - schema.abnormalPosture.graceMs) -
+          Math.max(0, before - schema.abnormalPosture.graceMs);
+        while (
+          abnormalAccumMs >= schema.abnormalPosture.intervalMs &&
+          penaltyPoints < schema.abnormalPosture.dailyDeductionCap
+        ) {
+          abnormalAccumMs -= schema.abnormalPosture.intervalMs;
+          const deduction = Math.min(
+            Math.abs(schema.abnormalPosture.pointsPerInterval),
+            schema.abnormalPosture.dailyDeductionCap - penaltyPoints,
+          );
+          penaltyPoints += deduction;
+          pushEvent(-deduction, tr(getLocale(), 'plant.event.abnormalDuration'), 'penalty');
+        }
+      }
       persistToday();
       emit();
       return;
     }
+    abnormalEpisodeMs = 0;
+    abnormalAccumMs = 0;
     goodAccumMs += elapsedMs;
     totalGoodMs += elapsedMs;
-    if (goodAccumMs >= goodAwardIntervalMs) {
-      goodAccumMs -= goodAwardIntervalMs;
+    if (goodAccumMs >= schema.goodPosture.intervalMs && goodPoints < schema.goodPosture.contributionCap) {
+      goodAccumMs -= schema.goodPosture.intervalMs;
       const minutes = Math.max(1, Math.round(totalGoodMs / 60_000));
-      pushEvent(GOOD_AWARD_POINTS, tr(getLocale(), 'plant.event.goodPosture', {min: minutes}));
+      const award = Math.min(schema.goodPosture.pointsPerInterval, schema.goodPosture.contributionCap - goodPoints);
+      goodPoints += award;
+      pushEvent(award, tr(getLocale(), 'plant.event.goodPosture', {min: minutes}), 'good');
       return;
     }
     persistToday();
@@ -255,11 +348,15 @@ export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions =
         activeDate = todayKey(date);
         const saved = getCachedHistory().days.find(day => day.date === activeDate);
         if (saved) {
-          points = saved.growthPoints;
+          points = clampPoints(saved.growthPoints, schema);
           effectiveMs = saved.effectiveMs;
           totalGoodMs = saved.goodMs;
           abnormalCount = saved.abnormalCount;
           goodCount = saved.goodCount;
+          goodPoints = saved.goodPoints;
+          penaltyPoints = saved.penaltyPoints;
+          trainingPoints = saved.trainingPoints;
+          trainingCount = saved.trainingCount;
         }
         currentPosture = engine.getState().posture;
         lastTickAt = date.getTime();
@@ -273,7 +370,7 @@ export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions =
           hasReceivedSample = true;
           onSample(s.posture);
         });
-        timer = setInterval(onTick, tickMs);
+        timer = setInterval(onTick, schema.timing.tickMs);
         emit();
       })();
       return starting;
@@ -287,6 +384,63 @@ export function createGrowthTracker(engine: PostureEngine, opts: GrowthOptions =
       }
       persistToday();
       starting = null;
+    },
+    setSchema(nextSchema) {
+      const next = validateGrowthScoringSchema(nextSchema);
+      if (next.id === schema.id) return;
+      if (schema.id === 'production') {
+        persistToday();
+        productionBackup = captureRuntime();
+      }
+      schema = next;
+      if (schema.id === 'production' && productionBackup?.activeDate === todayKey(now())) {
+        restoreRuntime(productionBackup);
+        productionBackup = null;
+      } else {
+        const date = now();
+        activeDate = todayKey(date);
+        points = schema.score.initial;
+        log = [];
+        goodAccumMs = 0;
+        totalGoodMs = 0;
+        effectiveMs = 0;
+        abnormalCount = 0;
+        goodCount = 0;
+        goodPoints = 0;
+        penaltyPoints = 0;
+        trainingPoints = 0;
+        trainingCount = 0;
+        abnormalEpisodeMs = 0;
+        abnormalAccumMs = 0;
+        trainingCredits.clear();
+      }
+      lastTickAt = now().getTime();
+      if (timer) {
+        clearInterval(timer);
+        timer = setInterval(onTick, schema.timing.tickMs);
+      }
+      emit();
+    },
+    getSchema() {
+      return schema;
+    },
+    recordTraining(action) {
+      const date = now();
+      ensureCurrentDay(date);
+      const previous = trainingCredits.get(action) ?? 0;
+      if (
+        trainingCount >= schema.training.dailyCompletionCap ||
+        trainingPoints >= schema.training.contributionCap ||
+        date.getTime() - previous < schema.training.sameActionCooldownMs
+      ) {
+        return false;
+      }
+      const award = Math.min(schema.training.pointsPerCompletion, schema.training.contributionCap - trainingPoints);
+      trainingCredits.set(action, date.getTime());
+      trainingCount += 1;
+      trainingPoints += award;
+      pushEvent(award, tr(getLocale(), 'plant.event.training'), 'training');
+      return true;
     },
   };
 }

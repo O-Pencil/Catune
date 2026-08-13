@@ -30,10 +30,12 @@ export function TrainingScreen({
   action,
   onClose,
   memory,
+  onComplete,
 }: {
   action: PostureAction;
   onClose: () => void;
   memory?: MemoryService;
+  onComplete?: (action: PostureAction) => void;
 }): React.JSX.Element | null {
   const {locale} = useLocale();
   const t = useT();
@@ -44,6 +46,7 @@ export function TrainingScreen({
   const [running, setRunning] = useState(true);
   const [rated, setRated] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const completionReported = useRef(false);
   const actionLabel = getActionMeta(action, locale).label;
 
   const rateExercise = (good: boolean) => {
@@ -121,7 +124,15 @@ export function TrainingScreen({
     };
   }, [running, phase, advance]);
 
+  useEffect(() => {
+    if (phase === 'done' && !completionReported.current) {
+      completionReported.current = true;
+      onComplete?.(action);
+    }
+  }, [action, onComplete, phase]);
+
   const restart = () => {
+    completionReported.current = false;
     setPhase('ready');
     setRep(1);
     setSecLeft(READY_SEC);

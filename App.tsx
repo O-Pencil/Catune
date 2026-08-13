@@ -26,13 +26,14 @@ import {createPostureEngine} from './src/posture/engine';
 import {createAdviceOrchestrator} from './src/posture/adviceOrchestrator';
 import {createMemoryService} from './src/platform/memory/service';
 import {createGrowthTracker, GrowthState} from './src/posture/growth';
+import {GROWTH_SCHEMAS, type GrowthSchemaId} from './src/posture/growthScoringSchema';
 import {createReminder} from './src/platform/reminder';
 import {createMockSource, MockScenario, MockSource} from './src/posture/mock';
 import {createSensorSource, SensorSource} from './src/platform/sensorSource';
 import {BleSensorSource, BleStatus, createBleSensorSource} from './src/platform/bleSensorSource';
 import {createWsSensorSource, WsSensorSource, WsStatus} from './src/platform/wsSensorSource';
 import {createWsSenderSource, WsSenderSource} from './src/platform/wsSenderSource';
-import {DashboardState} from './src/posture/types';
+import {DashboardState, PostureAction} from './src/posture/types';
 import {Locale, LocaleProvider, tr, useT} from './src/design/i18n';
 import {PreviewApp} from './src/design/preview';
 import * as Device from 'expo-device';
@@ -109,6 +110,7 @@ function App(): React.JSX.Element {
 
   const [k, setK] = useState<DashboardState>(() => buildInitialState(locale));
   const [growth, setGrowth] = useState<GrowthState>(() => growthRef.current.getState());
+  const [growthSchemaId, setGrowthSchemaId] = useState<GrowthSchemaId>('production');
   const [mode, setMode] = useState<Mode>('loading');
   const [bleStatus, setBleStatus] = useState<BleStatus>('idle');
   const [wsStatus, setWsStatus] = useState<WsStatus>('idle');
@@ -261,6 +263,11 @@ function App(): React.JSX.Element {
     saveLaunchSeen(false).then(() => setLaunchSeen(false));
   };
 
+  const handleGrowthSchemaChange = (id: GrowthSchemaId) => {
+    growthRef.current.setSchema(GROWTH_SCHEMAS[id]);
+    setGrowthSchemaId(id);
+  };
+
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <PortalHost />
@@ -293,6 +300,9 @@ function App(): React.JSX.Element {
             onCalibrate={calibrate}
             onScenario={pinScenario}
             onDemoInitialize={handleDemoInitialize}
+            growthSchemaId={growthSchemaId}
+            onGrowthSchemaChange={handleGrowthSchemaChange}
+            onTrainingComplete={action => growthRef.current.recordTraining(action)}
           />
         </LocaleProvider>
       )}
@@ -317,6 +327,9 @@ function AppContent({
   onCalibrate,
   onScenario,
   onDemoInitialize,
+  growthSchemaId,
+  onGrowthSchemaChange,
+  onTrainingComplete,
 }: {
   state: DashboardState;
   growth: GrowthState;
@@ -334,6 +347,9 @@ function AppContent({
   onCalibrate: () => void;
   onScenario: (s: MockScenario) => void;
   onDemoInitialize: () => void;
+  growthSchemaId: GrowthSchemaId;
+  onGrowthSchemaChange: (id: GrowthSchemaId) => void;
+  onTrainingComplete: (action: PostureAction) => void;
 }): React.JSX.Element {
   const t = useT();
   const subtitle =
@@ -366,6 +382,9 @@ function AppContent({
       onCalibrate={onCalibrate}
       onScenario={onScenario}
       onDemoInitialize={onDemoInitialize}
+      growthSchemaId={growthSchemaId}
+      onGrowthSchemaChange={onGrowthSchemaChange}
+      onTrainingComplete={onTrainingComplete}
     />
   );
 }

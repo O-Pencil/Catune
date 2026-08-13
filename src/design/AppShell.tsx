@@ -29,6 +29,7 @@ import {MockScenario} from '../posture/mock';
 import {DashboardState, PostureAction} from '../posture/types';
 import {GrowthState} from '../posture/growth';
 import {BleStatus} from '../platform/bleSensorSource';
+import type {GrowthSchemaId} from '../posture/growthScoringSchema';
 import {WsStatus} from '../platform/wsSensorSource';
 import {MemoryService} from '../platform/memory/service';
 import {resumePendingDownloadIfNeeded} from '../mnn/modelDownloadService';
@@ -53,6 +54,9 @@ type Props = {
   onScenario: (s: MockScenario) => void;
   onDemoInitialize?: () => void;
   disableOnboarding?: boolean;
+  growthSchemaId?: GrowthSchemaId;
+  onGrowthSchemaChange?: (id: GrowthSchemaId) => void;
+  onTrainingComplete?: (action: PostureAction) => void;
 };
 
 export function AppShell({
@@ -74,6 +78,9 @@ export function AppShell({
   onScenario,
   onDemoInitialize,
   disableOnboarding = false,
+  growthSchemaId = 'production',
+  onGrowthSchemaChange,
+  onTrainingComplete,
 }: Props): React.JSX.Element {
   const t = useT();
   const TABS: Tab[] = useMemo(
@@ -170,10 +177,17 @@ export function AppShell({
         />
       )}
       {onboarded !== false && !assessOpen && !trainingAction ? (
+          growthSchemaId={growthSchemaId}
+          onGrowthSchemaChange={onGrowthSchemaChange}
         <TabBar tabs={TABS} value={tab} onChange={changeTab} />
       ) : null}
       {trainingAction ? (
-        <TrainingScreen action={trainingAction} memory={memory} onClose={() => setTrainingAction(null)} />
+        <TrainingScreen
+          action={trainingAction}
+          memory={memory}
+          onComplete={onTrainingComplete}
+          onClose={() => setTrainingAction(null)}
+        />
       ) : null}
       {assessOpen ? (
         <AssessScreen

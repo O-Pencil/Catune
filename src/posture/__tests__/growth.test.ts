@@ -14,6 +14,7 @@ jest.mock('../../platform/dailyHistory', () => {
 import {createGrowthTracker} from '../growth';
 import {PostureEngine} from '../engine';
 import {DashboardState, PostureName} from '../types';
+import {DEMO_GROWTH_SCHEMA, PRODUCTION_GROWTH_SCHEMA} from '../growthScoringSchema';
 
 describe('growth daily scoring', () => {
   beforeEach(() => {
@@ -72,12 +73,17 @@ describe('growth daily scoring', () => {
     posture = 'SLUMPED';
     listener?.(state());
     advanceMinute();
-    expect(tracker.getState().today).toMatchObject({score: 50, effectiveMinutes: 2, abnormalCount: 1});
+    expect(tracker.getState().today).toMatchObject({score: 50, effectiveMinutes: 2, abnormalCount: 1, penaltyPoints: 1});
+    expect(tracker.getState().points).toBe(0);
+
+    advanceMinute();
+    expect(tracker.getState().today).toMatchObject({effectiveMinutes: 3, abnormalCount: 2, penaltyPoints: 2});
+    expect(tracker.getState().points).toBe(0);
 
     posture = 'OFFLINE';
     listener?.(state());
     advanceMinute();
-    expect(tracker.getState().today).toMatchObject({score: 50, effectiveMinutes: 2});
+    expect(tracker.getState().today).toMatchObject({effectiveMinutes: 3});
 
     posture = 'NORMAL';
     listener?.(state());
@@ -91,6 +97,19 @@ describe('growth daily scoring', () => {
       effectiveMinutes: 0,
       abnormalCount: 0,
     });
+    expect(tracker.recordTraining('NECK_RETRACTION')).toBe(true);
+    expect(tracker.getState()).toMatchObject({points: 10, today: {trainingPoints: 10, trainingCount: 1}});
+    expect(tracker.recordTraining('NECK_RETRACTION')).toBe(false);
+
+    tracker.setSchema(DEMO_GROWTH_SCHEMA);
+    for (let i = 0; i < 10; i += 1) {
+      nowMs += 1_000;
+      jest.advanceTimersByTime(1_000);
+    }
+    expect(tracker.getState()).toMatchObject({points: 1, schemaId: 'demo'});
+
+    tracker.setSchema(PRODUCTION_GROWTH_SCHEMA);
+    expect(tracker.getState()).toMatchObject({points: 10, schemaId: 'production'});
     tracker.stop();
   });
 });

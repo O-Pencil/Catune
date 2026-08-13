@@ -9,7 +9,7 @@
  */
 import React, {useMemo} from 'react';
 import {ScrollView, StyleSheet, Text, View} from 'react-native';
-import {GrowthState, STAGE_THRESHOLDS} from '../../posture/growth';
+import {GrowthState} from '../../posture/growth';
 import {LoopTabs} from '../components/LoopTabs';
 import {PlantHeroScene} from '../components/PlantHeroScene';
 import {useT} from '../i18n';
@@ -21,7 +21,7 @@ const PLANT_PAGE = {
   textSecondary: '#9B9B9B',
 } as const;
 
-const MAX_POINTS = STAGE_THRESHOLDS[STAGE_THRESHOLDS.length - 1];
+const MAX_POINTS = 100;
 
 function arcProgress(points: number): number {
   return Math.min(1, Math.max(0, points / MAX_POINTS));
@@ -45,10 +45,13 @@ export function PlantScreen({growth}: {growth: GrowthState}): React.JSX.Element 
 
         <View style={styles.body}>
           <View style={styles.caption}>
-            <Text style={styles.pointsLine}>{t('plant.pointsToday', {points: growth.points})}</Text>
+            <Text style={styles.pointsLine}>{t('plant.pointsToday', {points: growth.points, max: MAX_POINTS})}</Text>
             <Text style={styles.encourage}>{t(encourageKey(growth.points))}</Text>
             <Text style={styles.stageHint}>
-              {growth.stage} · {growth.stageName}
+              {growth.stageName} · {t(growth.schemaId === 'demo' ? 'plant.mode.demo' : 'plant.mode.production')}
+            </Text>
+            <Text style={styles.ruleHint}>
+              {t(growth.schemaId === 'demo' ? 'plant.rule.demo' : 'plant.rule.production')}
             </Text>
           </View>
 
@@ -96,5 +99,12 @@ const styles = StyleSheet.create({
     fontFamily: theme.font.displayMedium,
     marginTop: theme.spacing.xxs,
     opacity: 0.85,
+  },
+  ruleHint: {
+    color: PLANT_PAGE.textSecondary,
+    fontSize: theme.font.sizeXs,
+    fontFamily: theme.font.body,
+    textAlign: 'center',
+    marginTop: theme.spacing.xs,
   },
 });

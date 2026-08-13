@@ -21,8 +21,14 @@ import {
 } from '../platform/dailyHistory';
 
 export type DailyReport = {
+  isDemo: boolean;
   hasData: boolean;
   score: number;
+  postureScore: number;
+  goodPoints: number;
+  penaltyPoints: number;
+  trainingPoints: number;
+  trainingCount: number;
   effectiveMinutes: number;
   goodMinutes: number;
   abnormalCount: number;
@@ -81,8 +87,14 @@ export function buildDailyReport(
   const aiComment = generateDailyComment(todayLog, locale);
 
   return {
+    isDemo: growth.schemaId === 'demo',
     hasData: growth.today.hasData,
-    score: growth.today.score,
+    score: growth.points,
+    postureScore: growth.today.score,
+    goodPoints: growth.today.goodPoints,
+    penaltyPoints: growth.today.penaltyPoints,
+    trainingPoints: growth.today.trainingPoints,
+    trainingCount: growth.today.trainingCount,
     effectiveMinutes: growth.today.effectiveMinutes,
     goodMinutes: growth.today.goodMinutes,
     abnormalCount: growth.today.abnormalCount,
@@ -166,11 +178,11 @@ export function buildWeeklyReport(
 ): WeeklyReport {
   const week = getWeekSnapshots(history, currentDate);
   week.forEach(day => {
-    if (day.snapshot && day.snapshot.effectiveMs <= 0) day.snapshot = null;
+    if (day.snapshot && day.snapshot.effectiveMs <= 0 && day.snapshot.trainingCount <= 0) day.snapshot = null;
   });
   const currentKey = todayKey(currentDate);
   const today = week.find(day => day.date === currentKey);
-  if (today && growth.today.hasData) {
+  if (today && growth.today.hasData && growth.schemaId === 'production') {
     today.snapshot = {
       date: currentKey,
       score: growth.today.score,
@@ -180,11 +192,15 @@ export function buildWeeklyReport(
       goodMinutes: growth.today.goodMinutes,
       abnormalCount: growth.today.abnormalCount,
       goodCount: growth.today.goodCount,
+      goodPoints: growth.today.goodPoints,
+      penaltyPoints: growth.today.penaltyPoints,
+      trainingPoints: growth.today.trainingPoints,
+      trainingCount: growth.today.trainingCount,
       finalized: false,
     };
   }
   const recordedDays = week.filter(d => d.snapshot !== null).length;
-  const totalScore = week.reduce((sum, d) => sum + (d.snapshot?.score ?? 0), 0);
+  const totalScore = week.reduce((sum, d) => sum + (d.snapshot?.growthPoints ?? 0), 0);
 
   return {
     hasData: recordedDays > 0,

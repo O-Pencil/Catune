@@ -30,6 +30,11 @@ export type DailySnapshot = {
   abnormalCount: number;
   /** 良好发分次数。 */
   goodCount: number;
+  /** 良好体态、异常扣分与跟练奖励的当日计分拆分。 */
+  goodPoints: number;
+  penaltyPoints: number;
+  trainingPoints: number;
+  trainingCount: number;
   /** 是否已"日结"（00:00 落的一次 vs 首次启动补的）。 */
   finalized: boolean;
 };
@@ -93,12 +98,16 @@ function normalizeSnapshot(value: unknown): DailySnapshot | null {
   return {
     date: raw.date,
     score: Math.round(score),
-    growthPoints: Math.round(finiteNonNegative(raw.growthPoints ?? raw.points ?? 50)),
+    growthPoints: Math.min(100, Math.round(finiteNonNegative(raw.growthPoints ?? raw.points ?? 0))),
     effectiveMs,
     goodMs,
     goodMinutes: Math.floor(goodMs / 60_000),
     abnormalCount: Math.floor(finiteNonNegative(raw.abnormalCount)),
     goodCount: Math.floor(finiteNonNegative(raw.goodCount)),
+    goodPoints: Math.floor(finiteNonNegative(raw.goodPoints)),
+    penaltyPoints: Math.floor(finiteNonNegative(raw.penaltyPoints)),
+    trainingPoints: Math.floor(finiteNonNegative(raw.trainingPoints)),
+    trainingCount: Math.floor(finiteNonNegative(raw.trainingCount)),
     finalized: raw.finalized === true,
   };
 }

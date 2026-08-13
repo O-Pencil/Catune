@@ -28,6 +28,7 @@ import {Locale, useLocale, useT} from '../i18n';
 import {IconCpu, IconBrain, IconBell, IconInfoCircle} from '@tabler/icons-react-native';
 import {AppLogo} from '../components/AppLogo';
 import {APP_NAME, APP_VERSION, formatAppVersion} from '../../constants/appMeta';
+import type {GrowthSchemaId} from '../../posture/growthScoringSchema';
 
 export type DataMode = 'loading' | 'sensor' | 'mock' | 'ble' | 'ws' | 'ws-send';
 export type BleStatusLite = 'idle' | 'scanning' | 'connecting' | 'connected' | 'error';
@@ -50,6 +51,8 @@ type Props = {
   onScenario: (s: MockScenario) => void;
   onDemoInitialize?: () => void;
 };
+  growthSchemaId?: GrowthSchemaId;
+  onGrowthSchemaChange?: (id: GrowthSchemaId) => void;
 
 const MEMORY_TAG_KEY: Record<MemoryType, string> = {
   preference: 'memory.tag.preference',
@@ -429,6 +432,8 @@ const styles = StyleSheet.create({
   aboutValue: {color: theme.colors.textPrimary, fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
   demoButton: {marginTop: theme.spacing.sm},
 });
+  scoringMode: {gap: theme.spacing.sm, marginTop: theme.spacing.md2},
+  fieldLabel: {color: theme.colors.textSecondary, fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
 
 export function SettingsScreen({
   state,
@@ -448,6 +453,8 @@ export function SettingsScreen({
   onDemoInitialize,
 }: Props): React.JSX.Element {
   const t = useT();
+  growthSchemaId = 'production',
+  onGrowthSchemaChange,
   const [mnnRefreshKey, setMnnRefreshKey] = useState(0);
   const defaultWsRole: WsRole = Platform.OS === 'web' ? 'receive' : 'send';
   const [wsRole, setWsRole] = useState<WsRole>(defaultWsRole);
@@ -550,6 +557,22 @@ export function SettingsScreen({
         <Text style={styles.hint}>{t('settings.mock.hint')}</Text>
       </Card>
 
+        {onGrowthSchemaChange ? (
+          <View style={styles.scoringMode}>
+            <Text style={styles.fieldLabel}>{t('settings.scoring.title')}</Text>
+            <SegmentedControl
+              value={growthSchemaId}
+              onChange={onGrowthSchemaChange}
+              options={[
+                {value: 'production', label: t('settings.scoring.production')},
+                {value: 'demo', label: t('settings.scoring.demo')},
+              ]}
+            />
+            <Text style={styles.hint}>
+              {t(growthSchemaId === 'demo' ? 'settings.scoring.demoHint' : 'settings.scoring.productionHint')}
+            </Text>
+          </View>
+        ) : null}
       {/* — 智能 — */}
       <View style={styles.sectionLabel}>
         <IconBell size={14} color={theme.colors.textMuted} />

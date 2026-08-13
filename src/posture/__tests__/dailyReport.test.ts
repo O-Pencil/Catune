@@ -12,6 +12,10 @@ function snapshot(date: string, score: number): DailySnapshot {
     goodMinutes: 0,
     abnormalCount: score < 100 ? 1 : 0,
     goodCount: 1,
+    goodPoints: 50,
+    penaltyPoints: 0,
+    trainingPoints: 20,
+    trainingCount: 2,
     finalized: true,
   };
 }
@@ -22,6 +26,7 @@ function growth(overrides: Partial<GrowthState['today']> = {}): GrowthState {
     stage: 2,
     stageName: 'Sapling',
     log: [{id: 1, time: '08-13 14:37', action: 'Forward head', delta: -4, score: 75}],
+    schemaId: 'production',
     today: {
       date: '2026-08-13',
       hasData: true,
@@ -30,6 +35,10 @@ function growth(overrides: Partial<GrowthState['today']> = {}): GrowthState {
       goodMinutes: 8,
       abnormalCount: 1,
       goodCount: 8,
+      goodPoints: 60,
+      penaltyPoints: 0,
+      trainingPoints: 20,
+      trainingCount: 2,
       ...overrides,
     },
   };
@@ -47,7 +56,8 @@ describe('daily and weekly reports', () => {
 
     expect(report).toMatchObject({
       hasData: true,
-      score: 80,
+      score: 75,
+      postureScore: 80,
       effectiveMinutes: 10,
       goodMinutes: 8,
       abnormalCount: 1,
@@ -64,7 +74,7 @@ describe('daily and weekly reports', () => {
     const report = buildWeeklyReport(growth({score: 80}), 'en', history, now);
 
     expect(report.recordedDays).toBe(3);
-    expect(report.averageScore).toBe(80);
+    expect(report.averageScore).toBe(72);
     expect(report.week.at(-1)?.snapshot?.score).toBe(80);
   });
 

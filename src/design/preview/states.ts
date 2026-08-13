@@ -179,7 +179,12 @@ export function createPreviewGrowthState(locale: Locale): GrowthState {
       goodMinutes: 36,
       abnormalCount: 1,
       goodCount: 8,
+      goodPoints: 30,
+      penaltyPoints: 2,
+      trainingPoints: 10,
+      trainingCount: 1,
     },
+    schemaId: 'production',
     log: [
       {
         id: 3,

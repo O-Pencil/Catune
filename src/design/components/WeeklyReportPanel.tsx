@@ -71,7 +71,7 @@ export function WeeklyReportPanel({growth}: {growth: GrowthState}): React.JSX.El
 type T = (key: string, vars?: Record<string, string | number>) => string;
 
 function Bar({day, maxPoints, t}: {day: WeekDay; maxPoints: number; t: T}): React.JSX.Element {
-  const points = day.snapshot?.score ?? 0;
+  const points = day.snapshot?.growthPoints ?? 0;
   const heightPct = maxPoints > 0 ? Math.max(0.04, points / maxPoints) : 0.04;
   const recorded = day.snapshot !== null;
   const labelKey = LABEL_TO_KEY[day.label];
