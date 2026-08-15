@@ -23,8 +23,10 @@ export type DeviceTier = 'entry' | 'mainstream' | 'high';
 type CatuneMnnStatus = {
   cpu?: {
     arch?: string;
+    sme2Hw?: boolean;
     sme2?: boolean;
     i8mm?: boolean;
+    dot?: boolean;
     dotprod?: boolean;
     fp16?: boolean;
   };
@@ -32,6 +34,12 @@ type CatuneMnnStatus = {
 
 /** 设备性能快照 */
 export interface DeviceProfile {
+  /** 当前运行平台；本项目的端侧 MNN 正式路径目前为 Android。 */
+  platform: string;
+  /** 操作系统版本，如 Android 16。 */
+  osVersion: string;
+  /** Android API level；非 Android 为 null。 */
+  androidApiLevel: number | null;
   /** 总内存（字节） */
   totalMemoryBytes: number;
   /** 总内存（GB，四舍五入 1 位） */
@@ -81,17 +89,19 @@ export interface ModelRecommendation {
 // ─── 常量 ──────────────────────────────────────────────────────────────────────
 
 /** 档位阈值（GB） */
-const TIER_RAM_ENTRY_MAX = 4;
-const TIER_RAM_MAINSTREAM_MAX = 8;
+const TIER_RAM_ENTRY_MAX = 6;
+const TIER_RAM_HIGH_MIN = 10;
+// Android exposes usable physical RAM, so a marketed 12 GB phone is typically
+// reported as roughly 11.0-11.2 GiB through /proc/meminfo.
+const FLAGSHIP_4B_RAM_MIN = 11;
+const ANDROID_MODERN_API = 35;
+const GIB = 1024 * 1024 * 1024;
 
-/** 模型估算大小（字节） */
-const MODEL_SIZE_ESTIMATE: Record<string, number> = {
-  'qwen2.5-0.5b': 550 * 1024 * 1024,      // ~550MB
-  'qwen3-1.7b': 1200 * 1024 * 1024,        // ~1.2GB
-};
-
-/** 最低存储余量（500MB 安全边际） */
-const MIN_STORAGE_BUFFER = 500 * 1024 * 1024;
+function storageBufferBytes(model: MnnModelDef): number {
+  if (model.id === 'qwen3.5-4b') return 2 * GIB;
+  if (model.id === 'qwen3.5-2b') return 1.5 * GIB;
+  return 1 * GIB;
+}
 
 // ─── 设备信号采集 ──────────────────────────────────────────────────────────────
 
@@ -117,9 +127,10 @@ async function fetchCpuInfo(): Promise<{
     const status = await CatuneMnn.getStatus();
     const cpu = status?.cpu;
     return {
-      sme2: cpu?.sme2 ?? false,
+      // Android 原生模块使用 sme2Hw / dot；兼容旧桥接曾使用的 sme2 / dotprod。
+      sme2: cpu?.sme2Hw ?? cpu?.sme2 ?? false,
       i8mm: cpu?.i8mm ?? false,
-      dotprod: cpu?.dotprod ?? false,
+      dotprod: cpu?.dot ?? cpu?.dotprod ?? false,
       fp16: cpu?.fp16 ?? false,
     };
   } catch {
@@ -147,15 +158,15 @@ function classifyTier(
   hasSme2: boolean,
   hasI8mm: boolean,
 ): DeviceTier {
-  // 非 arm64 或 <4GB → 入门
+  // 非 arm64 或 <6GB → 入门
   if (!isArm64 || totalMemoryGB < TIER_RAM_ENTRY_MAX) {
     return 'entry';
   }
-  // >8GB 且有 SME2/i8mm → 高性能
-  if (totalMemoryGB > TIER_RAM_MAINSTREAM_MAX && (hasSme2 || hasI8mm)) {
+  // >=10GB 且有 SME2/i8mm → 高性能
+  if (totalMemoryGB >= TIER_RAM_HIGH_MIN && (hasSme2 || hasI8mm)) {
     return 'high';
   }
-  // 其他（4-8GB arm64）→ 主流
+  // 其他（6GB+ arm64，或大内存但缺少矩阵指令）→ 主流
   return 'mainstream';
 }
 
@@ -184,6 +195,9 @@ export async function getDeviceProfile(): Promise<DeviceProfile> {
   const tier = classifyTier(totalMemoryGB, isArm64, cpuInfo.sme2, cpuInfo.i8mm);
 
   return {
+    platform: Platform.OS,
+    osVersion: Device.osVersion ?? 'unknown',
+    androidApiLevel: Platform.OS === 'android' ? Device.platformApiLevel ?? null : null,
     totalMemoryBytes,
     totalMemoryGB,
     cpuArchitectures,
@@ -203,25 +217,32 @@ export async function getDeviceProfile(): Promise<DeviceProfile> {
  * 根据设备档案推荐最合适的模型。
  *
  * 推荐逻辑（对齐 AGENTS.md §1）：
- * - 入门（<4GB 或非 arm64）→ 仅 0.5B，大模型置灰
- * - 主流（4-8GB arm64）→ 默认 0.5B，1.7B 可选
- * - 高性能（>8GB + SME2/i8mm）→ 推荐 1.7B，标「可启 SME2 加速」
+ * - 入门（<6GB、非 arm64 或非 Android）→ Qwen2.5-0.5B，稳定优先
+ * - 主流（6-8GB）→ Qwen3.5-0.8B；8GB+ → Qwen3.5-2B
+ * - 高性能（>=12GB + SME2 + Android 15+）→ Qwen3.5-4B；否则 Qwen3.5-2B
+ * - 存储不足时自动降到仍满足安全余量的较小模型
  *
  * reason/details 按 locale 渲染：locale=en/zh 直接走 tr(locale, key)；
  * locale 省略时走 zh（向后兼容）。
  */
 export function recommendModel(profile: DeviceProfile, locale: 'en' | 'zh' = 'zh'): ModelRecommendation {
   const details: string[] = [];
-  let recommendedId: string;
+  const isAndroidNative = profile.platform === 'android';
+  const isModernAndroid = isAndroidNative && (profile.androidApiLevel ?? 0) >= ANDROID_MODERN_API;
+  let preferredIds: string[];
   let reason: string;
 
-  switch (profile.tier) {
+  if (!isAndroidNative || !profile.isArm64) {
+    preferredIds = ['qwen2.5-0.5b'];
+    reason = tr(locale, 'device.recommend.reason.compatible');
+    details.push(tr(locale, 'device.recommend.detail.platform', {
+      platform: profile.platform,
+      version: profile.osVersion,
+    }));
+  } else switch (profile.tier) {
     case 'entry': {
-      recommendedId = 'qwen2.5-0.5b';
+      preferredIds = ['qwen2.5-0.5b'];
       reason = tr(locale, 'device.recommend.reason.entry');
-      if (!profile.isArm64) {
-        details.push(tr(locale, 'device.recommend.detail.notArm64'));
-      }
       if (profile.totalMemoryGB < TIER_RAM_ENTRY_MAX) {
         details.push(
           tr(locale, 'device.recommend.detail.lowRam', {
@@ -234,24 +255,29 @@ export function recommendModel(profile: DeviceProfile, locale: 'en' | 'zh' = 'zh
     }
 
     case 'mainstream': {
-      recommendedId = 'qwen2.5-0.5b';
+      preferredIds = profile.totalMemoryGB >= 8
+        ? ['qwen3.5-2b', 'qwen3.5-0.8b', 'qwen2.5-0.5b']
+        : ['qwen3.5-0.8b', 'qwen2.5-0.5b'];
       reason = tr(locale, 'device.recommend.reason.mainstream');
       details.push(
         tr(locale, 'device.recommend.detail.ramArch', {
           ram: profile.totalMemoryGB.toFixed(1),
         }),
       );
-      details.push(tr(locale, 'device.recommend.detail.stable17b'));
+      details.push(tr(locale, 'device.recommend.detail.modernBalanced'));
       break;
     }
 
     case 'high': {
-      recommendedId = 'qwen3-1.7b';
-      reason = tr(locale, 'device.recommend.reason.high');
+      const canUse4B = profile.totalMemoryGB >= FLAGSHIP_4B_RAM_MIN && profile.hasSme2 && isModernAndroid;
+      preferredIds = canUse4B
+        ? ['qwen3.5-4b', 'qwen3.5-2b', 'qwen3.5-0.8b', 'qwen2.5-0.5b']
+        : ['qwen3.5-2b', 'qwen3.5-0.8b', 'qwen2.5-0.5b'];
+      reason = tr(locale, canUse4B ? 'device.recommend.reason.flagship' : 'device.recommend.reason.high');
       details.push(
         tr(locale, 'device.recommend.detail.highRam', {
           ram: profile.totalMemoryGB.toFixed(1),
-          threshold: TIER_RAM_MAINSTREAM_MAX.toString(),
+          threshold: TIER_RAM_HIGH_MIN.toString(),
         }),
       );
       if (profile.hasSme2) {
@@ -264,9 +290,24 @@ export function recommendModel(profile: DeviceProfile, locale: 'en' | 'zh' = 'zh
     }
   }
 
-  const model = MODEL_CATALOG.find(m => m.id === recommendedId) ?? MODEL_CATALOG[0];
-  const requiredStorageBytes = MODEL_SIZE_ESTIMATE[model.id] ?? 600 * 1024 * 1024;
-  const hasEnoughStorage = profile.freeDiskBytes > requiredStorageBytes + MIN_STORAGE_BUFFER;
+  details.unshift(tr(locale, 'device.recommend.detail.os', {
+    version: profile.osVersion,
+    api: profile.androidApiLevel?.toString() ?? '—',
+  }));
+
+  const candidates = preferredIds
+    .map(id => MODEL_CATALOG.find(model => model.id === id))
+    .filter((model): model is MnnModelDef => Boolean(model));
+  const diskKnown = profile.freeDiskBytes > 0;
+  const fitsStorage = (candidate: MnnModelDef) =>
+    !diskKnown || profile.freeDiskBytes > candidate.estimatedDownloadBytes + storageBufferBytes(candidate);
+  const model = candidates.find(fitsStorage) ?? candidates[candidates.length - 1] ?? MODEL_CATALOG[0];
+  const requiredStorageBytes = model.estimatedDownloadBytes;
+  const hasEnoughStorage = fitsStorage(model);
+
+  if (model.id !== candidates[0]?.id) {
+    details.push(tr(locale, 'device.recommend.detail.storageFallback', {name: model.label}));
+  }
 
   if (!hasEnoughStorage) {
     const requiredGb = Math.ceil(requiredStorageBytes / (1024 * 1024 * 1024) * 10) / 10;

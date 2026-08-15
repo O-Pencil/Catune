@@ -47,6 +47,7 @@ public:
 private:
     mutable std::mutex mutex_;
     bool ready_ = false;
+    bool disable_thinking_ = false;
     std::string cache_dir_;
     std::string last_error_;
     std::unordered_map<std::string, std::string> metrics_;

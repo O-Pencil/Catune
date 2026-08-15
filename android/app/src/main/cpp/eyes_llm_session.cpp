@@ -233,6 +233,11 @@ bool EyesLlmSession::load(const std::string& config_json_path, const std::string
     unload();
 
     cache_dir_ = cache_dir;
+    // Qwen3/3.5 defaults to thinking mode. Catune only needs a short posture
+    // reminder and caps generation at 64 tokens, so reasoning would consume the
+    // entire budget before the user-visible answer.
+    disable_thinking_ = config_json_path.find("qwen3") != std::string::npos ||
+                        config_json_path.find("Qwen3") != std::string::npos;
     auto* llm = Llm::createLLM(config_json_path);
     if (llm == nullptr) {
         last_error_ = "createLLM failed for: " + config_json_path;
@@ -242,6 +247,16 @@ bool EyesLlmSession::load(const std::string& config_json_path, const std::string
 
     if (!llm->set_config(buildRuntimeConfig(cache_dir))) {
         last_error_ = "set_config failed";
+        Llm::destroy(llm);
+        EYES_LOGE("%s", last_error_.c_str());
+        return false;
+    }
+
+    // MNN applies the Qwen thinking switch through the Jinja template context.
+    // A prompt-level /no_think suffix is not honored by the Qwen3.5 MNN export.
+    if (disable_thinking_ &&
+        !llm->set_config(R"({"jinja":{"context":{"enable_thinking":false}}})")) {
+        last_error_ = "set_config failed while disabling thinking mode";
         Llm::destroy(llm);
         EYES_LOGE("%s", last_error_.c_str());
         return false;

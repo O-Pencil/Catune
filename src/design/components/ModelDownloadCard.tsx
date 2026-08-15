@@ -8,7 +8,7 @@
  * [TO] 被 SettingsScreen 嵌入（settings.group.core → 模型管理）
  * [HERE] src/design/components/ModelDownloadCard.tsx · 模型管理卡片
  */
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Alert, Pressable, StyleSheet, Text, View} from 'react-native';
 import {DEFAULT_MODEL_ID, getDefaultModel, getModelById, MnnModelDef, MODEL_CATALOG} from '../../mnn/modelCatalog';
 import {cancelModelDownloadAndCleanup, formatSpeed, getDownloadSnapshot, startModelDownload, subscribeModelDownload} from '../../mnn/modelDownloadService';
@@ -47,6 +47,7 @@ type UiStatus = 'idle' | 'checking' | 'downloading' | 'error';
 type ModelOptionProps = {
   model: MnnModelDef;
   selected: boolean;
+  active: boolean;
   installed: 'missing' | 'partial' | 'ready';
   isRecommended: boolean;
   recommendedReason: string | null;
@@ -63,6 +64,7 @@ const TIER_BADGE: Record<DeviceTier, {bg: string; fg: string}> = {
 function ModelOptionCard({
   model,
   selected,
+  active,
   installed,
   isRecommended,
   recommendedReason,
@@ -71,7 +73,9 @@ function ModelOptionCard({
 }: ModelOptionProps): React.JSX.Element {
   const t = useT();
   const statusLabel =
-    installed === 'ready'
+    active && installed === 'ready'
+      ? t('model.card.inUse')
+      : installed === 'ready'
       ? t('model.card.installed')
       : installed === 'partial'
         ? t('model.card.partial')
@@ -119,8 +123,9 @@ function ModelOptionCard({
 
 const optionStyles = StyleSheet.create({
   card: {
-    flex: 1,
-    minWidth: 0,
+    flexGrow: 1,
+    flexBasis: '46%',
+    minWidth: 140,
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.md,
     borderWidth: 1,
@@ -273,10 +278,14 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
   const [downloadJob, setDownloadJob] = useState(getDownloadSnapshot());
   const [recommendation, setRecommendation] = useState<ModelRecommendation | null>(null);
   const [recLoading, setRecLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false);
+  const didInitializeSelection = useRef(false);
 
   const selectedModel = getModelById(selectedId) ?? getDefaultModel();
+  const activeModel = getModelById(activeId);
   const isActive = activeId === selectedId && installState === 'ready';
   const isDownloading = uiStatus === 'downloading';
+  const isChecking = uiStatus === 'checking';
 
   const loadRecommendation = useCallback(async () => {
     setRecLoading(true);
@@ -299,7 +308,6 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
     if (!docDir) {
       return;
     }
-    const model = getModelById(selectedId) ?? getDefaultModel();
     setUiStatus('checking');
     setError(null);
     try {
@@ -308,13 +316,20 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
         listInstalledModels(docDir),
         readDownloadState(docDir),
       ]);
+      const nextSelectedId = didInitializeSelection.current ? selectedId : nextActive;
+      const model = getModelById(nextSelectedId) ?? getDefaultModel();
+      if (!didInitializeSelection.current) {
+        didInitializeSelection.current = true;
+        setSelectedId(model.id);
+      }
       setActiveId(nextActive);
       setInstalled(nextInstalled);
-      setHasPendingDownload(Boolean(pending && pending.modelId === selectedId));
+      setHasPendingDownload(Boolean(pending && pending.modelId === model.id));
       const state = await getModelInstallState(docDir, model);
       setInstallState(state);
       const job = getDownloadSnapshot();
-      setUiStatus(job.status === 'downloading' && job.modelId === selectedId ? 'downloading' : 'idle');
+      setUiStatus(job.status === 'downloading' && job.modelId === model.id ? 'downloading' : 'idle');
+      setInitialized(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setUiStatus('error');
@@ -399,19 +414,18 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
     }
   };
 
-  const onPressDownload = () => {
-    if (installState === 'ready') {
-      Alert.alert(
-        t('model.card.replace'),
-        t('model.card.confirmReplace', {name: selectedModel.label}),
-        [
-          {text: t('common.cancel'), style: 'cancel'},
-          {text: t('model.card.continue'), style: 'destructive', onPress: () => runDownload(true)},
-        ],
-      );
-      return;
-    }
-    runDownload(false);
+  const onRequestDownload = () => {
+    const messageKey = installState === 'partial'
+      ? 'model.card.confirmResumeForSwitch'
+      : 'model.card.confirmDownloadForSwitch';
+    Alert.alert(
+      t('model.card.downloadRequired'),
+      t(messageKey, {name: selectedModel.label, size: selectedModel.sizeHint}),
+      [
+        {text: t('common.cancel'), style: 'cancel'},
+        {text: t('model.card.confirmDownloadAction'), onPress: () => runDownload(false)},
+      ],
+    );
   };
 
   const onPressDelete = () => {
@@ -446,19 +460,17 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
 
   const primaryLabel = (() => {
     if (isDownloading) return t('model.card.status.downloading').split('\n')[0] ?? t('model.status.downloading');
-    if (hasPendingDownload && installState !== 'ready') return t('model.card.resumeDownload');
-    if (installState === 'ready') return isActive ? t('model.card.replace') : t('model.card.activateThis');
-    if (installState === 'partial') return t('model.card.resumeDownload');
-    return t('model.card.download');
+    if (isActive) return t('model.card.currentlyUsing');
+    return t('model.card.replace');
   })();
 
   const onPressPrimary = () => {
-    if (isDownloading) return;
+    if (isDownloading || isChecking) return;
     if (installState === 'ready' && !isActive) {
       activateModel(selectedId);
       return;
     }
-    onPressDownload();
+    onRequestDownload();
   };
 
   const onCancelDownload = () => {
@@ -510,6 +522,12 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
         <Text style={styles.hint}>{t('model.card.hint.web')}</Text>
       ) : (
         <View>
+          <Text style={styles.activeModelText} numberOfLines={1}>
+            {initialized
+              ? t('model.card.activeModel', {name: activeModel?.label ?? activeId})
+              : t('model.card.activeModelChecking')}
+          </Text>
+
           {/* 模型选项（卡片化 + 推荐内嵌） */}
           <View style={styles.optionsRow}>
             {MODEL_CATALOG.map(m => {
@@ -519,11 +537,12 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
                 <ModelOptionCard
                   key={m.id}
                   model={m}
-                  selected={selectedId === m.id}
+                  selected={initialized && selectedId === m.id}
+                  active={activeId === m.id && inst === 'ready'}
                   installed={inst}
                   isRecommended={isRec}
                   recommendedReason={isRec ? recommendation?.reason ?? null : null}
-                  disabled={isDownloading}
+                  disabled={!initialized || isDownloading}
                   onPress={() => setSelectedId(m.id)}
                 />
               );
@@ -562,7 +581,10 @@ export function ModelDownloadCard({onModelsChanged}: Props): React.JSX.Element {
               </Pressable>
             ) : (
               <>
-                <Pressable style={[styles.btn, styles.btnPrimary, styles.btnFlex]} onPress={onPressPrimary}>
+                <Pressable
+                  style={[styles.btn, styles.btnPrimary, styles.btnFlex, (!initialized || isChecking || isActive) && styles.btnDisabled]}
+                  disabled={!initialized || isChecking || isActive}
+                  onPress={onPressPrimary}>
                   <Text style={styles.btnText}>{primaryLabel}</Text>
                 </Pressable>
                 {(installState === 'ready' || installState === 'partial' || hasPendingDownload) ? (
@@ -609,7 +631,8 @@ const styles = StyleSheet.create({
   titleRow: {flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: theme.spacing.md2, gap: theme.spacing.sm2},
   cardTitle: {color: theme.colors.textPrimary, fontSize: theme.font.sizeMd, fontWeight: theme.font.weightBold},
   titleHint: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, flex: 1, textAlign: 'right'},
-  optionsRow: {flexDirection: 'row', gap: theme.spacing.sm, marginBottom: theme.spacing.sm},
+  activeModelText: {color: theme.colors.textSecondary, fontSize: theme.font.sizeSm, marginBottom: theme.spacing.md},
+  optionsRow: {flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm, marginBottom: theme.spacing.sm},
   swapHint: {color: theme.colors.primary, fontSize: theme.font.sizeXs, marginTop: theme.spacing.xs, lineHeight: 16, fontStyle: 'italic'},
   sectionLabel: {color: theme.colors.textMuted, fontSize: theme.font.sizeXs, marginBottom: theme.spacing.sm2},
   statusText: {color: theme.colors.textSecondary, fontSize: theme.font.sizeSm, marginTop: theme.spacing.sm2, lineHeight: 18},
@@ -620,6 +643,7 @@ const styles = StyleSheet.create({
   btnFlex: {flex: 1},
   btn: {paddingVertical: theme.spacing.md, paddingHorizontal: theme.spacing.lg, borderRadius: theme.radius.md, borderWidth: 1, alignItems: 'center'},
   btnPrimary: {borderColor: theme.colors.primary, backgroundColor: '#FCEAE0'},
+  btnDisabled: {opacity: 0.55},
   btnDanger: {borderColor: '#C20A0A', backgroundColor: '#FFF5F5'},
   btnText: {color: theme.colors.primary, fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
   btnDangerText: {color: '#C20A0A', fontSize: theme.font.sizeSm, fontWeight: theme.font.weightBold},
